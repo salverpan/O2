@@ -1,0 +1,29 @@
+# Python & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Node & Electron dependencies
+node_modules/
+
+# Local config, secrets, and runtime logs
+config.json
+last_build.json
+*.log
+
+# Internal documents, OCR cache, database, and build artifacts
+data/
+docs/
+build/
+dist/
+uploads/
+
+# IDE & OS files
+.cursor/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
