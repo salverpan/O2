@@ -16,6 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import agent as agent_mod
+import api_tool as api_mod
 import attach as attach_mod
 import browser_tool as browser_mod
 import catalog as catalog_mod
@@ -86,6 +87,7 @@ class State:
         threading.Thread(target=catalog_mod.refresh, daemon=True).start()
         try:
             with self.con() as con:
+                build_mod.ensure_schema(con)
                 embed_mod.ensure_schema(con)
         except sqlite3.Error:
             pass
@@ -210,6 +212,8 @@ class Handler(BaseHTTPRequestHandler):
 
         if path in ("/", "/index.html"):
             return self._serve_static("index.html", "text/html; charset=utf-8")
+        if path == "/favicon.ico":
+            return self._serve_static("favicon.ico", "image/x-icon")
         if path.startswith("/vendor/") or path == "/app.js":
             rel = path.lstrip("/")
             ext = os.path.splitext(rel)[1].lower()
@@ -231,8 +235,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._config()
         if path == "/api/docs":
             dept = (qs.get("dept") or [""])[0]
+            project = (qs.get("project") or [""])[0]
+            folder = (qs.get("folder") or [""])[0]
+            doc_type = (qs.get("doc_type") or [""])[0]
+            q_filter = (qs.get("q") or [""])[0]
             with STATE.con() as con:
-                return self._json(search_mod.list_docs(con, dept))
+                return self._json(
+                    search_mod.list_docs(
+                        con, dept=dept, project=project,
+                        folder=folder, doc_type=doc_type, q=q_filter,
+                    )
+                )
         if path == "/api/page":
             return self._page_image(qs)
         if path == "/api/search":
@@ -273,6 +286,18 @@ class Handler(BaseHTTPRequestHandler):
             return self._docs_commit()
         if u.path == "/api/docs/status":
             return self._docs_status()
+        if u.path == "/api/docs/meta":
+            return self._docs_meta()
+        if u.path == "/api/docs/delete":
+            return self._docs_delete()
+        if u.path == "/api/docs/organize":
+            return self._docs_organize()
+        if u.path == "/api/folders/create":
+            return self._folders_create()
+        if u.path == "/api/folders/delete":
+            return self._folders_delete()
+        if u.path == "/api/folders/move":
+            return self._folders_move()
         if u.path == "/api/attach":
             return self._attach()
         if u.path == "/api/models/sync":
@@ -287,6 +312,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._browser_register()
         if u.path == "/api/browser/action":
             return self._browser_action()
+        if u.path == "/api/connectors/test":
+            return self._connector_test()
+        if u.path == "/api/connectors/discover":
+            return self._connector_discover()
         return self._err("not found", 404)
 
     def _serve_static(self, rel: str, ctype: str) -> None:
@@ -354,8 +383,21 @@ class Handler(BaseHTTPRequestHandler):
                         if b:
                             rects.append([b[0], b[1], b[2], b[3]])
 
-        if not path or not os.path.exists(path) or not path.lower().endswith(".pdf"):
-            return self._err("该文件不是 PDF，无原页可显示", 400)
+        if not path or not os.path.exists(path):
+            return self._err("文件不存在", 404)
+        ext = os.path.splitext(path)[1].lower()
+        if ext in (".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".bmp", ".svg", ".heic", ".heif"):
+            try:
+                with open(path, "rb") as f:
+                    raw_img = f.read()
+                if ext == ".svg":
+                    return self._send(200, raw_img, "image/svg+xml", cache=True)
+                jpeg, mime = attach_mod.to_vision_jpeg(raw_img, ext)
+                return self._send(200, jpeg, mime, cache=True)
+            except Exception as e:
+                return self._err(f"图像读取失败: {e}", 500)
+        if ext != ".pdf":
+            return self._err("该文件无原页图像可显示", 400)
 
         try:
             mtime = int(os.path.getmtime(path))
@@ -417,6 +459,8 @@ class Handler(BaseHTTPRequestHandler):
             rs = search_mod.search(
                 con, q,
                 dept=g("dept"), status=g("status"), category=g("category"),
+                project=g("project"), folder=g("folder"),
+                doc_type=g("doc_type"), chunk_type=g("chunk_type"),
                 doc_id=int(g("doc_id")) if g("doc_id").isdigit() else None,
                 limit=limit,
                 cfg=STATE.config,
@@ -526,6 +570,12 @@ class Handler(BaseHTTPRequestHandler):
             {"id": pid, "name": spec["name"]}
             for pid, spec in embed_mod.PRESETS.items()
         ]
+        d["api_connectors"] = [
+            api_mod.public_connector(c) for c in (d.get("api_connectors") or [])
+        ]
+        d["api_protocols"] = api_mod.PROTOCOLS
+        d["api_auth_types"] = api_mod.AUTH_TYPE_LABELS
+        d["api_presets"] = api_mod.API_PRESETS
         d["src_root"] = STATE.src_root
         d["db_path"] = STATE.db_path
         return self._json(d)
@@ -691,6 +741,8 @@ class Handler(BaseHTTPRequestHandler):
                     ch["api_key"] = ""
         if "embed_providers" in body or "embed_provider_id" in body or "embed_model" in body or "embed_use" in body:
             embed_mod.merge_save(STATE.config.data, body)
+        if "api_connectors" in body:
+            api_mod.merge_save(STATE.config.data, body)
         if body.get("paddle_token"):
             STATE.config.data["paddle_token"] = body["paddle_token"]
         if body.get("clear_paddle"):
@@ -841,6 +893,9 @@ class Handler(BaseHTTPRequestHandler):
         item = files.get("file")
         if not item or not item.get("data"):
             return self._err("请上传文件")
+        project = str(_fields.get("project") or "").strip()
+        folder = str(_fields.get("folder") or "").strip()
+        rel_path = str(_fields.get("rel_path") or "").strip()
         emit, finish = self._sse_begin()
         try:
             with STATE.con() as con:
@@ -850,6 +905,9 @@ class Handler(BaseHTTPRequestHandler):
                 os.path.join(STATE.base, "build"),
                 item["filename"], item["data"], depts,
                 on_progress=lambda p: emit({"type": "progress", **p}),
+                project=project,
+                folder=folder,
+                rel_path=rel_path,
             )
             emit({"type": "done", "ok": True, **meta})
         except Exception as e:                       # noqa: BLE001
@@ -892,6 +950,99 @@ class Handler(BaseHTTPRequestHandler):
             return self._err(str(e))
         return self._json({"ok": True})
 
+    def _docs_meta(self) -> None:
+        body = self._body()
+        doc_ids = body.get("doc_ids")
+        if isinstance(doc_ids, list) and doc_ids:
+            updates = body.get("updates") if isinstance(body.get("updates"), dict) else body
+            try:
+                with STATE.lock:
+                    for did in doc_ids:
+                        build_mod.update_doc_metadata(STATE.db_path, int(did), updates, src_root=STATE.src_root)
+            except Exception as e:                   # noqa: BLE001
+                return self._err(str(e))
+            return self._json({"ok": True, "count": len(doc_ids)})
+        try:
+            did = int(body.get("doc_id"))
+        except (TypeError, ValueError):
+            return self._err("doc_id 无效")
+        try:
+            with STATE.lock:
+                out = build_mod.update_doc_metadata(STATE.db_path, did, body, src_root=STATE.src_root)
+        except Exception as e:                       # noqa: BLE001
+            return self._err(str(e))
+        return self._json(out)
+
+    def _docs_delete(self) -> None:
+        body = self._body()
+        raw_ids = body.get("doc_ids")
+        if not isinstance(raw_ids, list):
+            did = body.get("doc_id")
+            raw_ids = [did] if did else []
+        try:
+            ids = [int(x) for x in raw_ids if x]
+        except (TypeError, ValueError):
+            return self._err("doc_id 无效")
+        if not ids:
+            return self._err("未选择文档")
+        try:
+            with STATE.lock:
+                removed = build_mod.delete_documents(STATE.db_path, ids)
+        except Exception as e:                       # noqa: BLE001
+            return self._err(str(e))
+        return self._json({"ok": True, "removed": removed})
+
+    def _docs_organize(self) -> None:
+        body = self._body()
+        project = str(body.get("project") or "").strip()
+        if not project:
+            return self._err("请先选择一个项目")
+        try:
+            with STATE.lock:
+                out = ingest_mod.ai_organize_project(STATE.config, STATE.db_path, project)
+        except Exception as e:                       # noqa: BLE001
+            return self._err(str(e))
+        return self._json(out)
+
+    def _folders_create(self) -> None:
+        body = self._body()
+        project = str(body.get("project") or "").strip()
+        path = str(body.get("path") or "").strip()
+        try:
+            with STATE.lock:
+                out = build_mod.create_folder(STATE.db_path, STATE.src_root, project, path)
+        except Exception as e:                       # noqa: BLE001
+            return self._err(str(e))
+        return self._json(out)
+
+    def _folders_delete(self) -> None:
+        body = self._body()
+        project = str(body.get("project") or "").strip()
+        path = str(body.get("path") or "").strip()
+        force = bool(body.get("force"))
+        try:
+            with STATE.lock:
+                out = build_mod.delete_folder(STATE.db_path, project, path, force=force)
+        except Exception as e:                       # noqa: BLE001
+            return self._err(str(e))
+        return self._json(out)
+
+    def _folders_move(self) -> None:
+        body = self._body()
+        src_project = str(body.get("src_project") or "").strip()
+        src_path = str(body.get("src_path") or "").strip()
+        dst_project = str(body.get("dst_project") or src_project).strip()
+        dst_path = str(body.get("dst_path") or "").strip()
+        try:
+            with STATE.lock:
+                out = build_mod.move_or_rename_folder(
+                    STATE.db_path, STATE.src_root,
+                    src_project, src_path, dst_project, dst_path,
+                )
+        except Exception as e:                       # noqa: BLE001
+            return self._err(str(e))
+        return self._json(out)
+
     def _browser_register(self) -> None:
         host = (self.client_address[0] if self.client_address else "")
         if host not in ("127.0.0.1", "::1"):
@@ -913,6 +1064,41 @@ class Handler(BaseHTTPRequestHandler):
     def _browser_action(self) -> None:
         body = self._body()
         out = browser_mod.call_bridge(body, timeout=35.0)
+        return self._json(out)
+
+    def _connector_test(self) -> None:
+        body = self._body()
+        cid = str(body.get("id") or body.get("connector") or "").strip()
+        existing = api_mod.find_connector(STATE.config.data.get("api_connectors") or [], cid)
+        if body.get("base_url") or body.get("baseUrl"):
+            temp = dict(existing or {})
+            temp.update(body)
+            if not body.get("api_key") and existing:
+                temp["api_key"] = existing.get("api_key") or ""
+            if not body.get("api_secret") and existing:
+                temp["api_secret"] = existing.get("api_secret") or ""
+            norm = api_mod.normalize_connector(temp)
+            out = api_mod.execute_api_call(
+                {
+                    "action": "test",
+                    "connector": norm["name"],
+                    "path": body.get("path") or "",
+                },
+                {"load_connectors": lambda: [norm], "timeout_ms": 15000},
+            )
+            return self._json(out)
+        out = api_mod.execute_api_call(
+            {"action": "test", "connector": cid, "path": body.get("path") or ""},
+            {"cfg": STATE.config, "timeout_ms": 15000},
+        )
+        return self._json(out)
+
+    def _connector_discover(self) -> None:
+        body = self._body()
+        url = str(body.get("url") or body.get("base_url") or "").strip()
+        if not url:
+            return self._err("请填入 OpenAPI/Swagger 文档地址或 API 根地址")
+        out = api_mod.discover_openapi(url)
         return self._json(out)
 
 
@@ -972,10 +1158,19 @@ def _run_window(url: str) -> bool:
         env.pop("ELECTRON_RUN_AS_NODE", None)
         env.pop("CHROME_CRASHPAD_PIPE_NAME", None)
         try:
+            flags = 0
+            startupinfo = None
+            if os.name == "nt":
+                flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = 0
             proc = subprocess.Popen(
                 [electron_exe, desk_dir, f"--app-url={url}"],
                 cwd=desk_dir,
                 env=env,
+                creationflags=flags,
+                startupinfo=startupinfo,
             )
             proc.wait()
             return True

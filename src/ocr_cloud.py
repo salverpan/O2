@@ -218,9 +218,10 @@ def fetch(path: str, token: str, model: str = MODEL, on_progress=None) -> dict:
 
 
 def ocr_cached(path: str, token: str, cache_dir: str, model: str = MODEL,
-               force: bool = False, on_progress=None) -> dict:
+               force: bool = False, on_progress=None, cache_key_path: str = "") -> dict:
     os.makedirs(cache_dir, exist_ok=True)
-    cp = os.path.join(cache_dir, f"{_file_hash(path)}.json")
+    key_src = cache_key_path or path
+    cp = os.path.join(cache_dir, f"{_file_hash(key_src)}.json")
     if os.path.exists(cp) and not force:
         try:
             with open(cp, encoding="utf-8") as f:

@@ -5,6 +5,7 @@ import os
 
 import providers as prov_mod
 import embed as embed_mod
+import api_tool as api_mod
 
 DEFAULT_CONFIG = {
     "base_url": "https://api.deepseek.com",
@@ -24,6 +25,8 @@ DEFAULT_CONFIG = {
     "embed_running": False,
     "shell": True,
     "browser": True,
+    "api_call": True,
+    "api_connectors": [],
 }
 
 
@@ -41,10 +44,12 @@ class Config:
             pass
         prov_mod.migrate(self.data)
         embed_mod.migrate(self.data)
+        api_mod.migrate(self.data)
 
     def save(self) -> None:
         prov_mod.migrate(self.data)
         embed_mod.migrate(self.data)
+        api_mod.migrate(self.data)
         ch = prov_mod.find(self.data, self.data.get("provider_id"))
         if ch:
             self.data["base_url"] = ch.get("base_url") or self.data.get("base_url")

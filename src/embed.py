@@ -578,7 +578,9 @@ def _run_job(cfg, db_path: str) -> None:
 
 
 def search_vec(con, q: str, cfg, limit: int = 24, dept: str = "",
-               status: str = "", category: str = "", doc_id: int | None = None) -> list[dict]:
+               status: str = "", category: str = "", doc_id: int | None = None,
+               project: str = "", folder: str = "", doc_type: str = "",
+               chunk_type: str = "") -> list[dict]:
     if not (q or "").strip():
         return []
     ch = resolve(cfg.data)
@@ -592,9 +594,21 @@ def search_vec(con, q: str, cfg, limit: int = 24, dept: str = "",
         return []
     where = ["e.model = ?", "e.provider_id = ?", "d.status <> ?"]
     args: list = [ch["model"], ch["id"], "已废止"]
+    if project:
+        where.append("d.project = ?")
+        args.append(project)
+    if folder:
+        where.append("(d.folder = ? OR d.folder LIKE ?)")
+        args.extend([folder, f"{folder}/%"])
     if dept:
-        where.append("d.dept = ?")
-        args.append(dept)
+        where.append("(d.dept = ? OR d.folder = ? OR d.project = ?)")
+        args.extend([dept, dept, dept])
+    if doc_type:
+        where.append("d.doc_type = ?")
+        args.append(doc_type)
+    if chunk_type:
+        where.append("IFNULL(ch.chunk_type, 'text') = ?")
+        args.append(chunk_type)
     if status and status != "已废止":
         where.append("d.status = ?")
         args.append(status)
@@ -608,7 +622,14 @@ def search_vec(con, q: str, cfg, limit: int = 24, dept: str = "",
         SELECT ch.id, ch.doc_id, ch.seq, ch.chapter, ch.article, ch.page_start,
                ch.page_end, ch.text, ch.text_norm, d.title, d.doc_no, d.dept,
                d.issued_date, d.status, d.rel_path, d.category, d.n_pages,
-               e.vec, e.dim
+               e.vec, e.dim,
+               IFNULL(ch.chunk_type, 'text'),
+               IFNULL(d.project, '集团制度库'),
+               IFNULL(d.folder, ''),
+               IFNULL(d.doc_type, 'regulation'),
+               IFNULL(d.file_ext, ''),
+               IFNULL(d.summary, ''),
+               IFNULL(d.meta_json, '{{}}')
           FROM chunk_emb e
           JOIN chunks ch ON ch.id = e.chunk_id
           JOIN docs d ON d.id = ch.doc_id
@@ -632,6 +653,10 @@ def search_vec(con, q: str, cfg, limit: int = 24, dept: str = "",
         if score <= 0:
             continue
         text = r[7] or ""
+        try:
+            meta_obj = json.loads(r[25]) if r[25] else {}
+        except ValueError:
+            meta_obj = {}
         out.append({
             "chunk_id": r[0],
             "doc_id": r[1],
@@ -650,6 +675,13 @@ def search_vec(con, q: str, cfg, limit: int = 24, dept: str = "",
             "rel_path": r[14] or "",
             "category": r[15] or "",
             "n_pages": r[16] or 0,
+            "chunk_type": r[19] or "text",
+            "project": r[20] or "集团制度库",
+            "folder": r[21] or "",
+            "doc_type": r[22] or "regulation",
+            "file_ext": r[23] or "",
+            "summary": r[24] or "",
+            "meta": meta_obj,
             "score": float(score),
             "_vec": True,
         })

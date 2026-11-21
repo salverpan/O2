@@ -4,9 +4,13 @@
   "private": true,
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "bundle:aria": "npx --yes esbuild aria-entry.mjs --bundle --format=iife --platform=browser --outfile=aria-inject.js"
   },
   "devDependencies": {
     "electron": "^35.7.5"
+  },
+  "dependencies": {
+    "playwright-injected": "1.59.1"
   }
 }

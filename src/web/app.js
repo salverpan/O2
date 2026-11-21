@@ -836,12 +836,12 @@
   // node_modules/@vue/shared/dist/shared.esm-bundler.js
   // @__NO_SIDE_EFFECTS__
   function makeMap(str) {
-    const map2 = /* @__PURE__ */ Object.create(null);
-    for (const key2 of str.split(",")) map2[key2] = 1;
-    return (val) => val in map2;
+    const map = /* @__PURE__ */ Object.create(null);
+    for (const key2 of str.split(",")) map[key2] = 1;
+    return (val) => val in map;
   }
-  var EMPTY_OBJ = true ? Object.freeze({}) : {};
-  var EMPTY_ARR = true ? Object.freeze([]) : [];
+  var EMPTY_OBJ = false ? Object.freeze({}) : {};
+  var EMPTY_ARR = false ? Object.freeze([]) : [];
   var NOOP = () => {
   };
   var NO = () => false;
@@ -941,27 +941,6 @@
       (_2, val) => typeof val === "function" ? val.toString() : val
     );
   }
-  var PatchFlagNames = {
-    [1]: `TEXT`,
-    [2]: `CLASS`,
-    [4]: `STYLE`,
-    [8]: `PROPS`,
-    [16]: `FULL_PROPS`,
-    [32]: `NEED_HYDRATION`,
-    [64]: `STABLE_FRAGMENT`,
-    [128]: `KEYED_FRAGMENT`,
-    [256]: `UNKEYED_FRAGMENT`,
-    [512]: `NEED_PATCH`,
-    [1024]: `DYNAMIC_SLOTS`,
-    [2048]: `DEV_ROOT_FRAGMENT`,
-    [-1]: `HOISTED`,
-    [-2]: `BAIL`
-  };
-  var slotFlagsText = {
-    [1]: "STABLE",
-    [2]: "DYNAMIC",
-    [3]: "FORWARDED"
-  };
   var GLOBALS_ALLOWED = "Infinity,undefined,NaN,isFinite,isNaN,parseFloat,parseInt,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,Math,Number,Date,Array,Object,Boolean,String,RegExp,Map,Set,JSON,Intl,BigInt,console,Error,Symbol";
   var isGloballyAllowed = /* @__PURE__ */ makeMap(GLOBALS_ALLOWED);
   var range = 2;
@@ -1267,7 +1246,7 @@
         } finally {
           activeEffectScope = currentEffectScope;
         }
-      } else if (true) {
+      } else if (false) {
         warn(`cannot run an inactive effect scope.`);
       }
     }
@@ -1323,7 +1302,7 @@
   function onScopeDispose(fn, failSilently = false) {
     if (activeEffectScope) {
       activeEffectScope.cleanups.push(fn);
-    } else if (!failSilently) {
+    } else if (false) {
       warn(
         `onScopeDispose() is called when there is no active effect scope to be associated with.`
       );
@@ -1381,7 +1360,7 @@
       try {
         return this.fn();
       } finally {
-        if (activeSub !== this) {
+        if (false) {
           warn(
             "Active effect was not restored correctly - this is likely a Vue internal bug."
           );
@@ -1559,7 +1538,7 @@
       nextSub.prevSub = prevSub;
       link2.nextSub = void 0;
     }
-    if (dep.subsHead === link2) {
+    if (false) {
       dep.subsHead = nextSub;
     }
     if (dep.subs === link2) {
@@ -1648,7 +1627,7 @@
       this.map = void 0;
       this.key = void 0;
       this.sc = 0;
-      if (true) {
+      if (false) {
         this.subsHead = void 0;
       }
     }
@@ -1684,7 +1663,7 @@
           }
         }
       }
-      if (activeSub.onTrack) {
+      if (false) {
         activeSub.onTrack(
           extend(
             {
@@ -1704,7 +1683,7 @@
     notify(debugInfo) {
       startBatch();
       try {
-        if (true) {
+        if (false) {
           for (let head = this.subsHead; head; head = head.nextSub) {
             if (head.sub.onTrigger && !(head.sub.flags & 8)) {
               head.sub.onTrigger(
@@ -1744,7 +1723,7 @@
         link2.prevSub = currentTail;
         if (currentTail) currentTail.nextSub = link2;
       }
-      if (link2.dep.subsHead === void 0) {
+      if (false) {
         link2.dep.subsHead = link2;
       }
       link2.dep.subs = link2;
@@ -1752,13 +1731,13 @@
   }
   var targetMap = /* @__PURE__ */ new WeakMap();
   var ITERATE_KEY = Symbol(
-    true ? "Object iterate" : ""
+    false ? "Object iterate" : ""
   );
   var MAP_KEY_ITERATE_KEY = Symbol(
-    true ? "Map keys iterate" : ""
+    false ? "Map keys iterate" : ""
   );
   var ARRAY_ITERATE_KEY = Symbol(
-    true ? "Array iterate" : ""
+    false ? "Array iterate" : ""
   );
   function track(target, type4, key2) {
     if (shouldTrack && activeSub) {
@@ -1772,7 +1751,7 @@
         dep.map = depsMap;
         dep.key = key2;
       }
-      if (true) {
+      if (false) {
         dep.track({
           target,
           type: type4,
@@ -1791,7 +1770,7 @@
     }
     const run = (dep) => {
       if (dep) {
-        if (true) {
+        if (false) {
           dep.trigger({
             target,
             type: type4,
@@ -2168,7 +2147,7 @@
       super(true, isShallow2);
     }
     set(target, key2) {
-      if (true) {
+      if (false) {
         warn(
           `Set operation on key "${String(key2)}" failed: target is readonly.`,
           target
@@ -2177,7 +2156,7 @@
       return true;
     }
     deleteProperty(target, key2) {
-      if (true) {
+      if (false) {
         warn(
           `Delete operation on key "${String(key2)}" failed: target is readonly.`,
           target
@@ -2224,7 +2203,7 @@
   }
   function createReadonlyMethod(type4) {
     return function(...args) {
-      if (true) {
+      if (false) {
         const key2 = args[0] ? `on key "${args[0]}" ` : ``;
         warn(
           `${capitalize(type4)} operation ${key2}failed: target is readonly.`,
@@ -2315,7 +2294,7 @@
           if (!hadKey) {
             key2 = toRaw(key2);
             hadKey = has.call(target, key2);
-          } else if (true) {
+          } else if (false) {
             checkIdentityKeys(target, has, key2);
           }
           const oldValue = get3.call(target, key2);
@@ -2334,7 +2313,7 @@
           if (!hadKey) {
             key2 = toRaw(key2);
             hadKey = has.call(target, key2);
-          } else if (true) {
+          } else if (false) {
             checkIdentityKeys(target, has, key2);
           }
           const oldValue = get3 ? get3.call(target, key2) : void 0;
@@ -2347,7 +2326,7 @@
         clear() {
           const target = toRaw(this);
           const hadItems = target.size !== 0;
-          const oldTarget = true ? isMap(target) ? new Map(target) : new Set(target) : void 0;
+          const oldTarget = false ? isMap(target) ? new Map(target) : new Set(target) : void 0;
           const result = target.clear();
           if (hadItems) {
             trigger(
@@ -2402,15 +2381,6 @@
   var shallowReadonlyCollectionHandlers = {
     get: /* @__PURE__ */ createInstrumentationGetter(true, true)
   };
-  function checkIdentityKeys(target, has, key2) {
-    const rawKey = toRaw(key2);
-    if (rawKey !== key2 && has.call(target, rawKey)) {
-      const type4 = toRawType(target);
-      warn(
-        `Reactive ${type4} contains both the raw and reactive versions of the same object${type4 === `Map` ? ` as keys` : ``}, which can lead to inconsistencies. Avoid differentiating between the raw and reactive versions of an object and only use the reactive version if possible.`
-      );
-    }
-  }
   var reactiveMap = /* @__PURE__ */ new WeakMap();
   var shallowReactiveMap = /* @__PURE__ */ new WeakMap();
   var readonlyMap = /* @__PURE__ */ new WeakMap();
@@ -2473,7 +2443,7 @@
   }
   function createReactiveObject(target, isReadonly2, baseHandlers, collectionHandlers, proxyMap) {
     if (!isObject(target)) {
-      if (true) {
+      if (false) {
         warn(
           `value cannot be made ${isReadonly2 ? "readonly" : "reactive"}: ${String(
             target
@@ -2552,7 +2522,7 @@
       this["__v_isShallow"] = isShallow2;
     }
     get value() {
-      if (true) {
+      if (false) {
         this.dep.track({
           target: this,
           type: "get",
@@ -2570,7 +2540,7 @@
       if (hasChanged(newValue, oldValue)) {
         this._rawValue = newValue;
         this._value = useDirectValue ? newValue : toReactive(newValue);
-        if (true) {
+        if (false) {
           this.dep.trigger({
             target: this,
             type: "set",
@@ -2586,7 +2556,7 @@
   };
   function triggerRef(ref2) {
     if (ref2.dep) {
-      if (true) {
+      if (false) {
         ref2.dep.trigger({
           target: ref2,
           type: "set",
@@ -2639,7 +2609,7 @@
     return new CustomRefImpl(factory);
   }
   function toRefs(object4) {
-    if (!isProxy(object4)) {
+    if (false) {
       warn(`toRefs() expects a reactive object but received a plain one.`);
     }
     const ret = isArray(object4) ? new Array(object4.length) : {};
@@ -2718,10 +2688,10 @@
       activeSub !== this) {
         batch(this, true);
         return true;
-      } else if (true) ;
+      } else if (false) ;
     }
     get value() {
-      const link2 = true ? this.dep.track({
+      const link2 = false ? this.dep.track({
         target: this,
         type: "get",
         key: "value"
@@ -2735,7 +2705,7 @@
     set value(newValue) {
       if (this.setter) {
         this.setter(newValue);
-      } else if (true) {
+      } else if (false) {
         warn("Write operation failed: computed value is readonly");
       }
     }
@@ -2750,7 +2720,7 @@
       setter = getterOrOptions.set;
     }
     const cRef = new ComputedRefImpl(getter, setter, isSSR);
-    if (debugOptions && !isSSR) {
+    if (false) {
       cRef.onTrack = debugOptions.onTrack;
       cRef.onTrigger = debugOptions.onTrigger;
     }
@@ -2778,7 +2748,7 @@
       let cleanups = cleanupMap.get(owner);
       if (!cleanups) cleanupMap.set(owner, cleanups = []);
       cleanups.push(cleanupFn);
-    } else if (!failSilently) {
+    } else if (false) {
       warn(
         `onWatcherCleanup() was called when there was no active watcher to associate with.`
       );
@@ -2822,7 +2792,6 @@
         } else if (isFunction(s2)) {
           return call2 ? call2(s2, 2) : s2();
         } else {
-          warnInvalidSource(s2);
         }
       });
     } else if (isFunction(source)) {
@@ -2849,7 +2818,6 @@
       }
     } else {
       getter = NOOP;
-      warnInvalidSource(source);
     }
     if (cb && deep) {
       const baseGetter = getter;
@@ -2920,7 +2888,7 @@
         cleanupMap.delete(effect2);
       }
     };
-    if (true) {
+    if (false) {
       effect2.onTrack = options2.onTrack;
       effect2.onTrigger = options2.onTrigger;
     }
@@ -3087,7 +3055,7 @@
     }
   }
   function assertNumber(val, type4) {
-    if (false) return;
+    if (true) return;
     if (val === void 0) {
       return;
     } else if (typeof val !== "number") {
@@ -3182,7 +3150,7 @@
         values.push(callWithAsyncErrorHandling(fn[i3], instance, type4, args));
       }
       return values;
-    } else if (true) {
+    } else if (false) {
       warn$1(
         `Invalid value type passed to callWithAsyncErrorHandling(): ${typeof fn}`
       );
@@ -3194,7 +3162,7 @@
     if (instance) {
       let cur = instance.parent;
       const exposedInstance = instance.proxy;
-      const errorInfo = true ? ErrorTypeStrings$1[type4] : `https://vuejs.org/error-reference/#runtime-${type4}`;
+      const errorInfo = false ? ErrorTypeStrings$1[type4] : `https://vuejs.org/error-reference/#runtime-${type4}`;
       while (cur) {
         const errorCapturedHooks = cur.ec;
         if (errorCapturedHooks) {
@@ -3220,7 +3188,7 @@
     logError(err, type4, contextVNode, throwInDev, throwUnhandledErrorInProduction);
   }
   function logError(err, type4, contextVNode, throwInDev = true, throwInProd = false) {
-    if (true) {
+    if (false) {
       const info = ErrorTypeStrings$1[type4];
       if (contextVNode) {
         pushWarningContext(contextVNode);
@@ -3247,7 +3215,6 @@
   var postFlushIndex = 0;
   var resolvedPromise = /* @__PURE__ */ Promise.resolve();
   var currentFlushPromise = null;
-  var RECURSION_LIMIT = 100;
   function nextTick(fn) {
     const p2 = currentFlushPromise || resolvedPromise;
     return fn ? p2.then(this ? fn.bind(this) : fn) : p2;
@@ -3300,7 +3267,7 @@
     queueFlush();
   }
   function flushPreFlushCbs(instance, seen2, i3 = flushIndex + 1) {
-    if (true) {
+    if (false) {
       seen2 = seen2 || /* @__PURE__ */ new Map();
     }
     for (; i3 < queue.length; i3++) {
@@ -3309,7 +3276,7 @@
         if (instance && cb.id !== instance.uid) {
           continue;
         }
-        if (checkRecursiveUpdates(seen2, cb)) {
+        if (false) {
           continue;
         }
         queue.splice(i3, 1);
@@ -3335,12 +3302,12 @@
         return;
       }
       activePostFlushCbs = deduped;
-      if (true) {
+      if (false) {
         seen2 = seen2 || /* @__PURE__ */ new Map();
       }
       for (postFlushIndex = 0; postFlushIndex < activePostFlushCbs.length; postFlushIndex++) {
         const cb = activePostFlushCbs[postFlushIndex];
-        if (checkRecursiveUpdates(seen2, cb)) {
+        if (false) {
           continue;
         }
         if (cb.flags & 4) {
@@ -3355,15 +3322,15 @@
   }
   var getId = (job) => job.id == null ? job.flags & 2 ? -1 : Infinity : job.id;
   function flushJobs(seen2) {
-    if (true) {
+    if (false) {
       seen2 = seen2 || /* @__PURE__ */ new Map();
     }
-    const check = true ? (job) => checkRecursiveUpdates(seen2, job) : NOOP;
+    const check = false ? (job) => checkRecursiveUpdates(seen2, job) : NOOP;
     try {
       for (flushIndex = 0; flushIndex < queue.length; flushIndex++) {
         const job = queue[flushIndex];
         if (job && !(job.flags & 8)) {
-          if (check(job)) {
+          if (false) {
             continue;
           }
           if (job.flags & 4) {
@@ -3395,139 +3362,11 @@
       }
     }
   }
-  function checkRecursiveUpdates(seen2, fn) {
-    const count = seen2.get(fn) || 0;
-    if (count > RECURSION_LIMIT) {
-      const instance = fn.i;
-      const componentName = instance && getComponentName(instance.type);
-      handleError(
-        `Maximum recursive updates exceeded${componentName ? ` in component <${componentName}>` : ``}. This means you have a reactive effect that is mutating its own dependencies and thus recursively triggering itself. Possible sources include component template, render function, updated hook or watcher source function.`,
-        null,
-        10
-      );
-      return true;
-    }
-    seen2.set(fn, count + 1);
-    return false;
-  }
-  var isHmrUpdating = false;
-  var hmrDirtyComponents = /* @__PURE__ */ new Map();
-  if (true) {
+  if (false) {
     getGlobalThis().__VUE_HMR_RUNTIME__ = {
       createRecord: tryWrap(createRecord),
       rerender: tryWrap(rerender),
       reload: tryWrap(reload)
-    };
-  }
-  var map = /* @__PURE__ */ new Map();
-  function registerHMR(instance) {
-    const id = instance.type.__hmrId;
-    let record = map.get(id);
-    if (!record) {
-      createRecord(id, instance.type);
-      record = map.get(id);
-    }
-    record.instances.add(instance);
-  }
-  function unregisterHMR(instance) {
-    map.get(instance.type.__hmrId).instances.delete(instance);
-  }
-  function createRecord(id, initialDef) {
-    if (map.has(id)) {
-      return false;
-    }
-    map.set(id, {
-      initialDef: normalizeClassComponent(initialDef),
-      instances: /* @__PURE__ */ new Set()
-    });
-    return true;
-  }
-  function normalizeClassComponent(component) {
-    return isClassComponent(component) ? component.__vccOpts : component;
-  }
-  function rerender(id, newRender) {
-    const record = map.get(id);
-    if (!record) {
-      return;
-    }
-    record.initialDef.render = newRender;
-    [...record.instances].forEach((instance) => {
-      if (newRender) {
-        instance.render = newRender;
-        normalizeClassComponent(instance.type).render = newRender;
-      }
-      instance.renderCache = [];
-      isHmrUpdating = true;
-      instance.update();
-      isHmrUpdating = false;
-    });
-  }
-  function reload(id, newComp) {
-    const record = map.get(id);
-    if (!record) return;
-    newComp = normalizeClassComponent(newComp);
-    updateComponentDef(record.initialDef, newComp);
-    const instances = [...record.instances];
-    for (let i3 = 0; i3 < instances.length; i3++) {
-      const instance = instances[i3];
-      const oldComp = normalizeClassComponent(instance.type);
-      let dirtyInstances = hmrDirtyComponents.get(oldComp);
-      if (!dirtyInstances) {
-        if (oldComp !== record.initialDef) {
-          updateComponentDef(oldComp, newComp);
-        }
-        hmrDirtyComponents.set(oldComp, dirtyInstances = /* @__PURE__ */ new Set());
-      }
-      dirtyInstances.add(instance);
-      instance.appContext.propsCache.delete(instance.type);
-      instance.appContext.emitsCache.delete(instance.type);
-      instance.appContext.optionsCache.delete(instance.type);
-      if (instance.ceReload) {
-        dirtyInstances.add(instance);
-        instance.ceReload(newComp.styles);
-        dirtyInstances.delete(instance);
-      } else if (instance.parent) {
-        queueJob(() => {
-          isHmrUpdating = true;
-          instance.parent.update();
-          isHmrUpdating = false;
-          dirtyInstances.delete(instance);
-        });
-      } else if (instance.appContext.reload) {
-        instance.appContext.reload();
-      } else if (typeof window !== "undefined") {
-        window.location.reload();
-      } else {
-        console.warn(
-          "[HMR] Root or manually mounted instance modified. Full reload required."
-        );
-      }
-      if (instance.root.ce && instance !== instance.root) {
-        instance.root.ce._removeChildStyle(oldComp);
-      }
-    }
-    queuePostFlushCb(() => {
-      hmrDirtyComponents.clear();
-    });
-  }
-  function updateComponentDef(oldComp, newComp) {
-    extend(oldComp, newComp);
-    for (const key2 in oldComp) {
-      if (key2 !== "__file" && !(key2 in newComp)) {
-        delete oldComp[key2];
-      }
-    }
-  }
-  function tryWrap(fn) {
-    return (id, arg) => {
-      try {
-        return fn(id, arg);
-      } catch (e3) {
-        console.error(e3);
-        console.warn(
-          `[HMR] Something went wrong during Vue component hot-reload. Full reload required.`
-        );
-      }
     };
   }
   var devtools$1;
@@ -3613,19 +3452,6 @@
       );
     };
   }
-  var devtoolsPerfStart = /* @__PURE__ */ createDevtoolsPerformanceHook(
-    "perf:start"
-    /* PERFORMANCE_START */
-  );
-  var devtoolsPerfEnd = /* @__PURE__ */ createDevtoolsPerformanceHook(
-    "perf:end"
-    /* PERFORMANCE_END */
-  );
-  function createDevtoolsPerformanceHook(hook) {
-    return (component, type4, time) => {
-      emit$1(hook, component.appContext.app, component.uid, component, type4, time);
-    };
-  }
   function devtoolsComponentEmit(component, event, params) {
     emit$1(
       "component:emit",
@@ -3669,7 +3495,7 @@
           setBlockTracking(1);
         }
       }
-      if (true) {
+      if (__VUE_PROD_DEVTOOLS__) {
         devtoolsComponentUpdated(ctx);
       }
       return res;
@@ -3679,14 +3505,8 @@
     renderFnWithContext._d = true;
     return renderFnWithContext;
   }
-  function validateDirectiveName(name) {
-    if (isBuiltInDirective(name)) {
-      warn$1("Do not use built-in directive ids as custom directive id: " + name);
-    }
-  }
   function withDirectives(vnode, directives) {
     if (currentRenderingInstance === null) {
-      warn$1(`withDirectives can only be used inside render functions.`);
       return vnode;
     }
     const instance = getComponentPublicInstance(currentRenderingInstance);
@@ -3746,13 +3566,10 @@
     const targetSelector = props4 && props4.to;
     if (isString(targetSelector)) {
       if (!select) {
-        warn$1(
-          `Current renderer does not support string target for Teleports. (missing querySelector renderer option)`
-        );
         return null;
       } else {
         const target = select(targetSelector);
-        if (!target && !isTeleportDisabled(props4)) {
+        if (false) {
           warn$1(
             `Failed to locate Teleport target with selector "${targetSelector}". Note the target element must exist before the component is mounted - i.e. the target cannot be rendered by the component itself, and ideally should be outside of the entire Vue component tree.`
           );
@@ -3760,7 +3577,7 @@
         return target;
       }
     } else {
-      if (!targetSelector && !isTeleportDisabled(props4)) {
+      if (false) {
         warn$1(`Invalid Teleport target: ${targetSelector}`);
       }
       return targetSelector;
@@ -3778,13 +3595,13 @@
       } = internals;
       const disabled = isTeleportDisabled(n22.props);
       let { shapeFlag, children, dynamicChildren } = n22;
-      if (isHmrUpdating) {
+      if (false) {
         optimized = false;
         dynamicChildren = null;
       }
       if (n1 == null) {
-        const placeholder = n22.el = true ? createComment("teleport start") : createText("");
-        const mainAnchor = n22.anchor = true ? createComment("teleport end") : createText("");
+        const placeholder = n22.el = false ? createComment("teleport start") : createText("");
+        const mainAnchor = n22.anchor = false ? createComment("teleport end") : createText("");
         insert(placeholder, container, anchor);
         insert(mainAnchor, container, anchor);
         const mount = (container2, anchor2) => {
@@ -3817,7 +3634,7 @@
               mount(target, targetAnchor);
               updateCssVars(n22, false);
             }
-          } else if (!disabled) {
+          } else if (false) {
             warn$1(
               "Invalid Teleport target on mount:",
               target,
@@ -3921,7 +3738,7 @@
                 internals,
                 0
               );
-            } else if (true) {
+            } else if (false) {
               warn$1(
                 "Invalid Teleport target on update:",
                 target,
@@ -4139,7 +3956,7 @@
         const child = findNonCommentChild(children);
         const rawProps = toRaw(props4);
         const { mode } = rawProps;
-        if (mode && mode !== "in-out" && mode !== "out-in" && mode !== "default") {
+        if (false) {
           warn$1(`invalid <transition> mode: ${mode}`);
         }
         if (state.isLeaving) {
@@ -4215,7 +4032,7 @@
       let hasFound = false;
       for (const c2 of children) {
         if (c2.type !== Comment) {
-          if (hasFound) {
+          if (false) {
             warn$1(
               "<transition> can only be used on a single element or component. Use <transition-group> for lists."
             );
@@ -4223,7 +4040,7 @@
           }
           child = c2;
           hasFound = true;
-          if (false) break;
+          if (true) break;
         }
       }
     }
@@ -4395,7 +4212,7 @@
       }
       return vnode;
     }
-    if (vnode.component) {
+    if (false) {
       return vnode.component.subTree;
     }
     const { shapeFlag, children } = vnode;
@@ -4453,7 +4270,7 @@
     const i3 = getCurrentInstance();
     if (i3) {
       return (i3.appContext.config.idPrefix || "v") + "-" + i3.ids[0] + i3.ids[1]++;
-    } else if (true) {
+    } else if (false) {
       warn$1(
         `useId() is called when there is no active component instance to be associated with.`
       );
@@ -4463,14 +4280,13 @@
   function markAsyncBoundary(instance) {
     instance.ids = [instance.ids[0] + instance.ids[2]++ + "-", 0, 0];
   }
-  var knownTemplateRefs = /* @__PURE__ */ new WeakSet();
   function useTemplateRef(key2) {
     const i3 = getCurrentInstance();
     const r3 = shallowRef(null);
     if (i3) {
       const refs = i3.refs === EMPTY_OBJ ? i3.refs = {} : i3.refs;
       let desc;
-      if ((desc = Object.getOwnPropertyDescriptor(refs, key2)) && !desc.configurable) {
+      if (false) {
         warn$1(`useTemplateRef('${key2}') already exists.`);
       } else {
         Object.defineProperty(refs, key2, {
@@ -4479,13 +4295,13 @@
           set: (val) => r3.value = val
         });
       }
-    } else if (true) {
+    } else if (false) {
       warn$1(
         `useTemplateRef() is called when there is no active component instance to be associated with.`
       );
     }
-    const ret = true ? readonly(r3) : r3;
-    if (true) {
+    const ret = false ? readonly(r3) : r3;
+    if (false) {
       knownTemplateRefs.add(ret);
     }
     return ret;
@@ -4512,7 +4328,7 @@
     const refValue = vnode.shapeFlag & 4 ? getComponentPublicInstance(vnode.component) : vnode.el;
     const value = isUnmount ? null : refValue;
     const { i: owner, r: ref2 } = rawRef;
-    if (!owner) {
+    if (false) {
       warn$1(
         `Missing ref owner context. ref cannot be used on hoisted vnodes. A vnode with ref must be created inside the render function.`
       );
@@ -4523,7 +4339,7 @@
     const setupState = owner.setupState;
     const rawSetupState = toRaw(setupState);
     const canSetSetupRef = setupState === EMPTY_OBJ ? () => false : (key2) => {
-      if (true) {
+      if (false) {
         if (hasOwn(rawSetupState, key2) && !isRef2(rawSetupState[key2])) {
           warn$1(
             `Template ref "${key2}" used on a non-ref value. It will not work in the production build.`
@@ -4579,7 +4395,7 @@
           } else if (_isRef) {
             ref2.value = value;
             if (rawRef.k) refs[rawRef.k] = value;
-          } else if (true) {
+          } else if (false) {
             warn$1("Invalid template ref type:", ref2, `(${typeof ref2})`);
           }
         };
@@ -4589,7 +4405,7 @@
         } else {
           doSet();
         }
-      } else if (true) {
+      } else if (false) {
         warn$1("Invalid template ref type:", ref2, `(${typeof ref2})`);
       }
     }
@@ -4627,7 +4443,7 @@
     } = rendererInternals;
     const hydrate2 = (vnode, container) => {
       if (!container.hasChildNodes()) {
-        warn$1(
+        __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ && warn$1(
           `Attempting to hydrate existing markup but container is empty. Performing full mount instead.`
         );
         patch(null, vnode, container);
@@ -4653,7 +4469,7 @@
       const { type: type4, ref: ref2, shapeFlag, patchFlag } = vnode;
       let domType = node2.nodeType;
       vnode.el = node2;
-      if (true) {
+      if (__VUE_PROD_DEVTOOLS__) {
         def(node2, "__vnode", vnode, true);
         def(node2, "__vueParentComponent", parentComponent, true);
       }
@@ -4673,7 +4489,7 @@
             }
           } else {
             if (node2.data !== vnode.children) {
-              warn$1(
+              __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ && warn$1(
                 `Hydration text mismatch in`,
                 node2.parentNode,
                 `
@@ -4808,7 +4624,7 @@
               rendererInternals,
               hydrateNode
             );
-          } else if (true) {
+          } else if (__VUE_PROD_HYDRATION_MISMATCH_DETAILS__) {
             warn$1("Invalid HostVNode type:", type4, `(${typeof type4})`);
           }
       }
@@ -4821,7 +4637,7 @@
       optimized = optimized || !!vnode.dynamicChildren;
       const { type: type4, props: props4, patchFlag, shapeFlag, dirs, transition } = vnode;
       const forcePatch = type4 === "input" || type4 === "option";
-      if (true) {
+      if (forcePatch || patchFlag !== -1) {
         if (dirs) {
           invokeDirectiveHook(vnode, null, parentComponent, "created");
         }
@@ -4850,21 +4666,21 @@
             slotScopeIds,
             optimized
           );
-          let hasWarned2 = false;
+          let hasWarned = false;
           while (next2) {
             if (!isMismatchAllowed(
               el,
               1
               /* CHILDREN */
             )) {
-              if (!hasWarned2) {
+              if (__VUE_PROD_HYDRATION_MISMATCH_DETAILS__ && !hasWarned) {
                 warn$1(
                   `Hydration children mismatch on`,
                   el,
                   `
 Server rendered element contains more child nodes than client vdom.`
                 );
-                hasWarned2 = true;
+                hasWarned = true;
               }
               logMismatchError();
             }
@@ -4883,7 +4699,7 @@ Server rendered element contains more child nodes than client vdom.`
               0
               /* TEXT */
             )) {
-              warn$1(
+              __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ && warn$1(
                 `Hydration text content mismatch on`,
                 el,
                 `
@@ -4896,10 +4712,10 @@ Server rendered element contains more child nodes than client vdom.`
           }
         }
         if (props4) {
-          if (true) {
+          if (__VUE_PROD_HYDRATION_MISMATCH_DETAILS__ || forcePatch || !optimized || patchFlag & (16 | 32)) {
             const isCustomElement = el.tagName.includes("-");
             for (const key2 in props4) {
-              if (// #11189 skip if this node has directives that have created hooks
+              if (__VUE_PROD_HYDRATION_MISMATCH_DETAILS__ && // #11189 skip if this node has directives that have created hooks
               // as it could have mutated the DOM in any possible way
               !(dirs && dirs.some((d2) => d2.dir.created)) && propHasMismatch(el, key2, props4[key2], vnode, parentComponent)) {
                 logMismatchError();
@@ -4943,12 +4759,12 @@ Server rendered element contains more child nodes than client vdom.`
       optimized = optimized || !!parentVNode.dynamicChildren;
       const children = parentVNode.children;
       const l2 = children.length;
-      let hasWarned2 = false;
+      let hasWarned = false;
       for (let i3 = 0; i3 < l2; i3++) {
         const vnode = optimized ? children[i3] : children[i3] = normalizeVNode(children[i3]);
-        const isText2 = vnode.type === Text;
+        const isText = vnode.type === Text;
         if (node2) {
-          if (isText2 && !optimized) {
+          if (isText && !optimized) {
             if (i3 + 1 < l2 && normalizeVNode(children[i3 + 1]).type === Text) {
               insert(
                 createText(
@@ -4968,7 +4784,7 @@ Server rendered element contains more child nodes than client vdom.`
             slotScopeIds,
             optimized
           );
-        } else if (isText2 && !vnode.children) {
+        } else if (isText && !vnode.children) {
           insert(vnode.el = createText(""), container);
         } else {
           if (!isMismatchAllowed(
@@ -4976,14 +4792,14 @@ Server rendered element contains more child nodes than client vdom.`
             1
             /* CHILDREN */
           )) {
-            if (!hasWarned2) {
+            if (__VUE_PROD_HYDRATION_MISMATCH_DETAILS__ && !hasWarned) {
               warn$1(
                 `Hydration children mismatch on`,
                 container,
                 `
 Server rendered element contains fewer child nodes than client vdom.`
               );
-              hasWarned2 = true;
+              hasWarned = true;
             }
             logMismatchError();
           }
@@ -5030,7 +4846,7 @@ Server rendered element contains fewer child nodes than client vdom.`
         1
         /* CHILDREN */
       )) {
-        warn$1(
+        __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ && warn$1(
           `Hydration node mismatch:
 - rendered on server:`,
           node2,
@@ -5401,7 +5217,7 @@ Server rendered element contains fewer child nodes than client vdom.`
         if (thisRequest !== pendingRequest && pendingRequest) {
           return pendingRequest;
         }
-        if (!comp) {
+        if (false) {
           warn$1(
             `Async component loader resolved to undefined. If you are using retry(), make sure to return its return value.`
           );
@@ -5409,7 +5225,7 @@ Server rendered element contains fewer child nodes than client vdom.`
         if (comp && (comp.__esModule || comp[Symbol.toStringTag] === "Module")) {
           comp = comp.default;
         }
-        if (comp && !isObject(comp) && !isFunction(comp)) {
+        if (false) {
           throw new Error(`Invalid async component load result: ${comp}`);
         }
         resolvedComp = comp;
@@ -5537,7 +5353,7 @@ Server rendered element contains fewer child nodes than client vdom.`
       const cache = /* @__PURE__ */ new Map();
       const keys2 = /* @__PURE__ */ new Set();
       let current = null;
-      if (true) {
+      if (__VUE_PROD_DEVTOOLS__) {
         instance.__v_cache = cache;
       }
       const parentSuspense = instance.suspense;
@@ -5574,7 +5390,7 @@ Server rendered element contains fewer child nodes than client vdom.`
             invokeVNodeHook(vnodeHook, instance2.parent, vnode);
           }
         }, parentSuspense);
-        if (true) {
+        if (__VUE_PROD_DEVTOOLS__) {
           devtoolsComponentAdded(instance2);
         }
       };
@@ -5593,7 +5409,7 @@ Server rendered element contains fewer child nodes than client vdom.`
           }
           instance2.isDeactivated = true;
         }, parentSuspense);
-        if (true) {
+        if (__VUE_PROD_DEVTOOLS__) {
           devtoolsComponentAdded(instance2);
         }
       };
@@ -5663,7 +5479,7 @@ Server rendered element contains fewer child nodes than client vdom.`
         const children = slots.default();
         const rawVNode = children[0];
         if (children.length > 1) {
-          if (true) {
+          if (false) {
             warn$1(`KeepAlive should contain exactly one component child.`);
           }
           current = null;
@@ -5793,7 +5609,7 @@ Server rendered element contains fewer child nodes than client vdom.`
         hooks.push(wrappedHook);
       }
       return wrappedHook;
-    } else if (true) {
+    } else if (false) {
       const apiName = toHandlerKey(ErrorTypeStrings$1[type4].replace(/ hook$/, ""));
       warn$1(
         `${apiName} is called when there is no active component instance to be associated with. Lifecycle injection APIs can only be used during execution of setup(). If you are using async setup(), make sure to register lifecycle hooks before the first await statement.`
@@ -5861,13 +5677,13 @@ Server rendered element contains fewer child nodes than client vdom.`
       if (!res && maybeSelfReference) {
         return Component;
       }
-      if (warnMissing && !res) {
+      if (false) {
         const extra = type4 === COMPONENTS ? `
 If this is a native custom element, make sure to exclude it from component resolution via compilerOptions.isCustomElement.` : ``;
         warn$1(`Failed to resolve ${type4.slice(0, -1)}: ${name}${extra}`);
       }
       return res;
-    } else if (true) {
+    } else if (false) {
       warn$1(
         `resolve${capitalize(type4.slice(0, -1))} can only be used in render() or setup().`
       );
@@ -5897,7 +5713,7 @@ If this is a native custom element, make sure to exclude it from component resol
         );
       }
     } else if (typeof source === "number") {
-      if (!Number.isInteger(source)) {
+      if (false) {
         warn$1(`The v-for range expect an integer value but got ${source}.`);
       }
       ret = new Array(source);
@@ -5954,7 +5770,7 @@ If this is a native custom element, make sure to exclude it from component resol
       );
     }
     let slot = slots[name];
-    if (slot && slot.length > 1) {
+    if (false) {
       warn$1(
         `SSR-optimized slot function detected in a non-SSR-optimized render function. You need to mark this component with $dynamic-slots in the parent template.`
       );
@@ -5996,7 +5812,7 @@ If this is a native custom element, make sure to exclude it from component resol
   }
   function toHandlers(obj, preserveCaseIfNecessary) {
     const ret = {};
-    if (!isObject(obj)) {
+    if (false) {
       warn$1(`v-on with no argument expects an object value.`);
       return ret;
     }
@@ -6017,10 +5833,10 @@ If this is a native custom element, make sure to exclude it from component resol
       $: (i3) => i3,
       $el: (i3) => i3.vnode.el,
       $data: (i3) => i3.data,
-      $props: (i3) => true ? shallowReadonly(i3.props) : i3.props,
-      $attrs: (i3) => true ? shallowReadonly(i3.attrs) : i3.attrs,
-      $slots: (i3) => true ? shallowReadonly(i3.slots) : i3.slots,
-      $refs: (i3) => true ? shallowReadonly(i3.refs) : i3.refs,
+      $props: (i3) => false ? shallowReadonly(i3.props) : i3.props,
+      $attrs: (i3) => false ? shallowReadonly(i3.attrs) : i3.attrs,
+      $slots: (i3) => false ? shallowReadonly(i3.slots) : i3.slots,
+      $refs: (i3) => false ? shallowReadonly(i3.refs) : i3.refs,
       $parent: (i3) => getPublicInstance(i3.parent),
       $root: (i3) => getPublicInstance(i3.root),
       $host: (i3) => i3.ce,
@@ -6033,7 +5849,6 @@ If this is a native custom element, make sure to exclude it from component resol
       $watch: (i3) => __VUE_OPTIONS_API__ ? instanceWatch.bind(i3) : NOOP
     })
   );
-  var isReservedPrefix = (key2) => key2 === "_" || key2 === "$";
   var hasSetupBinding = (state, key2) => state !== EMPTY_OBJ && !state.__isScriptSetup && hasOwn(state, key2);
   var PublicInstanceProxyHandlers = {
     get({ _: instance }, key2) {
@@ -6041,7 +5856,7 @@ If this is a native custom element, make sure to exclude it from component resol
         return true;
       }
       const { ctx, setupState, data, props: props4, accessCache, type: type4, appContext } = instance;
-      if (key2 === "__isVue") {
+      if (false) {
         return true;
       }
       let normalizedProps;
@@ -6083,8 +5898,7 @@ If this is a native custom element, make sure to exclude it from component resol
       if (publicGetter) {
         if (key2 === "$attrs") {
           track(instance.attrs, "get", "");
-          markAttrsAccessed();
-        } else if (key2 === "$slots") {
+        } else if (false) {
           track(instance, "get", key2);
         }
         return publicGetter(instance);
@@ -6103,9 +5917,7 @@ If this is a native custom element, make sure to exclude it from component resol
         {
           return globalProperties[key2];
         }
-      } else if (currentRenderingInstance && (!isString(key2) || // #1091 avoid internal isRef/isVNode checks on component instance leading
-      // to infinite warning loop
-      key2.indexOf("__v") !== 0)) {
+      } else if (false) {
         if (data !== EMPTY_OBJ && isReservedPrefix(key2[0]) && hasOwn(data, key2)) {
           warn$1(
             `Property ${JSON.stringify(
@@ -6124,23 +5936,19 @@ If this is a native custom element, make sure to exclude it from component resol
       if (hasSetupBinding(setupState, key2)) {
         setupState[key2] = value;
         return true;
-      } else if (setupState.__isScriptSetup && hasOwn(setupState, key2)) {
+      } else if (false) {
         warn$1(`Cannot mutate <script setup> binding "${key2}" from Options API.`);
         return false;
       } else if (data !== EMPTY_OBJ && hasOwn(data, key2)) {
         data[key2] = value;
         return true;
       } else if (hasOwn(instance.props, key2)) {
-        warn$1(`Attempting to mutate prop "${key2}". Props are readonly.`);
         return false;
       }
       if (key2[0] === "$" && key2.slice(1) in instance) {
-        warn$1(
-          `Attempting to mutate public property "${key2}". Properties starting with $ are reserved and readonly.`
-        );
         return false;
       } else {
-        if (key2 in instance.appContext.config.globalProperties) {
+        if (false) {
           Object.defineProperty(ctx, key2, {
             enumerable: true,
             configurable: true,
@@ -6167,7 +5975,7 @@ If this is a native custom element, make sure to exclude it from component resol
       return Reflect.defineProperty(target, key2, descriptor);
     }
   };
-  if (true) {
+  if (false) {
     PublicInstanceProxyHandlers.ownKeys = (target) => {
       warn$1(
         `Avoid app logic that relies on enumerating keys on a component instance. The keys will be empty in production mode to avoid performance overhead.`
@@ -6184,7 +5992,7 @@ If this is a native custom element, make sure to exclude it from component resol
     },
     has(_2, key2) {
       const has = key2[0] !== "_" && !isGloballyAllowed(key2);
-      if (!has && PublicInstanceProxyHandlers.has(_2, key2)) {
+      if (false) {
         warn$1(
           `Property ${JSON.stringify(
             key2
@@ -6194,100 +6002,41 @@ If this is a native custom element, make sure to exclude it from component resol
       return has;
     }
   });
-  function createDevRenderContext(instance) {
-    const target = {};
-    Object.defineProperty(target, `_`, {
-      configurable: true,
-      enumerable: false,
-      get: () => instance
-    });
-    Object.keys(publicPropertiesMap).forEach((key2) => {
-      Object.defineProperty(target, key2, {
-        configurable: true,
-        enumerable: false,
-        get: () => publicPropertiesMap[key2](instance),
-        // intercepted by the proxy so no need for implementation,
-        // but needed to prevent set errors
-        set: NOOP
-      });
-    });
-    return target;
-  }
-  function exposePropsOnRenderContext(instance) {
-    const {
-      ctx,
-      propsOptions: [propsOptions]
-    } = instance;
-    if (propsOptions) {
-      Object.keys(propsOptions).forEach((key2) => {
-        Object.defineProperty(ctx, key2, {
-          enumerable: true,
-          configurable: true,
-          get: () => instance.props[key2],
-          set: NOOP
-        });
-      });
-    }
-  }
-  function exposeSetupStateOnRenderContext(instance) {
-    const { ctx, setupState } = instance;
-    Object.keys(toRaw(setupState)).forEach((key2) => {
-      if (!setupState.__isScriptSetup) {
-        if (isReservedPrefix(key2[0])) {
-          warn$1(
-            `setup() return property ${JSON.stringify(
-              key2
-            )} should not start with "$" or "_" which are reserved prefixes for Vue internals.`
-          );
-          return;
-        }
-        Object.defineProperty(ctx, key2, {
-          enumerable: true,
-          configurable: true,
-          get: () => setupState[key2],
-          set: NOOP
-        });
-      }
-    });
-  }
-  var warnRuntimeUsage = (method4) => warn$1(
-    `${method4}() is a compiler-hint helper that is only usable inside <script setup> of a single file component. Its arguments should be compiled away and passing it at runtime has no effect.`
-  );
   function defineProps() {
-    if (true) {
+    if (false) {
       warnRuntimeUsage(`defineProps`);
     }
     return null;
   }
   function defineEmits() {
-    if (true) {
+    if (false) {
       warnRuntimeUsage(`defineEmits`);
     }
     return null;
   }
   function defineExpose(exposed) {
-    if (true) {
+    if (false) {
       warnRuntimeUsage(`defineExpose`);
     }
   }
   function defineOptions(options2) {
-    if (true) {
+    if (false) {
       warnRuntimeUsage(`defineOptions`);
     }
   }
   function defineSlots() {
-    if (true) {
+    if (false) {
       warnRuntimeUsage(`defineSlots`);
     }
     return null;
   }
   function defineModel() {
-    if (true) {
+    if (false) {
       warnRuntimeUsage("defineModel");
     }
   }
   function withDefaults(props4, defaults) {
-    if (true) {
+    if (false) {
       warnRuntimeUsage(`withDefaults`);
     }
     return null;
@@ -6300,7 +6049,7 @@ If this is a native custom element, make sure to exclude it from component resol
   }
   function getContext() {
     const i3 = getCurrentInstance();
-    if (!i3) {
+    if (false) {
       warn$1(`useContext() called without active instance.`);
     }
     return i3.setupContext || (i3.setupContext = createSetupContext(i3));
@@ -6324,7 +6073,7 @@ If this is a native custom element, make sure to exclude it from component resol
         }
       } else if (opt === null) {
         opt = props4[key2] = { default: defaults[key2] };
-      } else if (true) {
+      } else if (false) {
         warn$1(`props default key "${key2}" has no corresponding declaration.`);
       }
       if (opt && defaults[`__skip_${key2}`]) {
@@ -6352,7 +6101,7 @@ If this is a native custom element, make sure to exclude it from component resol
   }
   function withAsyncContext(getAwaitable) {
     const ctx = getCurrentInstance();
-    if (!ctx) {
+    if (false) {
       warn$1(
         `withAsyncContext called without active current instance. This is likely a bug.`
       );
@@ -6366,16 +6115,6 @@ If this is a native custom element, make sure to exclude it from component resol
       });
     }
     return [awaitable, () => setCurrentInstance(ctx)];
-  }
-  function createDuplicateChecker() {
-    const cache = /* @__PURE__ */ Object.create(null);
-    return (type4, key2) => {
-      if (cache[key2]) {
-        warn$1(`${type4} property "${key2}" is already defined in ${cache[key2]}.`);
-      } else {
-        cache[key2] = type4;
-      }
-    };
   }
   var shouldCacheAccess = true;
   function applyOptions(instance) {
@@ -6419,8 +6158,8 @@ If this is a native custom element, make sure to exclude it from component resol
       directives,
       filters
     } = options2;
-    const checkDuplicateProperties = true ? createDuplicateChecker() : null;
-    if (true) {
+    const checkDuplicateProperties = false ? createDuplicateChecker() : null;
+    if (false) {
       const [propsOptions] = instance.propsOptions;
       if (propsOptions) {
         for (const key2 in propsOptions) {
@@ -6435,7 +6174,7 @@ If this is a native custom element, make sure to exclude it from component resol
       for (const key2 in methods) {
         const methodHandler = methods[key2];
         if (isFunction(methodHandler)) {
-          if (true) {
+          if (false) {
             Object.defineProperty(ctx, key2, {
               value: methodHandler.bind(publicThis),
               configurable: true,
@@ -6445,10 +6184,10 @@ If this is a native custom element, make sure to exclude it from component resol
           } else {
             ctx[key2] = methodHandler.bind(publicThis);
           }
-          if (true) {
+          if (false) {
             checkDuplicateProperties("Methods", key2);
           }
-        } else if (true) {
+        } else if (false) {
           warn$1(
             `Method "${key2}" has type "${typeof methodHandler}" in the component definition. Did you reference the function correctly?`
           );
@@ -6456,22 +6195,21 @@ If this is a native custom element, make sure to exclude it from component resol
       }
     }
     if (dataOptions) {
-      if (!isFunction(dataOptions)) {
+      if (false) {
         warn$1(
           `The data option must be a function. Plain object usage is no longer supported.`
         );
       }
       const data = dataOptions.call(publicThis, publicThis);
-      if (isPromise(data)) {
+      if (false) {
         warn$1(
           `data() returned a Promise - note data() cannot be async; If you intend to perform data fetching before component renders, use async setup() + <Suspense>.`
         );
       }
       if (!isObject(data)) {
-        warn$1(`data() should return an object.`);
       } else {
         instance.data = reactive(data);
-        if (true) {
+        if (false) {
           for (const key2 in data) {
             checkDuplicateProperties("Data", key2);
             if (!isReservedPrefix(key2[0])) {
@@ -6491,10 +6229,10 @@ If this is a native custom element, make sure to exclude it from component resol
       for (const key2 in computedOptions) {
         const opt = computedOptions[key2];
         const get3 = isFunction(opt) ? opt.bind(publicThis, publicThis) : isFunction(opt.get) ? opt.get.bind(publicThis, publicThis) : NOOP;
-        if (get3 === NOOP) {
+        if (false) {
           warn$1(`Computed property "${key2}" has no getter.`);
         }
-        const set2 = !isFunction(opt) && isFunction(opt.set) ? opt.set.bind(publicThis) : true ? () => {
+        const set2 = !isFunction(opt) && isFunction(opt.set) ? opt.set.bind(publicThis) : false ? () => {
           warn$1(
             `Write operation failed: computed property "${key2}" is readonly.`
           );
@@ -6509,7 +6247,7 @@ If this is a native custom element, make sure to exclude it from component resol
           get: () => c2.value,
           set: (v2) => c2.value = v2
         });
-        if (true) {
+        if (false) {
           checkDuplicateProperties("Computed", key2);
         }
       }
@@ -6602,7 +6340,7 @@ If this is a native custom element, make sure to exclude it from component resol
       } else {
         ctx[key2] = injected;
       }
-      if (true) {
+      if (false) {
         checkDuplicateProperties("Inject", key2);
       }
     }
@@ -6622,7 +6360,7 @@ If this is a native custom element, make sure to exclude it from component resol
         {
           watch2(getter, handler2);
         }
-      } else if (true) {
+      } else if (false) {
         warn$1(`Invalid watch handler specified by key "${raw}"`, handler2);
       }
     } else if (isFunction(raw)) {
@@ -6636,11 +6374,11 @@ If this is a native custom element, make sure to exclude it from component resol
         const handler2 = isFunction(raw.handler) ? raw.handler.bind(publicThis) : ctx[raw.handler];
         if (isFunction(handler2)) {
           watch2(getter, handler2, raw);
-        } else if (true) {
+        } else if (false) {
           warn$1(`Invalid watch handler specified by key "${raw.handler}"`, handler2);
         }
       }
-    } else if (true) {
+    } else if (false) {
       warn$1(`Invalid watch option: "${key2}"`, raw);
     }
   }
@@ -6686,9 +6424,6 @@ If this is a native custom element, make sure to exclude it from component resol
     }
     for (const key2 in from2) {
       if (asMixin && key2 === "expose") {
-        warn$1(
-          `"expose" option is ignored when declared in mixins or extends. It should only be declared in the base component itself.`
-        );
       } else {
         const strat = internalOptionMergeStrats[key2] || strats && strats[key2];
         to[key2] = strat ? strat(to[key2], from2[key2]) : from2[key2];
@@ -6811,7 +6546,6 @@ If this is a native custom element, make sure to exclude it from component resol
         rootComponent = extend({}, rootComponent);
       }
       if (rootProps != null && !isObject(rootProps)) {
-        warn$1(`root props passed to app.mount() must be an object.`);
         rootProps = null;
       }
       const context2 = createAppContext();
@@ -6830,7 +6564,7 @@ If this is a native custom element, make sure to exclude it from component resol
           return context2.config;
         },
         set config(v2) {
-          if (true) {
+          if (false) {
             warn$1(
               `app.config cannot be replaced. Modify individual options instead.`
             );
@@ -6838,14 +6572,13 @@ If this is a native custom element, make sure to exclude it from component resol
         },
         use(plugin, ...options2) {
           if (installedPlugins.has(plugin)) {
-            warn$1(`Plugin has already been applied to target app.`);
           } else if (plugin && isFunction(plugin.install)) {
             installedPlugins.add(plugin);
             plugin.install(app2, ...options2);
           } else if (isFunction(plugin)) {
             installedPlugins.add(plugin);
             plugin(app2, ...options2);
-          } else if (true) {
+          } else if (false) {
             warn$1(
               `A plugin must either be a function or an object with an "install" function.`
             );
@@ -6856,37 +6589,37 @@ If this is a native custom element, make sure to exclude it from component resol
           if (__VUE_OPTIONS_API__) {
             if (!context2.mixins.includes(mixin)) {
               context2.mixins.push(mixin);
-            } else if (true) {
+            } else if (false) {
               warn$1(
                 "Mixin has already been applied to target app" + (mixin.name ? `: ${mixin.name}` : "")
               );
             }
-          } else if (true) {
+          } else if (false) {
             warn$1("Mixins are only available in builds supporting Options API");
           }
           return app2;
         },
         component(name, component) {
-          if (true) {
+          if (false) {
             validateComponentName(name, context2.config);
           }
           if (!component) {
             return context2.components[name];
           }
-          if (context2.components[name]) {
+          if (false) {
             warn$1(`Component "${name}" has already been registered in target app.`);
           }
           context2.components[name] = component;
           return app2;
         },
         directive(name, directive) {
-          if (true) {
+          if (false) {
             validateDirectiveName(name);
           }
           if (!directive) {
             return context2.directives[name];
           }
-          if (context2.directives[name]) {
+          if (false) {
             warn$1(`Directive "${name}" has already been registered in target app.`);
           }
           context2.directives[name] = directive;
@@ -6894,7 +6627,7 @@ If this is a native custom element, make sure to exclude it from component resol
         },
         mount(rootContainer, isHydrate, namespace) {
           if (!isMounted) {
-            if (rootContainer.__vue_app__) {
+            if (false) {
               warn$1(
                 `There is already an app instance mounted on the host container.
  If you want to mount another app on the same host container, you need to unmount the previous app by calling \`app.unmount()\` first.`
@@ -6907,7 +6640,7 @@ If this is a native custom element, make sure to exclude it from component resol
             } else if (namespace === false) {
               namespace = void 0;
             }
-            if (true) {
+            if (false) {
               context2.reload = () => {
                 render6(
                   cloneVNode(vnode),
@@ -6924,12 +6657,12 @@ If this is a native custom element, make sure to exclude it from component resol
             isMounted = true;
             app2._container = rootContainer;
             rootContainer.__vue_app__ = app2;
-            if (true) {
+            if (__VUE_PROD_DEVTOOLS__) {
               app2._instance = vnode.component;
               devtoolsInitApp(app2, version);
             }
             return getComponentPublicInstance(vnode.component);
-          } else if (true) {
+          } else if (false) {
             warn$1(
               `App has already been mounted.
 If you want to remount the same app, move your app creation logic into a factory function and create fresh app instances for each mount - e.g. \`const createMyApp = () => createApp(App)\``
@@ -6937,7 +6670,7 @@ If you want to remount the same app, move your app creation logic into a factory
           }
         },
         onUnmount(cleanupFn) {
-          if (typeof cleanupFn !== "function") {
+          if (false) {
             warn$1(
               `Expected function as first argument to app.onUnmount(), but got ${typeof cleanupFn}`
             );
@@ -6952,17 +6685,17 @@ If you want to remount the same app, move your app creation logic into a factory
               16
             );
             render6(null, app2._container);
-            if (true) {
+            if (__VUE_PROD_DEVTOOLS__) {
               app2._instance = null;
               devtoolsUnmountApp(app2);
             }
             delete app2._container.__vue_app__;
-          } else if (true) {
+          } else if (false) {
             warn$1(`Cannot unmount an app that is not mounted.`);
           }
         },
         provide(key2, value) {
-          if (key2 in context2.provides) {
+          if (false) {
             warn$1(
               `App already provides property with key "${String(key2)}". It will be overwritten with the new value.`
             );
@@ -6986,7 +6719,7 @@ If you want to remount the same app, move your app creation logic into a factory
   var currentApp = null;
   function provide(key2, value) {
     if (!currentInstance) {
-      if (true) {
+      if (false) {
         warn$1(`provide() can only be used inside setup().`);
       }
     } else {
@@ -7006,10 +6739,10 @@ If you want to remount the same app, move your app creation logic into a factory
         return provides[key2];
       } else if (arguments.length > 1) {
         return treatDefaultAsFactory && isFunction(defaultValue) ? defaultValue.call(instance && instance.proxy) : defaultValue;
-      } else if (true) {
+      } else if (false) {
         warn$1(`injection "${String(key2)}" not found.`);
       }
-    } else if (true) {
+    } else if (false) {
       warn$1(`inject() can only be used inside setup() or functional components.`);
     }
   }
@@ -7029,7 +6762,7 @@ If you want to remount the same app, move your app creation logic into a factory
         props4[key2] = void 0;
       }
     }
-    if (true) {
+    if (false) {
       validateProps(rawProps || {}, props4, instance);
     }
     if (isStateful) {
@@ -7042,12 +6775,6 @@ If you want to remount the same app, move your app creation logic into a factory
       }
     }
     instance.attrs = attrs;
-  }
-  function isInHmrContext(instance) {
-    while (instance) {
-      if (instance.type.__hmrId) return true;
-      instance = instance.parent;
-    }
   }
   function updateProps(instance, rawProps, rawPrevProps, optimized) {
     const {
@@ -7062,7 +6789,7 @@ If you want to remount the same app, move your app creation logic into a factory
       // always force full diff in dev
       // - #1942 if hmr is enabled with sfc component
       // - vite#872 non-sfc component used by sfc component
-      !isInHmrContext(instance) && (optimized || patchFlag > 0) && !(patchFlag & 16)
+      (optimized || patchFlag > 0) && !(patchFlag & 16)
     ) {
       if (patchFlag & 8) {
         const propsToUpdate = instance.vnode.dynamicProps;
@@ -7137,7 +6864,7 @@ If you want to remount the same app, move your app creation logic into a factory
     if (hasAttrsChanged) {
       trigger(instance.attrs, "set", "");
     }
-    if (true) {
+    if (false) {
       validateProps(rawProps || {}, props4, instance);
     }
   }
@@ -7260,7 +6987,7 @@ If you want to remount the same app, move your app creation logic into a factory
     }
     if (isArray(raw)) {
       for (let i3 = 0; i3 < raw.length; i3++) {
-        if (!isString(raw[i3])) {
+        if (false) {
           warn$1(`props must be strings when using array syntax.`, raw[i3]);
         }
         const normalizedKey = camelize(raw[i3]);
@@ -7269,7 +6996,7 @@ If you want to remount the same app, move your app creation logic into a factory
         }
       }
     } else if (raw) {
-      if (!isObject(raw)) {
+      if (false) {
         warn$1(`invalid props options`, raw);
       }
       for (const key2 in raw) {
@@ -7317,125 +7044,10 @@ If you want to remount the same app, move your app creation logic into a factory
   function validatePropName(key2) {
     if (key2[0] !== "$" && !isReservedProp(key2)) {
       return true;
-    } else if (true) {
+    } else if (false) {
       warn$1(`Invalid prop name: "${key2}" is a reserved property.`);
     }
     return false;
-  }
-  function getType(ctor) {
-    if (ctor === null) {
-      return "null";
-    }
-    if (typeof ctor === "function") {
-      return ctor.name || "";
-    } else if (typeof ctor === "object") {
-      const name = ctor.constructor && ctor.constructor.name;
-      return name || "";
-    }
-    return "";
-  }
-  function validateProps(rawProps, props4, instance) {
-    const resolvedValues = toRaw(props4);
-    const options2 = instance.propsOptions[0];
-    const camelizePropsKey = Object.keys(rawProps).map((key2) => camelize(key2));
-    for (const key2 in options2) {
-      let opt = options2[key2];
-      if (opt == null) continue;
-      validateProp(
-        key2,
-        resolvedValues[key2],
-        opt,
-        true ? shallowReadonly(resolvedValues) : resolvedValues,
-        !camelizePropsKey.includes(key2)
-      );
-    }
-  }
-  function validateProp(name, value, prop, props4, isAbsent) {
-    const { type: type4, required: required4, validator, skipCheck: skipCheck2 } = prop;
-    if (required4 && isAbsent) {
-      warn$1('Missing required prop: "' + name + '"');
-      return;
-    }
-    if (value == null && !required4) {
-      return;
-    }
-    if (type4 != null && type4 !== true && !skipCheck2) {
-      let isValid4 = false;
-      const types2 = isArray(type4) ? type4 : [type4];
-      const expectedTypes = [];
-      for (let i3 = 0; i3 < types2.length && !isValid4; i3++) {
-        const { valid, expectedType } = assertType(value, types2[i3]);
-        expectedTypes.push(expectedType || "");
-        isValid4 = valid;
-      }
-      if (!isValid4) {
-        warn$1(getInvalidTypeMessage(name, value, expectedTypes));
-        return;
-      }
-    }
-    if (validator && !validator(value, props4)) {
-      warn$1('Invalid prop: custom validator check failed for prop "' + name + '".');
-    }
-  }
-  var isSimpleType = /* @__PURE__ */ makeMap(
-    "String,Number,Boolean,Function,Symbol,BigInt"
-  );
-  function assertType(value, type4) {
-    let valid;
-    const expectedType = getType(type4);
-    if (expectedType === "null") {
-      valid = value === null;
-    } else if (isSimpleType(expectedType)) {
-      const t3 = typeof value;
-      valid = t3 === expectedType.toLowerCase();
-      if (!valid && t3 === "object") {
-        valid = value instanceof type4;
-      }
-    } else if (expectedType === "Object") {
-      valid = isObject(value);
-    } else if (expectedType === "Array") {
-      valid = isArray(value);
-    } else {
-      valid = value instanceof type4;
-    }
-    return {
-      valid,
-      expectedType
-    };
-  }
-  function getInvalidTypeMessage(name, value, expectedTypes) {
-    if (expectedTypes.length === 0) {
-      return `Prop type [] for prop "${name}" won't match anything. Did you mean to use type Array instead?`;
-    }
-    let message = `Invalid prop: type check failed for prop "${name}". Expected ${expectedTypes.map(capitalize).join(" | ")}`;
-    const expectedType = expectedTypes[0];
-    const receivedType = toRawType(value);
-    const expectedValue = styleValue(value, expectedType);
-    const receivedValue = styleValue(value, receivedType);
-    if (expectedTypes.length === 1 && isExplicable(expectedType) && !isBoolean(expectedType, receivedType)) {
-      message += ` with value ${expectedValue}`;
-    }
-    message += `, got ${receivedType} `;
-    if (isExplicable(receivedType)) {
-      message += `with value ${receivedValue}.`;
-    }
-    return message;
-  }
-  function styleValue(value, type4) {
-    if (type4 === "String") {
-      return `"${value}"`;
-    } else if (type4 === "Number") {
-      return `${Number(value)}`;
-    } else {
-      return `${value}`;
-    }
-  }
-  function isExplicable(type4) {
-    const explicitTypes = ["string", "number", "boolean"];
-    return explicitTypes.some((elem) => type4.toLowerCase() === elem);
-  }
-  function isBoolean(...args) {
-    return args.some((elem) => elem.toLowerCase() === "boolean");
   }
   var isInternalKey = (key2) => key2[0] === "_" || key2 === "$stable";
   var normalizeSlotValue = (value) => isArray(value) ? value.map(normalizeVNode) : [normalizeVNode(value)];
@@ -7444,7 +7056,7 @@ If you want to remount the same app, move your app creation logic into a factory
       return rawSlot;
     }
     const normalized = withCtx((...args) => {
-      if (currentInstance && (!ctx || ctx.root === currentInstance.root)) {
+      if (false) {
         warn$1(
           `Slot "${key2}" invoked outside of the render function: this will not track dependencies used in the slot. Invoke the slot function inside the render function instead.`
         );
@@ -7462,7 +7074,7 @@ If you want to remount the same app, move your app creation logic into a factory
       if (isFunction(value)) {
         slots[key2] = normalizeSlot(key2, value, ctx);
       } else if (value != null) {
-        if (true) {
+        if (false) {
           warn$1(
             `Non-function value encountered for slot "${key2}". Prefer function slots for better performance.`
           );
@@ -7473,7 +7085,7 @@ If you want to remount the same app, move your app creation logic into a factory
     }
   };
   var normalizeVNodeSlots = (instance, children) => {
-    if (!isKeepAlive(instance.vnode) && true) {
+    if (false) {
       warn$1(
         `Non-function value encountered for default slot. Prefer function slots for better performance.`
       );
@@ -7511,7 +7123,7 @@ If you want to remount the same app, move your app creation logic into a factory
     if (vnode.shapeFlag & 32) {
       const type4 = children._;
       if (type4) {
-        if (isHmrUpdating) {
+        if (false) {
           assignSlots(slots, children, optimized);
           trigger(instance, "set", "$slots");
         } else if (optimized && type4 === 1) {
@@ -7536,60 +7148,18 @@ If you want to remount the same app, move your app creation logic into a factory
       }
     }
   };
-  var supported;
-  var perf;
-  function startMeasure(instance, type4) {
-    if (instance.appContext.config.performance && isSupported()) {
-      perf.mark(`vue-${type4}-${instance.uid}`);
-    }
-    if (true) {
-      devtoolsPerfStart(instance, type4, isSupported() ? perf.now() : Date.now());
-    }
-  }
-  function endMeasure(instance, type4) {
-    if (instance.appContext.config.performance && isSupported()) {
-      const startTag = `vue-${type4}-${instance.uid}`;
-      const endTag = startTag + `:end`;
-      perf.mark(endTag);
-      perf.measure(
-        `<${formatComponentName(instance, instance.type)}> ${type4}`,
-        startTag,
-        endTag
-      );
-      perf.clearMarks(startTag);
-      perf.clearMarks(endTag);
-    }
-    if (true) {
-      devtoolsPerfEnd(instance, type4, isSupported() ? perf.now() : Date.now());
-    }
-  }
-  function isSupported() {
-    if (supported !== void 0) {
-      return supported;
-    }
-    if (typeof window !== "undefined" && window.performance) {
-      supported = true;
-      perf = window.performance;
-    } else {
-      supported = false;
-    }
-    return supported;
-  }
   function initFeatureFlags() {
     const needWarn = [];
     if (typeof __VUE_OPTIONS_API__ !== "boolean") {
-      needWarn.push(`__VUE_OPTIONS_API__`);
       getGlobalThis().__VUE_OPTIONS_API__ = true;
     }
     if (typeof __VUE_PROD_DEVTOOLS__ !== "boolean") {
-      needWarn.push(`__VUE_PROD_DEVTOOLS__`);
       getGlobalThis().__VUE_PROD_DEVTOOLS__ = false;
     }
     if (typeof __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ !== "boolean") {
-      needWarn.push(`__VUE_PROD_HYDRATION_MISMATCH_DETAILS__`);
       getGlobalThis().__VUE_PROD_HYDRATION_MISMATCH_DETAILS__ = false;
     }
-    if (needWarn.length) {
+    if (false) {
       const multi = needWarn.length > 1;
       console.warn(
         `Feature flag${multi ? `s` : ``} ${needWarn.join(", ")} ${multi ? `are` : `is`} not explicitly defined. You are running the esm-bundler build of Vue, which expects these compile-time feature flags to be globally injected via the bundler config in order to get better tree-shaking in the production bundle.
@@ -7611,7 +7181,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
     }
     const target = getGlobalThis();
     target.__VUE__ = true;
-    if (true) {
+    if (__VUE_PROD_DEVTOOLS__) {
       setDevtoolsHook$1(target.__VUE_DEVTOOLS_GLOBAL_HOOK__, target);
     }
     const {
@@ -7628,7 +7198,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
       setScopeId: hostSetScopeId = NOOP,
       insertStaticContent: hostInsertStaticContent
     } = options2;
-    const patch = (n1, n22, container, anchor = null, parentComponent = null, parentSuspense = null, namespace = void 0, slotScopeIds = null, optimized = isHmrUpdating ? false : !!n22.dynamicChildren) => {
+    const patch = (n1, n22, container, anchor = null, parentComponent = null, parentSuspense = null, namespace = void 0, slotScopeIds = null, optimized = false ? false : !!n22.dynamicChildren) => {
       if (n1 === n22) {
         return;
       }
@@ -7652,7 +7222,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
         case Static:
           if (n1 == null) {
             mountStaticNode(n22, container, anchor, namespace);
-          } else if (true) {
+          } else if (false) {
             patchStaticNode(n1, n22, container, namespace);
           }
           break;
@@ -7720,7 +7290,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
               optimized,
               internals
             );
-          } else if (true) {
+          } else if (false) {
             warn$1("Invalid VNode type:", type4, `(${typeof type4})`);
           }
       }
@@ -7866,7 +7436,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
           invokeVNodeHook(vnodeHook, parentComponent, vnode);
         }
       }
-      if (true) {
+      if (__VUE_PROD_DEVTOOLS__) {
         def(el, "__vnode", vnode, true);
         def(el, "__vueParentComponent", parentComponent, true);
       }
@@ -7897,7 +7467,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
       }
       if (parentComponent) {
         let subTree = parentComponent.subTree;
-        if (subTree.patchFlag > 0 && subTree.patchFlag & 2048) {
+        if (false) {
           subTree = filterSingleRoot(subTree.children) || subTree;
         }
         if (vnode === subTree || isSuspense(subTree.type) && (subTree.ssContent === vnode || subTree.ssFallback === vnode)) {
@@ -7930,7 +7500,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
     };
     const patchElement = (n1, n22, parentComponent, parentSuspense, namespace, slotScopeIds, optimized) => {
       const el = n22.el = n1.el;
-      if (true) {
+      if (__VUE_PROD_DEVTOOLS__) {
         el.__vnode = n22;
       }
       let { patchFlag, dynamicChildren, dirs } = n22;
@@ -7946,7 +7516,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
         invokeDirectiveHook(n22, n1, parentComponent, "beforeUpdate");
       }
       parentComponent && toggleRecurse(parentComponent, true);
-      if (isHmrUpdating) {
+      if (false) {
         patchFlag = 0;
         optimized = false;
         dynamicChildren = null;
@@ -7964,7 +7534,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
           resolveChildrenNamespace(n22, namespace),
           slotScopeIds
         );
-        if (true) {
+        if (false) {
           traverseStaticChildren(n1, n22);
         }
       } else if (!optimized) {
@@ -8083,10 +7653,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
       const fragmentStartAnchor = n22.el = n1 ? n1.el : hostCreateText("");
       const fragmentEndAnchor = n22.anchor = n1 ? n1.anchor : hostCreateText("");
       let { patchFlag, dynamicChildren, slotScopeIds: fragmentSlotScopeIds } = n22;
-      if (
-        // #5523 dev root fragment may inherit directives
-        isHmrUpdating || patchFlag & 2048
-      ) {
+      if (false) {
         patchFlag = 0;
         optimized = false;
         dynamicChildren = null;
@@ -8124,7 +7691,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
             namespace,
             slotScopeIds
           );
-          if (true) {
+          if (false) {
             traverseStaticChildren(n1, n22);
           } else if (
             // #2080 if the stable fragment has a key, it's a <template v-for> that may
@@ -8187,10 +7754,10 @@ For more details, see https://link.vuejs.org/feature-flags.`
         parentComponent,
         parentSuspense
       );
-      if (instance.type.__hmrId) {
+      if (false) {
         registerHMR(instance);
       }
-      if (true) {
+      if (false) {
         pushWarningContext(initialVNode);
         startMeasure(instance, `mount`);
       }
@@ -8198,16 +7765,16 @@ For more details, see https://link.vuejs.org/feature-flags.`
         instance.ctx.renderer = internals;
       }
       {
-        if (true) {
+        if (false) {
           startMeasure(instance, `init`);
         }
         setupComponent(instance, false, optimized);
-        if (true) {
+        if (false) {
           endMeasure(instance, `init`);
         }
       }
       if (instance.asyncDep) {
-        if (isHmrUpdating) initialVNode.el = null;
+        if (false) initialVNode.el = null;
         parentSuspense && parentSuspense.registerDep(instance, setupRenderEffect, optimized);
         if (!initialVNode.el) {
           const placeholder = instance.subTree = createVNode(Comment);
@@ -8224,7 +7791,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
           optimized
         );
       }
-      if (true) {
+      if (false) {
         popWarningContext();
         endMeasure(instance, `mount`);
       }
@@ -8233,11 +7800,11 @@ For more details, see https://link.vuejs.org/feature-flags.`
       const instance = n22.component = n1.component;
       if (shouldUpdateComponent(n1, n22, optimized)) {
         if (instance.asyncDep && !instance.asyncResolved) {
-          if (true) {
+          if (false) {
             pushWarningContext(n22);
           }
           updateComponentPreRender(instance, n22, optimized);
-          if (true) {
+          if (false) {
             popWarningContext();
           }
           return;
@@ -8267,14 +7834,14 @@ For more details, see https://link.vuejs.org/feature-flags.`
           toggleRecurse(instance, true);
           if (el && hydrateNode) {
             const hydrateSubTree = () => {
-              if (true) {
+              if (false) {
                 startMeasure(instance, `render`);
               }
               instance.subTree = renderComponentRoot(instance);
-              if (true) {
+              if (false) {
                 endMeasure(instance, `render`);
               }
-              if (true) {
+              if (false) {
                 startMeasure(instance, `hydrate`);
               }
               hydrateNode(
@@ -8284,7 +7851,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
                 parentSuspense,
                 null
               );
-              if (true) {
+              if (false) {
                 endMeasure(instance, `hydrate`);
               }
             };
@@ -8301,14 +7868,14 @@ For more details, see https://link.vuejs.org/feature-flags.`
             if (root2.ce) {
               root2.ce._injectChildStyle(type4);
             }
-            if (true) {
+            if (false) {
               startMeasure(instance, `render`);
             }
             const subTree = instance.subTree = renderComponentRoot(instance);
-            if (true) {
+            if (false) {
               endMeasure(instance, `render`);
             }
-            if (true) {
+            if (false) {
               startMeasure(instance, `patch`);
             }
             patch(
@@ -8320,7 +7887,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
               parentSuspense,
               namespace
             );
-            if (true) {
+            if (false) {
               endMeasure(instance, `patch`);
             }
             initialVNode.el = subTree.el;
@@ -8339,7 +7906,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
             instance.a && queuePostRenderEffect(instance.a, parentSuspense);
           }
           instance.isMounted = true;
-          if (true) {
+          if (__VUE_PROD_DEVTOOLS__) {
             devtoolsComponentAdded(instance);
           }
           initialVNode = container = anchor = null;
@@ -8362,7 +7929,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
           }
           let originNext = next2;
           let vnodeHook;
-          if (true) {
+          if (false) {
             pushWarningContext(next2 || instance.vnode);
           }
           toggleRecurse(instance, false);
@@ -8379,16 +7946,16 @@ For more details, see https://link.vuejs.org/feature-flags.`
             invokeVNodeHook(vnodeHook, parent2, next2, vnode);
           }
           toggleRecurse(instance, true);
-          if (true) {
+          if (false) {
             startMeasure(instance, `render`);
           }
           const nextTree = renderComponentRoot(instance);
-          if (true) {
+          if (false) {
             endMeasure(instance, `render`);
           }
           const prevTree = instance.subTree;
           instance.subTree = nextTree;
-          if (true) {
+          if (false) {
             startMeasure(instance, `patch`);
           }
           patch(
@@ -8402,7 +7969,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
             parentSuspense,
             namespace
           );
-          if (true) {
+          if (false) {
             endMeasure(instance, `patch`);
           }
           next2.el = nextTree.el;
@@ -8418,10 +7985,10 @@ For more details, see https://link.vuejs.org/feature-flags.`
               parentSuspense
             );
           }
-          if (true) {
+          if (__VUE_PROD_DEVTOOLS__) {
             devtoolsComponentUpdated(instance);
           }
-          if (true) {
+          if (false) {
             popWarningContext();
           }
         }
@@ -8435,7 +8002,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
       job.id = instance.uid;
       effect2.scheduler = () => queueJob(job);
       toggleRecurse(instance, true);
-      if (true) {
+      if (false) {
         effect2.onTrack = instance.rtc ? (e3) => invokeArrayFns(instance.rtc, e3) : void 0;
         effect2.onTrigger = instance.rtg ? (e3) => invokeArrayFns(instance.rtg, e3) : void 0;
       }
@@ -8650,7 +8217,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
         for (i3 = s2; i3 <= e22; i3++) {
           const nextChild = c2[i3] = optimized ? cloneIfMounted(c2[i3]) : normalizeVNode(c2[i3]);
           if (nextChild.key != null) {
-            if (keyToNewIndexMap.has(nextChild.key)) {
+            if (false) {
               warn$1(
                 `Duplicate keys found during update:`,
                 JSON.stringify(nextChild.key),
@@ -8866,7 +8433,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
     const remove2 = (vnode) => {
       const { type: type4, el, anchor, transition } = vnode;
       if (type4 === Fragment) {
-        if (vnode.patchFlag > 0 && vnode.patchFlag & 2048 && transition && !transition.persisted) {
+        if (false) {
           vnode.children.forEach((child) => {
             if (child.type === Comment) {
               hostRemove(child.el);
@@ -8911,7 +8478,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
       hostRemove(end);
     };
     const unmountComponent = (instance, parentSuspense, doRemove) => {
-      if (instance.type.__hmrId) {
+      if (false) {
         unregisterHMR(instance);
       }
       const { bum, scope, job, subTree, um, m: m2, a: a2 } = instance;
@@ -8937,7 +8504,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
           parentSuspense.resolve();
         }
       }
-      if (true) {
+      if (__VUE_PROD_DEVTOOLS__) {
         devtoolsComponentRemoved(instance);
       }
     };
@@ -9040,7 +8607,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
         if (c2.type === Text) {
           c2.el = c1.el;
         }
-        if (c2.type === Comment && !c2.el) {
+        if (false) {
           c2.el = c1.el;
         }
       }
@@ -9107,9 +8674,6 @@ For more details, see https://link.vuejs.org/feature-flags.`
     {
       const ctx = inject(ssrContextKey);
       if (!ctx) {
-        warn$1(
-          `Server rendering context not provided. Make sure to only call useSSRContext() conditionally in the server build.`
-        );
       }
       return ctx;
     }
@@ -9121,18 +8685,18 @@ For more details, see https://link.vuejs.org/feature-flags.`
     return doWatch(
       effect2,
       null,
-      true ? extend({}, options2, { flush: "post" }) : { flush: "post" }
+      false ? extend({}, options2, { flush: "post" }) : { flush: "post" }
     );
   }
   function watchSyncEffect(effect2, options2) {
     return doWatch(
       effect2,
       null,
-      true ? extend({}, options2, { flush: "sync" }) : { flush: "sync" }
+      false ? extend({}, options2, { flush: "sync" }) : { flush: "sync" }
     );
   }
   function watch2(source, cb, options2) {
-    if (!isFunction(cb)) {
+    if (false) {
       warn$1(
         `\`watch(fn, options?)\` signature has been moved to a separate API. Use \`watchEffect(fn, options?)\` instead. \`watch\` now only supports \`watch(source, cb, options?) signature.`
       );
@@ -9141,7 +8705,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
   }
   function doWatch(source, cb, options2 = EMPTY_OBJ) {
     const { immediate, deep, flush, once } = options2;
-    if (!cb) {
+    if (false) {
       if (immediate !== void 0) {
         warn$1(
           `watch() "immediate" option is only respected when using the watch(source, callback, options?) signature.`
@@ -9159,7 +8723,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
       }
     }
     const baseWatchOptions = extend({}, options2);
-    if (true) baseWatchOptions.onWarn = warn$1;
+    if (false) baseWatchOptions.onWarn = warn$1;
     const runsImmediately = cb && immediate || !cb && flush !== "post";
     let ssrCleanup;
     if (isInSSRComponentSetup) {
@@ -9241,12 +8805,12 @@ For more details, see https://link.vuejs.org/feature-flags.`
   }
   function useModel(props4, name, options2 = EMPTY_OBJ) {
     const i3 = getCurrentInstance();
-    if (!i3) {
+    if (false) {
       warn$1(`useModel() called without active instance.`);
       return ref();
     }
     const camelizedName = camelize(name);
-    if (!i3.propsOptions[0][camelizedName]) {
+    if (false) {
       warn$1(`useModel() called with prop "${name}" which is not declared.`);
       return ref();
     }
@@ -9308,7 +8872,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
   function emit(instance, event, ...rawArgs) {
     if (instance.isUnmounted) return;
     const props4 = instance.vnode.props || EMPTY_OBJ;
-    if (true) {
+    if (false) {
       const {
         emitsOptions,
         propsOptions: [propsOptions]
@@ -9344,10 +8908,10 @@ For more details, see https://link.vuejs.org/feature-flags.`
         args = rawArgs.map(looseToNumber);
       }
     }
-    if (true) {
+    if (__VUE_PROD_DEVTOOLS__) {
       devtoolsComponentEmit(instance, event, args);
     }
-    if (true) {
+    if (false) {
       const lowerCaseEvent = event.toLowerCase();
       if (lowerCaseEvent !== event && props4[toHandlerKey(lowerCaseEvent)]) {
         warn$1(
@@ -9440,10 +9004,6 @@ For more details, see https://link.vuejs.org/feature-flags.`
     key2 = key2.slice(2).replace(/Once$/, "");
     return hasOwn(options2, key2[0].toLowerCase() + key2.slice(1)) || hasOwn(options2, hyphenate(key2)) || hasOwn(options2, key2);
   }
-  var accessedAttrs = false;
-  function markAttrsAccessed() {
-    accessedAttrs = true;
-  }
   function renderComponentRoot(instance) {
     const {
       type: Component,
@@ -9465,13 +9025,13 @@ For more details, see https://link.vuejs.org/feature-flags.`
     const prev2 = setCurrentRenderingInstance(instance);
     let result;
     let fallthroughAttrs;
-    if (true) {
+    if (false) {
       accessedAttrs = false;
     }
     try {
       if (vnode.shapeFlag & 4) {
         const proxyToUse = withProxy || proxy;
-        const thisProxy = setupState.__isScriptSetup ? new Proxy(proxyToUse, {
+        const thisProxy = false ? new Proxy(proxyToUse, {
           get(target, key2, receiver) {
             warn$1(
               `Property '${String(
@@ -9486,7 +9046,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
             thisProxy,
             proxyToUse,
             renderCache,
-            true ? shallowReadonly(props4) : props4,
+            false ? shallowReadonly(props4) : props4,
             setupState,
             data,
             ctx
@@ -9495,13 +9055,13 @@ For more details, see https://link.vuejs.org/feature-flags.`
         fallthroughAttrs = attrs;
       } else {
         const render22 = Component;
-        if (attrs === props4) {
+        if (false) {
           markAttrsAccessed();
         }
         result = normalizeVNode(
           render22.length > 1 ? render22(
-            true ? shallowReadonly(props4) : props4,
-            true ? {
+            false ? shallowReadonly(props4) : props4,
+            false ? {
               get attrs() {
                 markAttrsAccessed();
                 return shallowReadonly(attrs);
@@ -9510,7 +9070,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
               emit: emit2
             } : { attrs, slots, emit: emit2 }
           ) : render22(
-            true ? shallowReadonly(props4) : props4,
+            false ? shallowReadonly(props4) : props4,
             null
           )
         );
@@ -9523,7 +9083,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
     }
     let root2 = result;
     let setRoot = void 0;
-    if (result.patchFlag > 0 && result.patchFlag & 2048) {
+    if (false) {
       [root2, setRoot] = getChildRoot(result);
     }
     if (fallthroughAttrs && inheritAttrs !== false) {
@@ -9538,7 +9098,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
             );
           }
           root2 = cloneVNode(root2, fallthroughAttrs, false, true);
-        } else if (!accessedAttrs && root2.type !== Comment) {
+        } else if (false) {
           const allAttrs = Object.keys(attrs);
           const eventAttrs = [];
           const extraAttrs = [];
@@ -9566,7 +9126,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
       }
     }
     if (vnode.dirs) {
-      if (!isElementRoot(root2)) {
+      if (false) {
         warn$1(
           `Runtime directive used on component with non-element root node. The directives will not function as intended.`
         );
@@ -9575,14 +9135,14 @@ For more details, see https://link.vuejs.org/feature-flags.`
       root2.dirs = root2.dirs ? root2.dirs.concat(vnode.dirs) : vnode.dirs;
     }
     if (vnode.transition) {
-      if (!isElementRoot(root2)) {
+      if (false) {
         warn$1(
           `Component inside <Transition> renders non-element root node that cannot be animated.`
         );
       }
       setTransitionHooks(root2, vnode.transition);
     }
-    if (setRoot) {
+    if (false) {
       setRoot(root2);
     } else {
       result = root2;
@@ -9590,29 +9150,6 @@ For more details, see https://link.vuejs.org/feature-flags.`
     setCurrentRenderingInstance(prev2);
     return result;
   }
-  var getChildRoot = (vnode) => {
-    const rawChildren = vnode.children;
-    const dynamicChildren = vnode.dynamicChildren;
-    const childRoot = filterSingleRoot(rawChildren, false);
-    if (!childRoot) {
-      return [vnode, void 0];
-    } else if (childRoot.patchFlag > 0 && childRoot.patchFlag & 2048) {
-      return getChildRoot(childRoot);
-    }
-    const index3 = rawChildren.indexOf(childRoot);
-    const dynamicIndex = dynamicChildren ? dynamicChildren.indexOf(childRoot) : -1;
-    const setRoot = (updatedRoot) => {
-      rawChildren[index3] = updatedRoot;
-      if (dynamicChildren) {
-        if (dynamicIndex > -1) {
-          dynamicChildren[dynamicIndex] = updatedRoot;
-        } else if (updatedRoot.patchFlag > 0) {
-          vnode.dynamicChildren = [...dynamicChildren, updatedRoot];
-        }
-      }
-    };
-    return [normalizeVNode(childRoot), setRoot];
-  };
   function filterSingleRoot(children, recurse = true) {
     let singleRoot;
     for (let i3 = 0; i3 < children.length; i3++) {
@@ -9623,7 +9160,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
             return;
           } else {
             singleRoot = child;
-            if (recurse && singleRoot.patchFlag > 0 && singleRoot.patchFlag & 2048) {
+            if (false) {
               return filterSingleRoot(singleRoot.children);
             }
           }
@@ -9652,14 +9189,11 @@ For more details, see https://link.vuejs.org/feature-flags.`
     }
     return res;
   };
-  var isElementRoot = (vnode) => {
-    return vnode.shapeFlag & (6 | 1) || vnode.type === Comment;
-  };
   function shouldUpdateComponent(prevVNode, nextVNode, optimized) {
     const { props: prevProps, children: prevChildren, component } = prevVNode;
     const { props: nextProps, children: nextChildren, patchFlag } = nextVNode;
     const emits = component.emitsOptions;
-    if ((prevChildren || nextChildren) && isHmrUpdating) {
+    if (false) {
       return true;
     }
     if (nextVNode.dirs || nextVNode.transition) {
@@ -9988,9 +9522,8 @@ For more details, see https://link.vuejs.org/feature-flags.`
       }
     }
   }
-  var hasWarned = false;
   function createSuspenseBoundary(vnode, parentSuspense, parentComponent, container, hiddenContainer, anchor, namespace, slotScopeIds, optimized, rendererInternals, isHydrating = false) {
-    if (!hasWarned) {
+    if (false) {
       hasWarned = true;
       console[console.info ? "info" : "log"](
         `<Suspense> is an experimental feature and its API will likely change.`
@@ -10012,7 +9545,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
       }
     }
     const timeout = vnode.props ? toNumber(vnode.props.timeout) : void 0;
-    if (true) {
+    if (false) {
       assertNumber(timeout, `Suspense timeout`);
     }
     const initialAnchor = anchor;
@@ -10033,7 +9566,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
       isUnmounted: false,
       effects: [],
       resolve(resume = false, sync = false) {
-        if (true) {
+        if (false) {
           if (!resume && !suspense.pendingBranch) {
             throw new Error(
               `suspense.resolve() is called without a pending branch.`
@@ -10172,7 +9705,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
           }
           instance.asyncResolved = true;
           const { vnode: vnode2 } = instance;
-          if (true) {
+          if (false) {
             pushWarningContext(vnode2);
           }
           handleSetupResult(instance, asyncSetupResult, false);
@@ -10198,7 +9731,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
             remove2(placeholder);
           }
           updateHOCHostEl(instance, vnode2.el);
-          if (true) {
+          if (false) {
             popWarningContext();
           }
           if (isInPendingSuspense && --suspense.deps === 0) {
@@ -10281,7 +9814,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
     }
     if (isArray(s2)) {
       const singleChild = filterSingleRoot(s2);
-      if (!singleChild && s2.filter((child) => child !== NULL_DYNAMIC_COMPONENT).length > 0) {
+      if (false) {
         warn$1(`<Suspense> slots expect a single root node.`);
       }
       s2 = singleChild;
@@ -10378,7 +9911,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
     return value ? value.__v_isVNode === true : false;
   }
   function isSameVNodeType(n1, n22) {
-    if (n22.shapeFlag & 6 && n1.component) {
+    if (false) {
       const dirtyInstances = hmrDirtyComponents.get(n22.type);
       if (dirtyInstances && dirtyInstances.has(n1.component)) {
         n1.shapeFlag &= ~256;
@@ -10392,11 +9925,6 @@ For more details, see https://link.vuejs.org/feature-flags.`
   function transformVNodeArgs(transformer) {
     vnodeArgsTransformer = transformer;
   }
-  var createVNodeWithArgsTransform = (...args) => {
-    return _createVNode(
-      ...vnodeArgsTransformer ? vnodeArgsTransformer(args, currentRenderingInstance) : args
-    );
-  };
   var normalizeKey = ({ key: key2 }) => key2 != null ? key2 : null;
   var normalizeRef = ({
     ref: ref2,
@@ -10446,7 +9974,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
     } else if (children) {
       vnode.shapeFlag |= isString(children) ? 8 : 16;
     }
-    if (vnode.key !== vnode.key) {
+    if (false) {
       warn$1(`VNode created with invalid key (NaN). VNode type:`, vnode.type);
     }
     if (isBlockTreeEnabled > 0 && // avoid a block node from tracking itself
@@ -10462,10 +9990,10 @@ For more details, see https://link.vuejs.org/feature-flags.`
     }
     return vnode;
   }
-  var createVNode = true ? createVNodeWithArgsTransform : _createVNode;
+  var createVNode = false ? createVNodeWithArgsTransform : _createVNode;
   function _createVNode(type4, props4 = null, children = null, patchFlag = 0, dynamicProps = null, isBlockNode = false) {
     if (!type4 || type4 === NULL_DYNAMIC_COMPONENT) {
-      if (!type4) {
+      if (false) {
         warn$1(`Invalid vnode type when creating vnode: ${type4}.`);
       }
       type4 = Comment;
@@ -10507,7 +10035,7 @@ For more details, see https://link.vuejs.org/feature-flags.`
       }
     }
     const shapeFlag = isString(type4) ? 1 : isSuspense(type4) ? 128 : isTeleport(type4) ? 64 : isObject(type4) ? 4 : isFunction(type4) ? 2 : 0;
-    if (shapeFlag & 4 && isProxy(type4)) {
+    if (false) {
       type4 = toRaw(type4);
       warn$1(
         `Vue received a Component that was made a reactive object. This can lead to unnecessary performance overhead and should be avoided by marking the component with \`markRaw\` or using \`shallowRef\` instead of \`ref\`.`,
@@ -10548,7 +10076,7 @@ Component that was made reactive: `,
       ) : ref2,
       scopeId: vnode.scopeId,
       slotScopeIds: vnode.slotScopeIds,
-      children: patchFlag === -1 && isArray(children) ? children.map(deepCloneVNode) : children,
+      children: false ? children.map(deepCloneVNode) : children,
       target: vnode.target,
       targetStart: vnode.targetStart,
       targetAnchor: vnode.targetAnchor,
@@ -10582,13 +10110,6 @@ Component that was made reactive: `,
         cloned,
         transition.clone(cloned)
       );
-    }
-    return cloned;
-  }
-  function deepCloneVNode(vnode) {
-    const cloned = cloneVNode(vnode);
-    if (isArray(vnode.children)) {
-      cloned.children = vnode.children.map(deepCloneVNode);
     }
     return cloned;
   }
@@ -10778,7 +10299,7 @@ Component that was made reactive: `,
       ec: null,
       sp: null
     };
-    if (true) {
+    if (false) {
       instance.ctx = createDevRenderContext(instance);
     } else {
       instance.ctx = { _: instance };
@@ -10827,14 +10348,6 @@ Component that was made reactive: `,
     currentInstance && currentInstance.scope.off();
     internalSetCurrentInstance(null);
   };
-  var isBuiltInTag = /* @__PURE__ */ makeMap("slot,component");
-  function validateComponentName(name, { isNativeTag }) {
-    if (isBuiltInTag(name) || isNativeTag(name)) {
-      warn$1(
-        "Do not use built-in or reserved HTML elements as component id: " + name
-      );
-    }
-  }
   function isStatefulComponent(instance) {
     return instance.vnode.shapeFlag & 4;
   }
@@ -10852,7 +10365,7 @@ Component that was made reactive: `,
   function setupStatefulComponent(instance, isSSR) {
     var _a2;
     const Component = instance.type;
-    if (true) {
+    if (false) {
       if (Component.name) {
         validateComponentName(Component.name, instance.appContext.config);
       }
@@ -10876,7 +10389,7 @@ Component that was made reactive: `,
     }
     instance.accessCache = /* @__PURE__ */ Object.create(null);
     instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
-    if (true) {
+    if (false) {
       exposePropsOnRenderContext(instance);
     }
     const { setup: setup2 } = Component;
@@ -10889,7 +10402,7 @@ Component that was made reactive: `,
         instance,
         0,
         [
-          true ? shallowReadonly(instance.props) : instance.props,
+          false ? shallowReadonly(instance.props) : instance.props,
           setupContext
         ]
       );
@@ -10909,7 +10422,7 @@ Component that was made reactive: `,
           });
         } else {
           instance.asyncDep = setupResult;
-          if (!instance.suspense) {
+          if (false) {
             const name = (_a2 = Component.name) != null ? _a2 : "Anonymous";
             warn$1(
               `Component <${name}>: setup function returned a promise, but no <Suspense> boundary was found in the parent component tree. A component with async setup() must be nested in a <Suspense> in order to be rendered.`
@@ -10931,19 +10444,19 @@ Component that was made reactive: `,
         instance.render = setupResult;
       }
     } else if (isObject(setupResult)) {
-      if (isVNode(setupResult)) {
+      if (false) {
         warn$1(
           `setup() should not return VNodes directly - return a render function instead.`
         );
       }
-      if (true) {
+      if (__VUE_PROD_DEVTOOLS__) {
         instance.devtoolsRawSetupState = setupResult;
       }
       instance.setupState = proxyRefs(setupResult);
-      if (true) {
+      if (false) {
         exposeSetupStateOnRenderContext(instance);
       }
-    } else if (setupResult !== void 0) {
+    } else if (false) {
       warn$1(
         `setup() should return an object. Received: ${setupResult === null ? "null" : typeof setupResult}`
       );
@@ -10967,7 +10480,7 @@ Component that was made reactive: `,
       if (!isSSR && compile && !Component.render) {
         const template = Component.template || __VUE_OPTIONS_API__ && resolveMergedOptions(instance).template;
         if (template) {
-          if (true) {
+          if (false) {
             startMeasure(instance, `compile`);
           }
           const { isCustomElement, compilerOptions } = instance.appContext.config;
@@ -10983,7 +10496,7 @@ Component that was made reactive: `,
             componentCompilerOptions
           );
           Component.render = compile(template, finalCompilerOptions);
-          if (true) {
+          if (false) {
             endMeasure(instance, `compile`);
           }
         }
@@ -11003,7 +10516,7 @@ Component that was made reactive: `,
         reset2();
       }
     }
-    if (!Component.render && instance.render === NOOP && !isSSR) {
+    if (false) {
       if (!compile && Component.template) {
         warn$1(
           `Component provided template option but runtime compilation is not supported in this build of Vue. Configure your bundler to alias "vue" to "vue/dist/vue.esm-bundler.js".`
@@ -11013,7 +10526,7 @@ Component that was made reactive: `,
       }
     }
   }
-  var attrsProxyHandlers = true ? {
+  var attrsProxyHandlers = false ? {
     get(target, key2) {
       markAttrsAccessed();
       track(target, "get", "");
@@ -11033,17 +10546,9 @@ Component that was made reactive: `,
       return target[key2];
     }
   };
-  function getSlotsProxy(instance) {
-    return new Proxy(instance.slots, {
-      get(target, key2) {
-        track(instance, "get", "$slots");
-        return target[key2];
-      }
-    });
-  }
   function createSetupContext(instance) {
     const expose = (exposed) => {
-      if (true) {
+      if (false) {
         if (instance.exposed) {
           warn$1(`expose() should be called only once per setup().`);
         }
@@ -11065,7 +10570,7 @@ Component that was made reactive: `,
       }
       instance.exposed = exposed || {};
     };
-    if (true) {
+    if (false) {
       let attrsProxy;
       let slotsProxy;
       return Object.freeze({
@@ -11139,7 +10644,7 @@ Component that was made reactive: `,
   }
   var computed2 = (getterOrOptions, debugOptions) => {
     const c2 = computed(getterOrOptions, debugOptions, isInSSRComponentSetup);
-    if (true) {
+    if (false) {
       const i3 = getCurrentInstance();
       if (i3 && i3.appContext.config.warnRecursiveComputed) {
         c2._warnRecursive = true;
@@ -11168,7 +10673,7 @@ Component that was made reactive: `,
     }
   }
   function initCustomFormatter() {
-    if (typeof window === "undefined") {
+    if (true) {
       return;
     }
     const vueStyle = { style: "color:#3ba776" };
@@ -11370,7 +10875,7 @@ Component that was made reactive: `,
     return true;
   }
   var version = "3.5.13";
-  var warn2 = true ? warn$1 : NOOP;
+  var warn2 = false ? warn$1 : NOOP;
   var ErrorTypeStrings = ErrorTypeStrings$1;
   var devtools = true ? devtools$1 : void 0;
   var setDevtoolsHook = true ? setDevtoolsHook$1 : NOOP;
@@ -11400,7 +10905,6 @@ Component that was made reactive: `,
         createHTML: (val) => val
       });
     } catch (e3) {
-      warn2(`Error creating trusted types policy: ${e3}`);
     }
   }
   var unsafeToTrustedHTML = policy ? (val) => policy.createHTML(val) : (val) => val;
@@ -11642,7 +11146,7 @@ Component that was made reactive: `,
   }
   function NumberOf(val) {
     const res = toNumber(val);
-    if (true) {
+    if (false) {
       assertNumber(res, "<transition> explicit duration");
     }
     return res;
@@ -11800,7 +11304,7 @@ Component that was made reactive: `,
       setDisplay(el, value);
     }
   };
-  if (true) {
+  if (false) {
     vShow.name = "show";
   }
   function setDisplay(el, value) {
@@ -11814,11 +11318,10 @@ Component that was made reactive: `,
       }
     };
   }
-  var CSS_VAR_TEXT = Symbol(true ? "CSS_VAR_TEXT" : "");
+  var CSS_VAR_TEXT = Symbol(false ? "CSS_VAR_TEXT" : "");
   function useCssVars(getter) {
     const instance = getCurrentInstance();
     if (!instance) {
-      warn2(`useCssVars is called without current active component instance.`);
       return;
     }
     const updateTeleports = instance.ut = (vars = getter(instance.proxy)) => {
@@ -11826,7 +11329,7 @@ Component that was made reactive: `,
         document.querySelectorAll(`[data-v-owner="${instance.uid}"]`)
       ).forEach((node2) => setVarsOnNode(node2, vars));
     };
-    if (true) {
+    if (false) {
       instance.getCssVars = () => getter(instance.proxy);
     }
     const setVars = () => {
@@ -11934,14 +11437,13 @@ Component that was made reactive: `,
       }
     }
   }
-  var semicolonRE = /[^\\];\s*$/;
   var importantRE = /\s*!important$/;
   function setStyle(style, name, val) {
     if (isArray(val)) {
       val.forEach((v2) => setStyle(style, name, v2));
     } else {
       if (val == null) val = "";
-      if (true) {
+      if (false) {
         if (semicolonRE.test(val)) {
           warn2(
             `Unexpected semicolon at the end of '${name}' style value: '${val}'`
@@ -11985,7 +11487,7 @@ Component that was made reactive: `,
     return rawName;
   }
   var xlinkNS = "http://www.w3.org/1999/xlink";
-  function patchAttr(el, key2, value, isSVG, instance, isBoolean2 = isSpecialBooleanAttr(key2)) {
+  function patchAttr(el, key2, value, isSVG, instance, isBoolean = isSpecialBooleanAttr(key2)) {
     if (isSVG && key2.startsWith("xlink:")) {
       if (value == null) {
         el.removeAttributeNS(xlinkNS, key2.slice(6, key2.length));
@@ -11993,12 +11495,12 @@ Component that was made reactive: `,
         el.setAttributeNS(xlinkNS, key2, value);
       }
     } else {
-      if (value == null || isBoolean2 && !includeBooleanAttr(value)) {
+      if (value == null || isBoolean && !includeBooleanAttr(value)) {
         el.removeAttribute(key2);
       } else {
         el.setAttribute(
           key2,
-          isBoolean2 ? "" : isSymbol(value) ? String(value) : value
+          isBoolean ? "" : isSymbol(value) ? String(value) : value
         );
       }
     }
@@ -12044,7 +11546,7 @@ Component that was made reactive: `,
     try {
       el[key2] = value;
     } catch (e3) {
-      if (!needRemove) {
+      if (false) {
         warn2(
           `Failed setting prop "${key2}" on <${tag2.toLowerCase()}>: value ${value} is invalid.`,
           e3
@@ -12064,12 +11566,12 @@ Component that was made reactive: `,
     const invokers = el[veiKey] || (el[veiKey] = {});
     const existingInvoker = invokers[rawName];
     if (nextValue && existingInvoker) {
-      existingInvoker.value = true ? sanitizeEventValue(nextValue, rawName) : nextValue;
+      existingInvoker.value = false ? sanitizeEventValue(nextValue, rawName) : nextValue;
     } else {
       const [name, options2] = parseName(rawName);
       if (nextValue) {
         const invoker = invokers[rawName] = createInvoker(
-          true ? sanitizeEventValue(nextValue, rawName) : nextValue,
+          false ? sanitizeEventValue(nextValue, rawName) : nextValue,
           instance
         );
         addEventListener(el, name, invoker, options2);
@@ -12113,16 +11615,6 @@ Component that was made reactive: `,
     invoker.value = initialValue;
     invoker.attached = getNow();
     return invoker;
-  }
-  function sanitizeEventValue(value, propName) {
-    if (isFunction(value) || isArray(value)) {
-      return value;
-    }
-    warn2(
-      `Wrong type passed as event handler to ${propName} - did you forget @ or : in front of your prop?
-Expected function or array of functions, received type ${typeof value}.`
-    );
-    return NOOP;
   }
   function patchStopImmediatePropagation(e3, value) {
     if (isArray(value)) {
@@ -12238,7 +11730,7 @@ Expected function or array of functions, received type ${typeof value}.`
       if (this.shadowRoot && _createApp !== createApp) {
         this._root = this.shadowRoot;
       } else {
-        if (this.shadowRoot) {
+        if (false) {
           warn2(
             `Custom element has pre-rendered declarative shadow root but is not defined as hydratable. Use \`defineSSRCustomElement\`.`
           );
@@ -12341,7 +11833,7 @@ Expected function or array of functions, received type ${typeof value}.`
         }
         if (this.shadowRoot) {
           this._applyStyles(styles2);
-        } else if (styles2) {
+        } else if (false) {
           warn2(
             "Custom element style injection is not supported when using shadowRoot: false"
           );
@@ -12358,7 +11850,7 @@ Expected function or array of functions, received type ${typeof value}.`
       }
     }
     _mount(def3) {
-      if (!def3.name) {
+      if (__VUE_PROD_DEVTOOLS__ && !def3.name) {
         def3.name = "VueElement";
       }
       this._app = this._createApp(def3);
@@ -12375,7 +11867,7 @@ Expected function or array of functions, received type ${typeof value}.`
             // unwrap ref to be consistent with public instance behavior
             get: () => unref(exposed[key2])
           });
-        } else if (true) {
+        } else if (false) {
           warn2(`Exposed property "${key2}" already exists on custom element.`);
         }
       }
@@ -12459,7 +11951,7 @@ Expected function or array of functions, received type ${typeof value}.`
           this._instance = instance;
           instance.ce = this;
           instance.isCE = true;
-          if (true) {
+          if (false) {
             instance.ceReload = (newStyles) => {
               if (this._styles) {
                 this._styles.forEach((s2) => this._root.removeChild(s2));
@@ -12503,7 +11995,7 @@ Expected function or array of functions, received type ${typeof value}.`
         if (nonce) s2.setAttribute("nonce", nonce);
         s2.textContent = styles2[i3];
         this.shadowRoot.prepend(s2);
-        if (true) {
+        if (false) {
           if (owner) {
             if (owner.__hmrId) {
               if (!this._childStyles) this._childStyles = /* @__PURE__ */ new Map();
@@ -12571,7 +12063,7 @@ Expected function or array of functions, received type ${typeof value}.`
      * @internal
      */
     _removeChildStyle(comp) {
-      if (true) {
+      if (false) {
         this._styleChildren.delete(comp);
         if (this._childStyles && comp.__hmrId) {
           const oldStyles = this._childStyles.get(comp.__hmrId);
@@ -12588,7 +12080,7 @@ Expected function or array of functions, received type ${typeof value}.`
     const el = instance && instance.ce;
     if (el) {
       return el;
-    } else if (true) {
+    } else if (false) {
       if (!instance) {
         warn2(
           `${caller || "useHost"} called without an active component instance.`
@@ -12602,24 +12094,21 @@ Expected function or array of functions, received type ${typeof value}.`
     return null;
   }
   function useShadowRoot() {
-    const el = true ? useHost("useShadowRoot") : useHost();
+    const el = false ? useHost("useShadowRoot") : useHost();
     return el && el.shadowRoot;
   }
   function useCssModule(name = "$style") {
     {
       const instance = getCurrentInstance();
       if (!instance) {
-        warn2(`useCssModule must be called inside setup()`);
         return EMPTY_OBJ;
       }
       const modules = instance.type.__cssModules;
       if (!modules) {
-        warn2(`Current instance does not have CSS modules injected.`);
         return EMPTY_OBJ;
       }
       const mod = modules[name];
       if (!mod) {
-        warn2(`Current instance does not have CSS module named "${name}".`);
         return EMPTY_OBJ;
       }
       return mod;
@@ -12712,7 +12201,7 @@ Expected function or array of functions, received type ${typeof value}.`
               child,
               resolveTransitionHooks(child, cssTransitionProps, state, instance)
             );
-          } else if (child.type !== Text) {
+          } else if (false) {
             warn2(`<TransitionGroup> children must be keyed.`);
           }
         }
@@ -12932,9 +12421,6 @@ Expected function or array of functions, received type ${typeof value}.`
     const isMultiple2 = el.multiple;
     const isArrayValue = isArray(value);
     if (isMultiple2 && !isArrayValue && !isSet(value)) {
-      warn2(
-        `<select multiple v-model> expects an Array or Set value for its binding, but got ${Object.prototype.toString.call(value).slice(8, -1)}.`
-      );
       return;
     }
     for (let i3 = 0, l2 = el.options.length; i3 < l2; i3++) {
@@ -13108,7 +12594,7 @@ Expected function or array of functions, received type ${typeof value}.`
   };
   var createApp = (...args) => {
     const app2 = ensureRenderer().createApp(...args);
-    if (true) {
+    if (false) {
       injectNativeTagCheck(app2);
       injectCompilerOptionsCheck(app2);
     }
@@ -13134,7 +12620,7 @@ Expected function or array of functions, received type ${typeof value}.`
   };
   var createSSRApp = (...args) => {
     const app2 = ensureHydrationRenderer().createApp(...args);
-    if (true) {
+    if (false) {
       injectNativeTagCheck(app2);
       injectCompilerOptionsCheck(app2);
     }
@@ -13155,52 +12641,17 @@ Expected function or array of functions, received type ${typeof value}.`
       return "mathml";
     }
   }
-  function injectNativeTagCheck(app2) {
-    Object.defineProperty(app2.config, "isNativeTag", {
-      value: (tag2) => isHTMLTag(tag2) || isSVGTag(tag2) || isMathMLTag(tag2),
-      writable: false
-    });
-  }
-  function injectCompilerOptionsCheck(app2) {
-    if (isRuntimeOnly()) {
-      const isCustomElement = app2.config.isCustomElement;
-      Object.defineProperty(app2.config, "isCustomElement", {
-        get() {
-          return isCustomElement;
-        },
-        set() {
-          warn2(
-            `The \`isCustomElement\` config option is deprecated. Use \`compilerOptions.isCustomElement\` instead.`
-          );
-        }
-      });
-      const compilerOptions = app2.config.compilerOptions;
-      const msg = `The \`compilerOptions\` config option is only respected when using a build of Vue.js that includes the runtime compiler (aka "full build"). Since you are using the runtime-only build, \`compilerOptions\` must be passed to \`@vue/compiler-dom\` in the build setup instead.
-- For vue-loader: pass it via vue-loader's \`compilerOptions\` loader option.
-- For vue-cli: see https://cli.vuejs.org/guide/webpack.html#modifying-options-of-a-loader
-- For vite: pass it via @vitejs/plugin-vue options. See https://github.com/vitejs/vite-plugin-vue/tree/main/packages/plugin-vue#example-for-passing-options-to-vuecompiler-sfc`;
-      Object.defineProperty(app2.config, "compilerOptions", {
-        get() {
-          warn2(msg);
-          return compilerOptions;
-        },
-        set() {
-          warn2(msg);
-        }
-      });
-    }
-  }
   function normalizeContainer(container) {
     if (isString(container)) {
       const res = document.querySelector(container);
-      if (!res) {
+      if (false) {
         warn2(
           `Failed to mount app: mount target selector "${container}" returned null.`
         );
       }
       return res;
     }
-    if (window.ShadowRoot && container instanceof window.ShadowRoot && container.mode === "closed") {
+    if (false) {
       warn2(
         `mounting on a ShadowRoot with \`{mode: "closed"}\` may lead to unpredictable bugs`
       );
@@ -13217,81 +12668,81 @@ Expected function or array of functions, received type ${typeof value}.`
   };
 
   // node_modules/@vue/compiler-core/dist/compiler-core.esm-bundler.js
-  var FRAGMENT = Symbol(true ? `Fragment` : ``);
-  var TELEPORT = Symbol(true ? `Teleport` : ``);
-  var SUSPENSE = Symbol(true ? `Suspense` : ``);
-  var KEEP_ALIVE = Symbol(true ? `KeepAlive` : ``);
+  var FRAGMENT = Symbol(false ? `Fragment` : ``);
+  var TELEPORT = Symbol(false ? `Teleport` : ``);
+  var SUSPENSE = Symbol(false ? `Suspense` : ``);
+  var KEEP_ALIVE = Symbol(false ? `KeepAlive` : ``);
   var BASE_TRANSITION = Symbol(
-    true ? `BaseTransition` : ``
+    false ? `BaseTransition` : ``
   );
-  var OPEN_BLOCK = Symbol(true ? `openBlock` : ``);
-  var CREATE_BLOCK = Symbol(true ? `createBlock` : ``);
+  var OPEN_BLOCK = Symbol(false ? `openBlock` : ``);
+  var CREATE_BLOCK = Symbol(false ? `createBlock` : ``);
   var CREATE_ELEMENT_BLOCK = Symbol(
-    true ? `createElementBlock` : ``
+    false ? `createElementBlock` : ``
   );
-  var CREATE_VNODE = Symbol(true ? `createVNode` : ``);
+  var CREATE_VNODE = Symbol(false ? `createVNode` : ``);
   var CREATE_ELEMENT_VNODE = Symbol(
-    true ? `createElementVNode` : ``
+    false ? `createElementVNode` : ``
   );
   var CREATE_COMMENT = Symbol(
-    true ? `createCommentVNode` : ``
+    false ? `createCommentVNode` : ``
   );
   var CREATE_TEXT = Symbol(
-    true ? `createTextVNode` : ``
+    false ? `createTextVNode` : ``
   );
   var CREATE_STATIC = Symbol(
-    true ? `createStaticVNode` : ``
+    false ? `createStaticVNode` : ``
   );
   var RESOLVE_COMPONENT = Symbol(
-    true ? `resolveComponent` : ``
+    false ? `resolveComponent` : ``
   );
   var RESOLVE_DYNAMIC_COMPONENT = Symbol(
-    true ? `resolveDynamicComponent` : ``
+    false ? `resolveDynamicComponent` : ``
   );
   var RESOLVE_DIRECTIVE = Symbol(
-    true ? `resolveDirective` : ``
+    false ? `resolveDirective` : ``
   );
   var RESOLVE_FILTER = Symbol(
-    true ? `resolveFilter` : ``
+    false ? `resolveFilter` : ``
   );
   var WITH_DIRECTIVES = Symbol(
-    true ? `withDirectives` : ``
+    false ? `withDirectives` : ``
   );
-  var RENDER_LIST = Symbol(true ? `renderList` : ``);
-  var RENDER_SLOT = Symbol(true ? `renderSlot` : ``);
-  var CREATE_SLOTS = Symbol(true ? `createSlots` : ``);
+  var RENDER_LIST = Symbol(false ? `renderList` : ``);
+  var RENDER_SLOT = Symbol(false ? `renderSlot` : ``);
+  var CREATE_SLOTS = Symbol(false ? `createSlots` : ``);
   var TO_DISPLAY_STRING = Symbol(
-    true ? `toDisplayString` : ``
+    false ? `toDisplayString` : ``
   );
-  var MERGE_PROPS = Symbol(true ? `mergeProps` : ``);
+  var MERGE_PROPS = Symbol(false ? `mergeProps` : ``);
   var NORMALIZE_CLASS = Symbol(
-    true ? `normalizeClass` : ``
+    false ? `normalizeClass` : ``
   );
   var NORMALIZE_STYLE = Symbol(
-    true ? `normalizeStyle` : ``
+    false ? `normalizeStyle` : ``
   );
   var NORMALIZE_PROPS = Symbol(
-    true ? `normalizeProps` : ``
+    false ? `normalizeProps` : ``
   );
   var GUARD_REACTIVE_PROPS = Symbol(
-    true ? `guardReactiveProps` : ``
+    false ? `guardReactiveProps` : ``
   );
-  var TO_HANDLERS = Symbol(true ? `toHandlers` : ``);
-  var CAMELIZE = Symbol(true ? `camelize` : ``);
-  var CAPITALIZE = Symbol(true ? `capitalize` : ``);
+  var TO_HANDLERS = Symbol(false ? `toHandlers` : ``);
+  var CAMELIZE = Symbol(false ? `camelize` : ``);
+  var CAPITALIZE = Symbol(false ? `capitalize` : ``);
   var TO_HANDLER_KEY = Symbol(
-    true ? `toHandlerKey` : ``
+    false ? `toHandlerKey` : ``
   );
   var SET_BLOCK_TRACKING = Symbol(
-    true ? `setBlockTracking` : ``
+    false ? `setBlockTracking` : ``
   );
-  var PUSH_SCOPE_ID = Symbol(true ? `pushScopeId` : ``);
-  var POP_SCOPE_ID = Symbol(true ? `popScopeId` : ``);
-  var WITH_CTX = Symbol(true ? `withCtx` : ``);
-  var UNREF = Symbol(true ? `unref` : ``);
-  var IS_REF = Symbol(true ? `isRef` : ``);
-  var WITH_MEMO = Symbol(true ? `withMemo` : ``);
-  var IS_MEMO_SAME = Symbol(true ? `isMemoSame` : ``);
+  var PUSH_SCOPE_ID = Symbol(false ? `pushScopeId` : ``);
+  var POP_SCOPE_ID = Symbol(false ? `popScopeId` : ``);
+  var WITH_CTX = Symbol(false ? `withCtx` : ``);
+  var UNREF = Symbol(false ? `unref` : ``);
+  var IS_REF = Symbol(false ? `isRef` : ``);
+  var WITH_MEMO = Symbol(false ? `withMemo` : ``);
+  var IS_MEMO_SAME = Symbol(false ? `isMemoSame` : ``);
   var helperNameMap = {
     [FRAGMENT]: `Fragment`,
     [TELEPORT]: `Teleport`,
@@ -13824,7 +13275,7 @@ Expected function or array of functions, received type ${typeof value}.`
     stateBeforeClosingTagName(c2) {
       if (isWhitespace(c2)) ;
       else if (c2 === 62) {
-        if (true) {
+        if (false) {
           this.cbs.onerr(14, this.index);
         }
         this.state = 1;
@@ -13859,7 +13310,7 @@ Expected function or array of functions, received type ${typeof value}.`
         this.sectionStart = this.index + 1;
       } else if (c2 === 47) {
         this.state = 7;
-        if (this.peek() !== 62) {
+        if (false) {
           this.cbs.onerr(22, this.index);
         }
       } else if (c2 === 60 && this.peek() === 47) {
@@ -13867,7 +13318,7 @@ Expected function or array of functions, received type ${typeof value}.`
         this.state = 5;
         this.sectionStart = this.index;
       } else if (!isWhitespace(c2)) {
-        if (c2 === 61) {
+        if (false) {
           this.cbs.onerr(
             19,
             this.index
@@ -13904,7 +13355,7 @@ Expected function or array of functions, received type ${typeof value}.`
       if (c2 === 61 || isEndOfTagSection(c2)) {
         this.cbs.onattribname(this.sectionStart, this.index);
         this.handleAttrNameEnd(c2);
-      } else if (c2 === 34 || c2 === 39 || c2 === 60) {
+      } else if (false) {
         this.cbs.onerr(
           17,
           this.index
@@ -13943,7 +13394,7 @@ Expected function or array of functions, received type ${typeof value}.`
       } else if (c2 === 61 || isEndOfTagSection(c2)) {
         this.cbs.ondirarg(this.sectionStart, this.index + 1);
         this.handleAttrNameEnd(c2);
-        if (true) {
+        if (false) {
           this.cbs.onerr(
             27,
             this.index
@@ -14016,7 +13467,7 @@ Expected function or array of functions, received type ${typeof value}.`
         this.cbs.onattribend(1, this.index);
         this.state = 11;
         this.stateBeforeAttrName(c2);
-      } else if (c2 === 34 || c2 === 39 || c2 === 60 || c2 === 61 || c2 === 96) {
+      } else if (c2 === 39 || c2 === 60 || c2 === 61 || c2 === 96) {
         this.cbs.onerr(
           18,
           this.index
@@ -14278,39 +13729,6 @@ Expected function or array of functions, received type ${typeof value}.`
     emitCodePoint(cp, consumed) {
     }
   };
-  var deprecationData = {
-    ["COMPILER_IS_ON_ELEMENT"]: {
-      message: `Platform-native elements with "is" prop will no longer be treated as components in Vue 3 unless the "is" value is explicitly prefixed with "vue:".`,
-      link: `https://v3-migration.vuejs.org/breaking-changes/custom-elements-interop.html`
-    },
-    ["COMPILER_V_BIND_SYNC"]: {
-      message: (key2) => `.sync modifier for v-bind has been removed. Use v-model with argument instead. \`v-bind:${key2}.sync\` should be changed to \`v-model:${key2}\`.`,
-      link: `https://v3-migration.vuejs.org/breaking-changes/v-model.html`
-    },
-    ["COMPILER_V_BIND_OBJECT_ORDER"]: {
-      message: `v-bind="obj" usage is now order sensitive and behaves like JavaScript object spread: it will now overwrite an existing non-mergeable attribute that appears before v-bind in the case of conflict. To retain 2.x behavior, move v-bind to make it the first attribute. You can also suppress this warning if the usage is intended.`,
-      link: `https://v3-migration.vuejs.org/breaking-changes/v-bind.html`
-    },
-    ["COMPILER_V_ON_NATIVE"]: {
-      message: `.native modifier for v-on has been removed as is no longer necessary.`,
-      link: `https://v3-migration.vuejs.org/breaking-changes/v-on-native-modifier-removed.html`
-    },
-    ["COMPILER_V_IF_V_FOR_PRECEDENCE"]: {
-      message: `v-if / v-for precedence when used on the same element has changed in Vue 3: v-if now takes higher precedence and will no longer have access to v-for scope variables. It is best to avoid the ambiguity with <template> tags or use a computed property that filters v-for data source.`,
-      link: `https://v3-migration.vuejs.org/breaking-changes/v-if-v-for.html`
-    },
-    ["COMPILER_NATIVE_TEMPLATE"]: {
-      message: `<template> with no special directives will render as a native template element instead of its inner content in Vue 3.`
-    },
-    ["COMPILER_INLINE_TEMPLATE"]: {
-      message: `"inline-template" has been removed in Vue 3.`,
-      link: `https://v3-migration.vuejs.org/breaking-changes/inline-template-attribute.html`
-    },
-    ["COMPILER_FILTERS"]: {
-      message: `filters have been removed in Vue 3. The "|" symbol will be treated as native JavaScript bitwise OR operator. Use method calls or computed properties instead.`,
-      link: `https://v3-migration.vuejs.org/breaking-changes/filters.html`
-    }
-  };
   function getCompatValue(key2, { compatConfig }) {
     const value = compatConfig && compatConfig[key2];
     if (key2 === "MODE") {
@@ -14326,99 +13744,23 @@ Expected function or array of functions, received type ${typeof value}.`
   }
   function checkCompatEnabled(key2, context2, loc, ...args) {
     const enabled = isCompatEnabled(key2, context2);
-    if (enabled) {
+    if (false) {
       warnDeprecation(key2, context2, loc, ...args);
     }
     return enabled;
-  }
-  function warnDeprecation(key2, context2, loc, ...args) {
-    const val = getCompatValue(key2, context2);
-    if (val === "suppress-warning") {
-      return;
-    }
-    const { message, link: link2 } = deprecationData[key2];
-    const msg = `(deprecation ${key2}) ${typeof message === "function" ? message(...args) : message}${link2 ? `
-  Details: ${link2}` : ``}`;
-    const err = new SyntaxError(msg);
-    err.code = key2;
-    if (loc) err.loc = loc;
-    context2.onWarn(err);
   }
   function defaultOnError(error) {
     throw error;
   }
   function defaultOnWarn(msg) {
-    console.warn(`[Vue warn] ${msg.message}`);
   }
   function createCompilerError(code, loc, messages2, additionalMessage) {
-    const msg = true ? (messages2 || errorMessages)[code] + (additionalMessage || ``) : `https://vuejs.org/error-reference/#compiler-${code}`;
+    const msg = false ? (messages2 || errorMessages)[code] + (additionalMessage || ``) : `https://vuejs.org/error-reference/#compiler-${code}`;
     const error = new SyntaxError(String(msg));
     error.code = code;
     error.loc = loc;
     return error;
   }
-  var errorMessages = {
-    // parse errors
-    [0]: "Illegal comment.",
-    [1]: "CDATA section is allowed only in XML context.",
-    [2]: "Duplicate attribute.",
-    [3]: "End tag cannot have attributes.",
-    [4]: "Illegal '/' in tags.",
-    [5]: "Unexpected EOF in tag.",
-    [6]: "Unexpected EOF in CDATA section.",
-    [7]: "Unexpected EOF in comment.",
-    [8]: "Unexpected EOF in script.",
-    [9]: "Unexpected EOF in tag.",
-    [10]: "Incorrectly closed comment.",
-    [11]: "Incorrectly opened comment.",
-    [12]: "Illegal tag name. Use '&lt;' to print '<'.",
-    [13]: "Attribute value was expected.",
-    [14]: "End tag name was expected.",
-    [15]: "Whitespace was expected.",
-    [16]: "Unexpected '<!--' in comment.",
-    [17]: `Attribute name cannot contain U+0022 ("), U+0027 ('), and U+003C (<).`,
-    [18]: "Unquoted attribute value cannot contain U+0022 (\"), U+0027 ('), U+003C (<), U+003D (=), and U+0060 (`).",
-    [19]: "Attribute name cannot start with '='.",
-    [21]: "'<?' is allowed only in XML context.",
-    [20]: `Unexpected null character.`,
-    [22]: "Illegal '/' in tags.",
-    // Vue-specific parse errors
-    [23]: "Invalid end tag.",
-    [24]: "Element is missing end tag.",
-    [25]: "Interpolation end sign was not found.",
-    [27]: "End bracket for dynamic directive argument was not found. Note that dynamic directive argument cannot contain spaces.",
-    [26]: "Legal directive name was expected.",
-    // transform errors
-    [28]: `v-if/v-else-if is missing expression.`,
-    [29]: `v-if/else branches must use unique keys.`,
-    [30]: `v-else/v-else-if has no adjacent v-if or v-else-if.`,
-    [31]: `v-for is missing expression.`,
-    [32]: `v-for has invalid expression.`,
-    [33]: `<template v-for> key should be placed on the <template> tag.`,
-    [34]: `v-bind is missing expression.`,
-    [52]: `v-bind with same-name shorthand only allows static argument.`,
-    [35]: `v-on is missing expression.`,
-    [36]: `Unexpected custom directive on <slot> outlet.`,
-    [37]: `Mixed v-slot usage on both the component and nested <template>. When there are multiple named slots, all slots should use <template> syntax to avoid scope ambiguity.`,
-    [38]: `Duplicate slot names found. `,
-    [39]: `Extraneous children found when component already has explicitly named default slot. These children will be ignored.`,
-    [40]: `v-slot can only be used on components or <template> tags.`,
-    [41]: `v-model is missing expression.`,
-    [42]: `v-model value must be a valid JavaScript member expression.`,
-    [43]: `v-model cannot be used on v-for or v-slot scope variables because they are not writable.`,
-    [44]: `v-model cannot be used on a prop, because local prop bindings are not writable.
-Use a v-bind binding combined with a v-on listener that emits update:x event instead.`,
-    [45]: `Error parsing JavaScript expression: `,
-    [46]: `<KeepAlive> expects exactly one child component.`,
-    [51]: `@vnode-* hooks in templates are no longer supported. Use the vue: prefix instead. For example, @vnode-mounted should be changed to @vue:mounted. @vnode-* hooks support has been removed in 3.4.`,
-    // generic errors
-    [47]: `"prefixIdentifiers" option is not supported in this build of compiler.`,
-    [48]: `ES module mode is not supported in this build of compiler.`,
-    [49]: `"cacheHandlers" option is only supported when the "prefixIdentifiers" option is enabled.`,
-    [50]: `"scopeId" option is only supported in module mode.`,
-    // just to fulfill types
-    [53]: ``
-  };
   var isStaticExp = (p2) => p2.type === 4 && p2.isStatic;
   function isCoreComponent(tag2) {
     switch (tag2) {
@@ -14508,11 +13850,6 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
   var fnExpRE = /^\s*(async\s*)?(\([^)]*?\)|[\w$_]+)\s*(:[^=]+)?=>|^\s*(async\s+)?function(?:\s+[\w$]+)?\s*\(/;
   var isFnExpressionBrowser = (exp) => fnExpRE.test(getExpSource(exp));
   var isFnExpression = isFnExpressionBrowser;
-  function assert(condition, msg) {
-    if (!condition) {
-      throw new Error(msg || `unexpected compiler condition`);
-    }
-  }
   function findDir(node2, name, allowEmpty = false) {
     for (let i3 = 0; i3 < node2.props.length; i3++) {
       const p2 = node2.props[i3];
@@ -14662,7 +13999,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
     isCustomElement: NO,
     onError: defaultOnError,
     onWarn: defaultOnWarn,
-    comments: true,
+    comments: false,
     prefixIdentifiers: false
   };
   var currentOptions = defaultParserOptions;
@@ -14925,7 +14262,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
     },
     onend() {
       const end = currentInput.length;
-      if (tokenizer.state !== 1) {
+      if (false) {
         switch (tokenizer.state) {
           case 5:
           case 8:
@@ -15133,10 +14470,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
     }
     {
       const props4 = el.props;
-      if (isCompatEnabled(
-        "COMPILER_V_IF_V_FOR_PRECEDENCE",
-        currentOptions
-      )) {
+      if (false) {
         let hasIf = false;
         let hasFor = false;
         for (let i3 = 0; i3 < props4.length; i3++) {
@@ -15162,11 +14496,6 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         "COMPILER_NATIVE_TEMPLATE",
         currentOptions
       ) && el.tag === "template" && !isFragmentTemplate(el)) {
-        warnDeprecation(
-          "COMPILER_NATIVE_TEMPLATE",
-          currentOptions,
-          el.loc
-        );
         const parent2 = stack2[0] || currentRoot;
         const index3 = parent2.children.indexOf(el);
         parent2.children.splice(index3, 1, ...el.children);
@@ -15384,7 +14713,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         }
       }
     }
-    if (true) {
+    if (false) {
       if (!currentOptions.decodeEntities) {
         throw new Error(
           `[@vue/compiler-core] decodeEntities option is required in browser builds.`
@@ -15631,7 +14960,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       case 20:
         return 2;
       default:
-        if (true) ;
+        if (false) ;
         return 0;
     }
   }
@@ -15783,7 +15112,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         return `_${helperNameMap[context2.helper(name)]}`;
       },
       replaceNode(node2) {
-        if (true) {
+        if (false) {
           if (!context2.currentNode) {
             throw new Error(`Node being replaced is already removed.`);
           }
@@ -15794,12 +15123,12 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         context2.parent.children[context2.childIndex] = context2.currentNode = node2;
       },
       removeNode(node2) {
-        if (!context2.parent) {
+        if (false) {
           throw new Error(`Cannot remove root node.`);
         }
         const list2 = context2.parent.children;
         const removalIndex = node2 ? list2.indexOf(node2) : context2.currentNode ? context2.childIndex : -1;
-        if (removalIndex < 0) {
+        if (false) {
           throw new Error(`node being removed is not a child of current parent`);
         }
         if (!node2 || node2 === context2.currentNode) {
@@ -15883,7 +15212,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       }
     } else if (children.length > 1) {
       let patchFlag = 64;
-      if (children.filter((c2) => c2.type !== 3).length === 1) {
+      if (false) {
         patchFlag |= 2048;
       }
       root2.codegenNode = createVNodeCall(
@@ -16221,11 +15550,8 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
     }
     context2.pure = false;
   }
-  function isText(n3) {
-    return isString(n3) || n3.type === 4 || n3.type === 2 || n3.type === 5 || n3.type === 8;
-  }
   function genNodeListAsArray(nodes, context2) {
-    const multilines = nodes.length > 3 || nodes.some((n3) => isArray(n3) || !isText(n3));
+    const multilines = nodes.length > 3 || false;
     context2.push(`[`);
     multilines && context2.indent();
     genNodeList(nodes, context2, multilines);
@@ -16274,10 +15600,6 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       case 1:
       case 9:
       case 11:
-        assert(
-          node2.codegenNode != null,
-          `Codegen node is missing for element/if/for node. Apply appropriate transforms first.`
-        );
         genNode(node2.codegenNode, context2);
         break;
       case 2:
@@ -16337,7 +15659,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       case 10:
         break;
       default:
-        if (true) {
+        if (false) {
           assert(false, `unhandled codegen node type: ${node2.type}`);
           const exhaustiveCheck = node2;
           return exhaustiveCheck;
@@ -16415,7 +15737,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
     } = node2;
     let patchFlagString;
     if (patchFlag) {
-      if (true) {
+      if (false) {
         if (patchFlag < 0) {
           patchFlagString = patchFlag + ` /* ${PatchFlagNames[patchFlag]} */`;
         } else {
@@ -16475,7 +15797,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       push(`{}`, -2, node2);
       return;
     }
-    const multilines = properties.length > 1 || properties.some((p2) => p2.value.type !== 4);
+    const multilines = properties.length > 1 || false;
     push(multilines ? `{` : `{ `);
     multilines && indent();
     for (let i3 = 0; i3 < properties.length; i3++) {
@@ -16602,69 +15924,6 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
   var prohibitedKeywordRE = new RegExp(
     "\\b" + "arguments,await,break,case,catch,class,const,continue,debugger,default,delete,do,else,export,extends,finally,for,function,if,import,let,new,return,super,switch,throw,try,var,void,while,with,yield".split(",").join("\\b|\\b") + "\\b"
   );
-  var stripStringRE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`/g;
-  function validateBrowserExpression(node2, context2, asParams = false, asRawStatements = false) {
-    const exp = node2.content;
-    if (!exp.trim()) {
-      return;
-    }
-    try {
-      new Function(
-        asRawStatements ? ` ${exp} ` : `return ${asParams ? `(${exp}) => {}` : `(${exp})`}`
-      );
-    } catch (e3) {
-      let message = e3.message;
-      const keywordMatch = exp.replace(stripStringRE, "").match(prohibitedKeywordRE);
-      if (keywordMatch) {
-        message = `avoid using JavaScript keyword as property name: "${keywordMatch[0]}"`;
-      }
-      context2.onError(
-        createCompilerError(
-          45,
-          node2.loc,
-          void 0,
-          message
-        )
-      );
-    }
-  }
-  var transformExpression = (node2, context2) => {
-    if (node2.type === 5) {
-      node2.content = processExpression(
-        node2.content,
-        context2
-      );
-    } else if (node2.type === 1) {
-      const memo = findDir(node2, "memo");
-      for (let i3 = 0; i3 < node2.props.length; i3++) {
-        const dir = node2.props[i3];
-        if (dir.type === 7 && dir.name !== "for") {
-          const exp = dir.exp;
-          const arg = dir.arg;
-          if (exp && exp.type === 4 && !(dir.name === "on" && arg) && // key has been processed in transformFor(vMemo + vFor)
-          !(memo && arg && arg.type === 4 && arg.content === "key")) {
-            dir.exp = processExpression(
-              exp,
-              context2,
-              // slot args must be processed as function params
-              dir.name === "slot"
-            );
-          }
-          if (arg && arg.type === 4 && !arg.isStatic) {
-            dir.arg = processExpression(arg, context2);
-          }
-        }
-      }
-    }
-  };
-  function processExpression(node2, context2, asParams = false, asRawStatements = false, localVars = Object.create(context2.identifiers)) {
-    {
-      if (true) {
-        validateBrowserExpression(node2, context2, asParams, asRawStatements);
-      }
-      return node2;
-    }
-  }
   var transformIf = createStructuralDirectiveTransform(
     /^(if|else|else-if)$/,
     (node2, dir, context2) => {
@@ -16705,7 +15964,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       );
       dir.exp = createSimpleExpression(`true`, false, loc);
     }
-    if (dir.exp) {
+    if (false) {
       validateBrowserExpression(dir.exp, context2);
     }
     if (dir.name === "if") {
@@ -16727,7 +15986,6 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         const sibling = siblings[i3];
         if (sibling && sibling.type === 3) {
           context2.removeNode(sibling);
-          comments.unshift(sibling);
           continue;
         }
         if (sibling && sibling.type === 2 && !sibling.content.trim().length) {
@@ -16742,11 +16000,10 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
           }
           context2.removeNode();
           const branch = createIfBranch(node2, dir);
-          if (comments.length && // #3619 ignore comments if the v-if is direct child of <transition>
-          !(context2.parent && context2.parent.type === 1 && (context2.parent.tag === "transition" || context2.parent.tag === "Transition"))) {
+          if (false) {
             branch.children = [...comments, ...branch.children];
           }
-          if (true) {
+          if (false) {
             const key2 = branch.userKey;
             if (key2) {
               sibling.branches.forEach(({ userKey }) => {
@@ -16794,7 +16051,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         // make sure to pass in asBlock: true so that the comment node call
         // closes the current block.
         createCallExpression(context2.helper(CREATE_COMMENT), [
-          true ? '"v-if"' : '""',
+          false ? '"v-if"' : '""',
           "true"
         ])
       );
@@ -16823,7 +16080,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         return vnodeCall;
       } else {
         let patchFlag = 64;
-        if (!branch.isTemplateIf && children.filter((c2) => c2.type !== 3).length === 1) {
+        if (false) {
           patchFlag |= 2048;
         }
         return createVNodeCall(
@@ -16849,26 +16106,6 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       injectProp(vnodeCall, keyProperty, context2);
       return ret;
     }
-  }
-  function isSameKey(a2, b2) {
-    if (!a2 || a2.type !== b2.type) {
-      return false;
-    }
-    if (a2.type === 6) {
-      if (a2.value.content !== b2.value.content) {
-        return false;
-      }
-    } else {
-      const exp = a2.exp;
-      const branchExp = b2.exp;
-      if (exp.type !== branchExp.type) {
-        return false;
-      }
-      if (exp.type !== 4 || exp.isStatic !== branchExp.isStatic || exp.content !== branchExp.content) {
-        return false;
-      }
-    }
-    return true;
   }
   function getParentCondition(node2) {
     while (true) {
@@ -16991,7 +16228,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         return () => {
           let childBlock;
           const { children } = forNode;
-          if (isTemplate) {
+          if (false) {
             node2.children.some((c2) => {
               if (c2.type === 1) {
                 const key2 = findProp(c2, "key");
@@ -17127,7 +16364,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
   }
   function finalizeForParseResult(result, context2) {
     if (result.finalized) return;
-    if (true) {
+    if (false) {
       validateBrowserExpression(result.source, context2);
       if (result.key) {
         validateBrowserExpression(
@@ -17359,7 +16596,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
           // 2 = compiled but dynamic = can skip normalization, but must run diff
           // 1 = compiled and static = can skip normalization AND diff as optimized
           createSimpleExpression(
-            slotFlag + (true ? ` /* ${slotFlagsText[slotFlag]} */` : ``),
+            slotFlag + (false ? ` /* ${slotFlagsText[slotFlag]} */` : ``),
             false
           )
         )
@@ -17462,7 +16699,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         if (vnodeTag === KEEP_ALIVE) {
           shouldUseBlock = true;
           patchFlag |= 1024;
-          if (node2.children.length > 1) {
+          if (false) {
             context2.onError(
               createCompilerError(46, {
                 start: node2.children[0].loc.start,
@@ -17694,7 +16931,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
               pushRefVForMarker();
               pushMergeArg();
               {
-                if (true) {
+                if (false) {
                   const hasOverridableKeys = mergeArgs.some((arg2) => {
                     if (arg2.type === 15) {
                       return arg2.properties.some(({ key: key2 }) => {
@@ -18047,7 +17284,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
     if (arg.type === 4) {
       if (arg.isStatic) {
         let rawName = arg.content;
-        if (rawName.startsWith("vnode")) {
+        if (false) {
           context2.onError(createCompilerError(51, arg.loc));
         }
         if (rawName.startsWith("vue:")) {
@@ -18084,7 +17321,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       const isMemberExp = isMemberExpression(exp);
       const isInlineStatement = !(isMemberExp || isFnExpression(exp));
       const hasMultipleStatements = exp.content.includes(`;`);
-      if (true) {
+      if (false) {
         validateBrowserExpression(
           exp,
           context2,
@@ -18172,7 +17409,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
             }
             if (!context2.ssr && getConstantType(child, context2) === 0) {
               callArgs.push(
-                1 + (true ? ` /* ${PatchFlagNames[1]} */` : ``)
+                1 + (false ? ` /* ${PatchFlagNames[1]} */` : ``)
               );
             }
             children[i3] = {
@@ -18393,11 +17630,6 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       lastFilterIndex = i3 + 1;
     }
     if (filters.length) {
-      warnDeprecation(
-        "COMPILER_FILTERS",
-        context2,
-        node2.loc
-      );
       for (i3 = 0; i3 < filters.length; i3++) {
         expression = wrapFilter(expression, filters[i3], context2);
       }
@@ -18451,7 +17683,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         transformMemo,
         transformFor,
         ...[transformFilter],
-        ...true ? [transformExpression] : [],
+        ...false ? [transformExpression] : [],
         transformSlotOutlet,
         transformElement,
         trackSlotScopes,
@@ -18507,27 +17739,27 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
   var noopDirectiveTransform = () => ({ props: [] });
 
   // node_modules/@vue/compiler-dom/dist/compiler-dom.esm-bundler.js
-  var V_MODEL_RADIO = Symbol(true ? `vModelRadio` : ``);
+  var V_MODEL_RADIO = Symbol(false ? `vModelRadio` : ``);
   var V_MODEL_CHECKBOX = Symbol(
-    true ? `vModelCheckbox` : ``
+    false ? `vModelCheckbox` : ``
   );
-  var V_MODEL_TEXT = Symbol(true ? `vModelText` : ``);
+  var V_MODEL_TEXT = Symbol(false ? `vModelText` : ``);
   var V_MODEL_SELECT = Symbol(
-    true ? `vModelSelect` : ``
+    false ? `vModelSelect` : ``
   );
   var V_MODEL_DYNAMIC = Symbol(
-    true ? `vModelDynamic` : ``
+    false ? `vModelDynamic` : ``
   );
   var V_ON_WITH_MODIFIERS = Symbol(
-    true ? `vOnModifiersGuard` : ``
+    false ? `vOnModifiersGuard` : ``
   );
   var V_ON_WITH_KEYS = Symbol(
-    true ? `vOnKeysGuard` : ``
+    false ? `vOnKeysGuard` : ``
   );
-  var V_SHOW = Symbol(true ? `vShow` : ``);
-  var TRANSITION2 = Symbol(true ? `Transition` : ``);
+  var V_SHOW = Symbol(false ? `vShow` : ``);
+  var TRANSITION2 = Symbol(false ? `Transition` : ``);
   var TRANSITION_GROUP = Symbol(
-    true ? `TransitionGroup` : ``
+    false ? `TransitionGroup` : ``
   );
   registerRuntimeHelpers({
     [V_MODEL_RADIO]: `vModelRadio`,
@@ -18629,22 +17861,9 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
     return createCompilerError(
       code,
       loc,
-      true ? DOMErrorMessages : void 0
+      false ? DOMErrorMessages : void 0
     );
   }
-  var DOMErrorMessages = {
-    [53]: `v-html is missing expression.`,
-    [54]: `v-html will override element children.`,
-    [55]: `v-text is missing expression.`,
-    [56]: `v-text will override element children.`,
-    [57]: `v-model can only be used on <input>, <textarea> and <select> elements.`,
-    [58]: `v-model argument is not supported on plain elements.`,
-    [59]: `v-model cannot be used on file inputs since they are read-only. Use a v-on:change listener instead.`,
-    [60]: `Unnecessary value binding used alongside v-model. It will interfere with v-model's behavior.`,
-    [61]: `v-show is missing expression.`,
-    [62]: `<Transition> expects exactly one child element or component.`,
-    [63]: `Tags with side effect (<script> and <style>) are ignored in client component templates.`
-  };
   var transformVHtml = (dir, node2, context2) => {
     const { exp, loc } = dir;
     if (!exp) {
@@ -18745,19 +17964,16 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
                 );
                 break;
               default:
-                checkDuplicatedValue();
                 break;
             }
           }
         } else if (hasDynamicKeyVBind(node2)) {
           directiveToUse = V_MODEL_DYNAMIC;
         } else {
-          checkDuplicatedValue();
         }
       } else if (tag2 === "select") {
         directiveToUse = V_MODEL_SELECT;
       } else {
-        checkDuplicatedValue();
       }
       if (!isInvalidType) {
         baseResult.needRuntime = context2.helper(directiveToUse);
@@ -18879,235 +18095,14 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       needRuntime: context2.helper(V_SHOW)
     };
   };
-  var transformTransition = (node2, context2) => {
-    if (node2.type === 1 && node2.tagType === 1) {
-      const component = context2.isBuiltInComponent(node2.tag);
-      if (component === TRANSITION2) {
-        return () => {
-          if (!node2.children.length) {
-            return;
-          }
-          if (hasMultipleChildren(node2)) {
-            context2.onError(
-              createDOMCompilerError(
-                62,
-                {
-                  start: node2.children[0].loc.start,
-                  end: node2.children[node2.children.length - 1].loc.end,
-                  source: ""
-                }
-              )
-            );
-          }
-          const child = node2.children[0];
-          if (child.type === 1) {
-            for (const p2 of child.props) {
-              if (p2.type === 7 && p2.name === "show") {
-                node2.props.push({
-                  type: 6,
-                  name: "persisted",
-                  nameLoc: node2.loc,
-                  value: void 0,
-                  loc: node2.loc
-                });
-              }
-            }
-          }
-        };
-      }
-    }
-  };
-  function hasMultipleChildren(node2) {
-    const children = node2.children = node2.children.filter(
-      (c2) => c2.type !== 3 && !(c2.type === 2 && !c2.content.trim())
-    );
-    const child = children[0];
-    return children.length !== 1 || child.type === 11 || child.type === 9 && child.branches.some(hasMultipleChildren);
-  }
   var ignoreSideEffectTags = (node2, context2) => {
     if (node2.type === 1 && node2.tagType === 0 && (node2.tag === "script" || node2.tag === "style")) {
-      context2.onError(
-        createDOMCompilerError(
-          63,
-          node2.loc
-        )
-      );
       context2.removeNode();
-    }
-  };
-  function isValidHTMLNesting(parent2, child) {
-    if (parent2 in onlyValidChildren) {
-      return onlyValidChildren[parent2].has(child);
-    }
-    if (child in onlyValidParents) {
-      return onlyValidParents[child].has(parent2);
-    }
-    if (parent2 in knownInvalidChildren) {
-      if (knownInvalidChildren[parent2].has(child)) return false;
-    }
-    if (child in knownInvalidParents) {
-      if (knownInvalidParents[child].has(parent2)) return false;
-    }
-    return true;
-  }
-  var headings = /* @__PURE__ */ new Set(["h1", "h2", "h3", "h4", "h5", "h6"]);
-  var emptySet = /* @__PURE__ */ new Set([]);
-  var onlyValidChildren = {
-    head: /* @__PURE__ */ new Set([
-      "base",
-      "basefront",
-      "bgsound",
-      "link",
-      "meta",
-      "title",
-      "noscript",
-      "noframes",
-      "style",
-      "script",
-      "template"
-    ]),
-    optgroup: /* @__PURE__ */ new Set(["option"]),
-    select: /* @__PURE__ */ new Set(["optgroup", "option", "hr"]),
-    // table
-    table: /* @__PURE__ */ new Set(["caption", "colgroup", "tbody", "tfoot", "thead"]),
-    tr: /* @__PURE__ */ new Set(["td", "th"]),
-    colgroup: /* @__PURE__ */ new Set(["col"]),
-    tbody: /* @__PURE__ */ new Set(["tr"]),
-    thead: /* @__PURE__ */ new Set(["tr"]),
-    tfoot: /* @__PURE__ */ new Set(["tr"]),
-    // these elements can not have any children elements
-    script: emptySet,
-    iframe: emptySet,
-    option: emptySet,
-    textarea: emptySet,
-    style: emptySet,
-    title: emptySet
-  };
-  var onlyValidParents = {
-    // sections
-    html: emptySet,
-    body: /* @__PURE__ */ new Set(["html"]),
-    head: /* @__PURE__ */ new Set(["html"]),
-    // table
-    td: /* @__PURE__ */ new Set(["tr"]),
-    colgroup: /* @__PURE__ */ new Set(["table"]),
-    caption: /* @__PURE__ */ new Set(["table"]),
-    tbody: /* @__PURE__ */ new Set(["table"]),
-    tfoot: /* @__PURE__ */ new Set(["table"]),
-    col: /* @__PURE__ */ new Set(["colgroup"]),
-    th: /* @__PURE__ */ new Set(["tr"]),
-    thead: /* @__PURE__ */ new Set(["table"]),
-    tr: /* @__PURE__ */ new Set(["tbody", "thead", "tfoot"]),
-    // data list
-    dd: /* @__PURE__ */ new Set(["dl", "div"]),
-    dt: /* @__PURE__ */ new Set(["dl", "div"]),
-    // other
-    figcaption: /* @__PURE__ */ new Set(["figure"]),
-    // li: new Set(["ul", "ol"]),
-    summary: /* @__PURE__ */ new Set(["details"]),
-    area: /* @__PURE__ */ new Set(["map"])
-  };
-  var knownInvalidChildren = {
-    p: /* @__PURE__ */ new Set([
-      "address",
-      "article",
-      "aside",
-      "blockquote",
-      "center",
-      "details",
-      "dialog",
-      "dir",
-      "div",
-      "dl",
-      "fieldset",
-      "figure",
-      "footer",
-      "form",
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "h5",
-      "h6",
-      "header",
-      "hgroup",
-      "hr",
-      "li",
-      "main",
-      "nav",
-      "menu",
-      "ol",
-      "p",
-      "pre",
-      "section",
-      "table",
-      "ul"
-    ]),
-    svg: /* @__PURE__ */ new Set([
-      "b",
-      "blockquote",
-      "br",
-      "code",
-      "dd",
-      "div",
-      "dl",
-      "dt",
-      "em",
-      "embed",
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "h5",
-      "h6",
-      "hr",
-      "i",
-      "img",
-      "li",
-      "menu",
-      "meta",
-      "ol",
-      "p",
-      "pre",
-      "ruby",
-      "s",
-      "small",
-      "span",
-      "strong",
-      "sub",
-      "sup",
-      "table",
-      "u",
-      "ul",
-      "var"
-    ])
-  };
-  var knownInvalidParents = {
-    a: /* @__PURE__ */ new Set(["a"]),
-    button: /* @__PURE__ */ new Set(["button"]),
-    dd: /* @__PURE__ */ new Set(["dd", "dt"]),
-    dt: /* @__PURE__ */ new Set(["dd", "dt"]),
-    form: /* @__PURE__ */ new Set(["form"]),
-    li: /* @__PURE__ */ new Set(["li"]),
-    h1: headings,
-    h2: headings,
-    h3: headings,
-    h4: headings,
-    h5: headings,
-    h6: headings
-  };
-  var validateHtmlNesting = (node2, context2) => {
-    if (node2.type === 1 && node2.tagType === 0 && context2.parent && context2.parent.type === 1 && context2.parent.tagType === 0 && !isValidHTMLNesting(context2.parent.tag, node2.tag)) {
-      const error = new SyntaxError(
-        `<${node2.tag}> cannot be child of <${context2.parent.tag}>, according to HTML specifications. This can cause hydration errors or potentially disrupt future functionality.`
-      );
-      error.loc = node2.loc;
-      context2.onWarn(error);
     }
   };
   var DOMNodeTransforms = [
     transformStyle,
-    ...true ? [transformTransition, validateHtmlNesting] : []
+    ...false ? [transformTransition, validateHtmlNesting] : []
   ];
   var DOMDirectiveTransforms = {
     cloak: noopDirectiveTransform,
@@ -19142,12 +18137,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
   }
 
   // node_modules/vue/dist/vue.esm-bundler.js
-  function initDev() {
-    {
-      initCustomFormatter();
-    }
-  }
-  if (true) {
+  if (false) {
     initDev();
   }
   var compileCache = /* @__PURE__ */ Object.create(null);
@@ -19156,7 +18146,6 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
       if (template.nodeType) {
         template = template.innerHTML;
       } else {
-        warn2(`invalid template option: `, template);
         return NOOP;
       }
     }
@@ -19167,7 +18156,7 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
     }
     if (template[0] === "#") {
       const el = document.querySelector(template);
-      if (!el) {
+      if (false) {
         warn2(`Template element not found or is empty: ${template}`);
       }
       template = el ? el.innerHTML : ``;
@@ -19175,8 +18164,8 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
     const opts = extend(
       {
         hoistStatic: true,
-        onError: true ? onError : void 0,
-        onWarn: true ? (e3) => onError(e3, true) : NOOP
+        onError: false ? onError : void 0,
+        onWarn: false ? (e3) => onError(e3, true) : NOOP
       },
       options2
     );
@@ -19416,13 +18405,8 @@ ${codeFrame}` : message);
   }
 
   // node_modules/vue/dist/vue.runtime.esm-bundler.js
-  function initDev2() {
-    {
-      initCustomFormatter();
-    }
-  }
-  if (true) {
-    initDev2();
+  if (false) {
+    initDev();
   }
 
   // node_modules/ant-design-vue/es/_util/util.js
@@ -21065,7 +20049,6 @@ ${codeFrame}` : message);
   // node_modules/ant-design-vue/es/_util/cssinjs/StyleContext.js
   var ATTR_TOKEN = "data-token-hash";
   var ATTR_MARK = "data-css-hash";
-  var ATTR_CACHE_PATH = "data-cache-path";
   var CSS_IN_JS_INSTANCE = "__cssinjs_instance__";
   function createCache() {
     const cssinjsInstanceId = Math.random().toString(12).slice(2);
@@ -21195,12 +20178,11 @@ ${codeFrame}` : message);
   }));
 
   // node_modules/ant-design-vue/es/_util/cssinjs/hooks/useHMR.js
-  var webpackHMR = false;
-  function useDevHMR() {
-    return webpackHMR;
+  function useProdHMR() {
+    return false;
   }
-  var useHMR_default = false ? useProdHMR : useDevHMR;
-  if (typeof module !== "undefined" && module && module.hot && typeof window !== "undefined") {
+  var useHMR_default = true ? useProdHMR : useDevHMR;
+  if (false) {
     const win = window;
     if (typeof win.webpackHotUpdate === "function") {
       const originWebpackHotUpdate = win.webpackHotUpdate;
@@ -21239,7 +20221,7 @@ ${codeFrame}` : message);
       styleContext.value.cache.update(newStr, (prevCache) => {
         const [times = 0, cache] = prevCache || [];
         let tmpCache = cache;
-        if (cache && HMRUpdate) {
+        if (false) {
           onCacheRemove === null || onCacheRemove === void 0 ? void 0 : onCacheRemove(tmpCache, HMRUpdate);
           tmpCache = null;
         }
@@ -21491,12 +20473,12 @@ ${codeFrame}` : message);
   // node_modules/ant-design-vue/es/vc-util/warning.js
   var warned = {};
   function warning(valid, message) {
-    if (!valid && console !== void 0) {
+    if (false) {
       console.error(`Warning: ${message}`);
     }
   }
   function note(valid, message) {
-    if (!valid && console !== void 0) {
+    if (false) {
       console.warn(`Note: ${message}`);
     }
   }
@@ -21518,7 +20500,7 @@ ${codeFrame}` : message);
   function noop() {
   }
   var warning2 = noop;
-  if (true) {
+  if (false) {
     warning2 = (valid, component, message) => {
       warning_default(valid, `[ant-design-vue: ${component}] ${message}`);
       if (false) {
@@ -21589,7 +20571,7 @@ ${codeFrame}` : message);
       ele.style.top = "0";
       handleElement === null || handleElement === void 0 ? void 0 : handleElement(ele);
       document.body.appendChild(ele);
-      if (true) {
+      if (false) {
         ele.innerHTML = "Test";
         ele.style.zIndex = "9999999";
       }
@@ -21612,7 +20594,7 @@ ${codeFrame}` : message);
 
   // node_modules/ant-design-vue/es/_util/cssinjs/hooks/useCacheToken.js
   var EMPTY_OVERRIDE = {};
-  var isProduction = false;
+  var isProduction = true;
   var isPrerender = false;
   var hashPrefix = !isProduction && !isPrerender ? "css-dev-only-do-not-override" : "css";
   var tokenKeys = /* @__PURE__ */ new Map();
@@ -22100,28 +21082,6 @@ ${codeFrame}` : message);
     warning_default(false, `[Ant Design Vue CSS-in-JS] ${path3 ? `Error in '${path3}': ` : ""}${message}${parentSelectors.length ? ` Selector info: ${parentSelectors.join(" -> ")}` : ""}`);
   }
 
-  // node_modules/ant-design-vue/es/_util/cssinjs/linters/contentQuotesLinter.js
-  var linter = (key2, value, info) => {
-    if (key2 === "content") {
-      const contentValuePattern = /(attr|counters?|url|(((repeating-)?(linear|radial))|conic)-gradient)\(|(no-)?(open|close)-quote/;
-      const contentValues = ["normal", "none", "initial", "inherit", "unset"];
-      if (typeof value !== "string" || contentValues.indexOf(value) === -1 && !contentValuePattern.test(value) && (value.charAt(0) !== value.charAt(value.length - 1) || value.charAt(0) !== '"' && value.charAt(0) !== "'")) {
-        lintWarning(`You seem to be using a value for 'content' without quotes, try replacing it with \`content: '"${value}"'\`.`, info);
-      }
-    }
-  };
-  var contentQuotesLinter_default = linter;
-
-  // node_modules/ant-design-vue/es/_util/cssinjs/linters/hashedAnimationLinter.js
-  var linter2 = (key2, value, info) => {
-    if (key2 === "animation") {
-      if (info.hashId && value !== "none") {
-        lintWarning(`You seem to be using hashed animation '${value}', in which case 'animationName' with Keyframe as value is recommended.`, info);
-      }
-    }
-  };
-  var hashedAnimationLinter_default = linter2;
-
   // node_modules/ant-design-vue/es/_util/cssinjs/linters/legacyNotSelectorLinter.js
   function isConcatSelector(selector) {
     var _a2;
@@ -22137,17 +21097,17 @@ ${codeFrame}` : message);
       return cur.includes("&") ? cur.replace(/&/g, prev2) : `${prev2} ${cur}`;
     }, "");
   }
-  var linter3 = (_key, _value, info) => {
+  var linter = (_key, _value, info) => {
     const parentSelectorPath = parsePath(info);
     const notList = parentSelectorPath.match(/:not\([^)]*\)/g) || [];
     if (notList.length > 0 && notList.some(isConcatSelector)) {
       lintWarning(`Concat ':not' selector not support in legacy browsers.`, info);
     }
   };
-  var legacyNotSelectorLinter_default = linter3;
+  var legacyNotSelectorLinter_default = linter;
 
   // node_modules/ant-design-vue/es/_util/cssinjs/linters/logicalPropertiesLinter.js
-  var linter4 = (key2, value, info) => {
+  var linter2 = (key2, value, info) => {
     switch (key2) {
       case "marginLeft":
       case "marginRight":
@@ -22213,10 +21173,10 @@ ${codeFrame}` : message);
       default:
     }
   };
-  var logicalPropertiesLinter_default = linter4;
+  var logicalPropertiesLinter_default = linter2;
 
   // node_modules/ant-design-vue/es/_util/cssinjs/linters/parentSelectorLinter.js
-  var linter5 = (_key, _value, info) => {
+  var linter3 = (_key, _value, info) => {
     if (info.parentSelectors.some((selector) => {
       const selectors = selector.split(",");
       return selectors.some((item) => item.split("&").length > 2);
@@ -22224,7 +21184,7 @@ ${codeFrame}` : message);
       lintWarning("Should not use more than one `&` in a selector.", info);
     }
   };
-  var parentSelectorLinter_default = linter5;
+  var parentSelectorLinter_default = linter3;
 
   // node_modules/ant-design-vue/es/_util/cssinjs/hooks/useStyleRegister/cacheMapUtil.js
   var ATTR_CACHE_MAP = "data-ant-cssinjs-cache-path";
@@ -22393,8 +21353,8 @@ ${codeFrame}` : message);
             styleStr += `${mergedKey}${parsedStr}`;
           } else {
             let appendStyle = function(cssKey, cssValue) {
-              if (typeof value !== "object" || !(value === null || value === void 0 ? void 0 : value[SKIP_CHECK])) {
-                [contentQuotesLinter_default, hashedAnimationLinter_default, ...linters].forEach((linter6) => linter6(cssKey, cssValue, {
+              if (false) {
+                [contentQuotesLinter_default, hashedAnimationLinter_default, ...linters].forEach((linter4) => linter4(cssKey, cssValue, {
                   path: path3,
                   hashId,
                   parentSelectors
@@ -22443,7 +21403,7 @@ ${codeFrame}` : message);
     const tokenKey = computed2(() => info.value.token._tokenKey);
     const fullPath = computed2(() => [tokenKey.value, ...info.value.path]);
     let isMergedClientSide = isClientSide;
-    if (styleContext.value.mock !== void 0) {
+    if (false) {
       isMergedClientSide = styleContext.value.mock === "client";
     }
     useClientCache(
@@ -22500,7 +21460,7 @@ ${codeFrame}` : message);
           const style = updateCSS(styleStr, styleId, mergedCSSConfig);
           style[CSS_IN_JS_INSTANCE] = cache.instanceId;
           style.setAttribute(ATTR_TOKEN, tokenKey.value);
-          if (true) {
+          if (false) {
             style.setAttribute(ATTR_CACHE_PATH, fullPath.value.join("|"));
           }
           Object.keys(effectStyle).forEach((effectKey) => {
@@ -24697,7 +23657,7 @@ ${codeFrame}` : message);
   }
 
   // node_modules/ant-design-vue/es/theme/util/statistic.js
-  var enableStatistic = true;
+  var enableStatistic = typeof CSSINJS_STATISTIC !== "undefined";
   var recording = true;
   function merge() {
     for (var _len = arguments.length, objs = new Array(_len), _key = 0; _key < _len; _key++) {
@@ -25913,7 +24873,7 @@ ${codeFrame}` : message);
     return e3;
   };
   var y = v;
-  if (true) {
+  if (false) {
     p2 = "undefined" != typeof console;
     y = p2 ? function(e3) {
       console.warn("[VueTypes warn]: " + e3);
@@ -26312,10 +25272,10 @@ ${codeFrame}` : message);
         var _a3;
         return (_a3 = props4.direction) !== null && _a3 !== void 0 ? _a3 : "vertical";
       });
-      if (true) {
+      if (false) {
         devWarning_default(props4.items && typeof slots.default !== "function", "Anchor", "`Anchor children` is deprecated. Please use `items` instead.");
       }
-      if (true) {
+      if (false) {
         devWarning_default(!(anchorDirection.value === "horizontal" && ((_a2 = props4.items) === null || _a2 === void 0 ? void 0 : _a2.some((n3) => "children" in n3))), "Anchor", "`Anchor items#children` is not supported when `Anchor` direction is horizontal.");
       }
       const spanLinkNode = ref(null);
@@ -27825,11 +26785,11 @@ ${codeFrame}` : message);
   function isCompleteFailY(elFuturePos, elRegion, visibleRect) {
     return elFuturePos.top > visibleRect.bottom || elFuturePos.top + elRegion.height < visibleRect.top;
   }
-  function flip(points, reg, map2) {
+  function flip(points, reg, map) {
     var ret = [];
     utils.each(points, function(p2) {
       ret.push(p2.replace(reg, function(m2) {
-        return map2[m2];
+        return map[m2];
       }));
     });
     return ret;
@@ -28511,8 +27471,8 @@ ${codeFrame}` : message);
   var isKeyable_default = isKeyable;
 
   // node_modules/lodash-es/_getMapData.js
-  function getMapData(map2, key2) {
-    var data = map2.__data__;
+  function getMapData(map, key2) {
+    var data = map.__data__;
     return isKeyable_default(key2) ? data[typeof key2 == "string" ? "string" : "hash"] : data.map;
   }
   var getMapData_default = getMapData;
@@ -28690,9 +27650,9 @@ ${codeFrame}` : message);
   var Uint8Array_default = Uint8Array2;
 
   // node_modules/lodash-es/_mapToArray.js
-  function mapToArray(map2) {
-    var index3 = -1, result = Array(map2.size);
-    map2.forEach(function(value, key2) {
+  function mapToArray(map) {
+    var index3 = -1, result = Array(map.size);
+    map.forEach(function(value, key2) {
       result[++index3] = [key2, value];
     });
     return result;
@@ -31518,8 +30478,8 @@ html body {
   }
   function styleObjectToString(style) {
     return Object.keys(style).reduce((acc, name) => {
-      const styleValue2 = style[name];
-      if (typeof styleValue2 === "undefined" || styleValue2 === null) {
+      const styleValue = style[name];
+      if (typeof styleValue === "undefined" || styleValue === null) {
         return acc;
       }
       acc += `${name}: ${style[name]};`;
@@ -32490,7 +31450,7 @@ summary tabindex target title type usemap value width wmode wrap`;
           "onClick": onClose,
           "customizeIcon": props4.removeIcon
         }, {
-          default: () => [createTextVNode("×")]
+          default: () => [createTextVNode("\xD7")]
         })]);
       }
       function customizeRenderSelector(value, content, itemDisabled, closable, onClose, option) {
@@ -32605,7 +31565,7 @@ summary tabindex target title type usemap value width wmode wrap`;
           "ref": measureRef,
           "class": `${selectionPrefixCls.value}-search-mirror`,
           "aria-hidden": true
-        }, [targetValue.value, createTextVNode(" ")])]);
+        }, [targetValue.value, createTextVNode("\xA0")])]);
         const selectionNode = createVNode(vc_overflow_default, {
           "prefixCls": `${selectionPrefixCls.value}-overflow`,
           "data": values,
@@ -33696,7 +32656,7 @@ summary tabindex target title type usemap value width wmode wrap`;
             "onMousedown": onClearMouseDown,
             "customizeIcon": clearIcon
           }, {
-            default: () => [createTextVNode("×")]
+            default: () => [createTextVNode("\xD7")]
           });
         }
         const optionList = createVNode(OptionList2, {
@@ -35169,7 +34129,7 @@ summary tabindex target title type usemap value width wmode wrap`;
                 isSelected: selected
               }
             }, {
-              default: () => [selected ? "✓" : null]
+              default: () => [selected ? "\u2713" : null]
             })]);
           }
         })]);
@@ -35305,80 +34265,6 @@ summary tabindex target title type usemap value width wmode wrap`;
     return value !== void 0 ? [value] : [];
   }
   var isClient = typeof window !== "undefined" && window.document && window.document.documentElement;
-
-  // node_modules/ant-design-vue/es/vc-select/utils/warningPropsUtil.js
-  function warningProps(props4) {
-    const {
-      mode,
-      options: options2,
-      children,
-      backfill,
-      allowClear,
-      placeholder,
-      getInputElement,
-      showSearch,
-      onSearch,
-      defaultOpen,
-      autofocus,
-      labelInValue,
-      value,
-      inputValue,
-      optionLabelProp
-    } = props4;
-    const multiple = isMultiple(mode);
-    const mergedShowSearch = showSearch !== void 0 ? showSearch : multiple || mode === "combobox";
-    const mergedOptions = options2 || convertChildrenToData(children);
-    warning_default(mode !== "tags" || mergedOptions.every((opt) => !opt.disabled), "Please avoid setting option to disabled in tags mode since user can always type text as tag.");
-    warning_default(mode !== "combobox" || !optionLabelProp, "`combobox` mode not support `optionLabelProp`. Please set `value` on Option directly.");
-    warning_default(mode === "combobox" || !backfill, "`backfill` only works with `combobox` mode.");
-    warning_default(mode === "combobox" || !getInputElement, "`getInputElement` only work with `combobox` mode.");
-    noteOnce(mode !== "combobox" || !getInputElement || !allowClear || !placeholder, "Customize `getInputElement` should customize clear and placeholder logic instead of configuring `allowClear` and `placeholder`.");
-    if (onSearch && !mergedShowSearch && mode !== "combobox" && mode !== "tags") {
-      warning_default(false, "`onSearch` should work with `showSearch` instead of use alone.");
-    }
-    noteOnce(!defaultOpen || autofocus, "`defaultOpen` makes Select open without focus which means it will not close by click outside. You can set `autofocus` if needed.");
-    if (value !== void 0 && value !== null) {
-      const values = toArray(value);
-      warning_default(!labelInValue || values.every((val) => typeof val === "object" && ("key" in val || "value" in val)), "`value` should in shape of `{ value: string | number, label?: any }` when you set `labelInValue` to `true`");
-      warning_default(!multiple || Array.isArray(value), "`value` should be array when `mode` is `multiple` or `tags`");
-    }
-    if (children) {
-      let invalidateChildType = null;
-      children.some((node2) => {
-        var _a2;
-        if (!isValidElement(node2) || !node2.type) {
-          return false;
-        }
-        const {
-          type: type4
-        } = node2;
-        if (type4.isSelectOption) {
-          return false;
-        }
-        if (type4.isSelectOptGroup) {
-          const childs = ((_a2 = node2.children) === null || _a2 === void 0 ? void 0 : _a2.default()) || [];
-          const allChildrenValid = childs.every((subNode) => {
-            if (!isValidElement(subNode) || !node2.type || subNode.type.isSelectOption) {
-              return true;
-            }
-            invalidateChildType = subNode.type;
-            return false;
-          });
-          if (allChildrenValid) {
-            return false;
-          }
-          return true;
-        }
-        invalidateChildType = type4;
-        return true;
-      });
-      if (invalidateChildType) {
-        warning_default(false, `\`children\` should be \`Select.Option\` or \`Select.OptGroup\` instead of \`${invalidateChildType.displayName || invalidateChildType.name || invalidateChildType}\`.`);
-      }
-      warning_default(inputValue === void 0, "`inputValue` is deprecated, please use `searchValue` instead.");
-    }
-  }
-  var warningPropsUtil_default = warningProps;
 
   // node_modules/ant-design-vue/es/vc-select/hooks/useFilterOptions.js
   function includes(test, search) {
@@ -35850,7 +34736,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         listItemHeight: toRef(props4, "listItemHeight"),
         childrenAsData
       })));
-      if (true) {
+      if (false) {
         watchEffect(() => {
           warningPropsUtil_default(props4);
         }, {
@@ -36089,7 +34975,7 @@ summary tabindex target title type usemap value width wmode wrap`;
     return obj;
   }
   function warn3(valid, message) {
-    if (!valid && console !== void 0) {
+    if (false) {
       console.error("Warning: ".concat(message));
     }
   }
@@ -36801,7 +35687,7 @@ summary tabindex target title type usemap value width wmode wrap`;
     };
     const instance = getCurrentInstance();
     watch2([useValidation, formItemFields], () => {
-      if (true) {
+      if (false) {
         if (useValidation.value && formItemFields.value.size > 1) {
           devWarning_default(false, "Form.Item", `FormItem can only collect one field item, you haved set ${[...formItemFields.value.values()].map((v2) => `\`${v2.name}\``).join(", ")} ${formItemFields.value.size} field items.
         You can set not need to be collected fields into \`a-form-item-rest\``);
@@ -40042,7 +38928,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         }
         return mode2;
       });
-      if (true) {
+      if (false) {
         devWarning_default(!props4.dropdownClassName, "Select", "`dropdownClassName` is deprecated. Please use `popupClassName` instead.");
       }
       const {
@@ -42239,7 +41125,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         attrs,
         expose
       } = _ref;
-      if (true) {
+      if (false) {
         [["visible", "open"], ["onVisibleChange", "onOpenChange"]].forEach((_ref2) => {
           let [deprecatedName, newName] = _ref2;
           warning_default2(props4[deprecatedName] === void 0, "Tooltip", `\`${deprecatedName}\` is deprecated, please use \`${newName}\` instead.`);
@@ -45639,7 +44525,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         getPopupContainer
       } = useConfigInject_default("dropdown", props4);
       const [wrapSSR, hashId] = style_default13(prefixCls);
-      if (true) {
+      if (false) {
         [["visible", "open"], ["onVisibleChange", "onOpenChange"], ["onUpdate:visible", "onUpdate:open"]].forEach((_ref2) => {
           let [deprecatedName, newName] = _ref2;
           warning_default2(props4[deprecatedName] === void 0, "Dropdown", `\`${deprecatedName}\` is deprecated which will be removed in next major version, please use \`${newName}\` instead.`);
@@ -48830,10 +47716,10 @@ summary tabindex target title type usemap value width wmode wrap`;
     const props4 = useMergeProps(_props);
     const {
       prefixCls,
-      prevIcon = "‹",
-      nextIcon = "›",
-      superPrevIcon = "«",
-      superNextIcon = "»",
+      prevIcon = "\u2039",
+      nextIcon = "\u203A",
+      superPrevIcon = "\xAB",
+      superNextIcon = "\xBB",
       onSuperPrev,
       onSuperNext,
       onPrev,
@@ -49555,7 +48441,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         locale: locale7,
         format: format3,
         generateConfig: generateConfig2
-      }) : " "]
+      }) : "\xA0"]
     });
   }
   TimeHeader.displayName = "TimeHeader";
@@ -50977,7 +49863,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         const isHourStepValid = computed2(() => 24 % props4.hourStep === 0);
         const isMinuteStepValid = computed2(() => 60 % props4.minuteStep === 0);
         const isSecondStepValid = computed2(() => 60 % props4.secondStep === 0);
-        if (true) {
+        if (false) {
           watchEffect(() => {
             const {
               generateConfig: generateConfig2,
@@ -51701,19 +50587,6 @@ summary tabindex target title type usemap value width wmode wrap`;
     });
   }
 
-  // node_modules/ant-design-vue/es/vc-picker/utils/warnUtil.js
-  function legacyPropsWarning(props4) {
-    const {
-      picker,
-      disabledHours,
-      disabledMinutes,
-      disabledSeconds
-    } = props4;
-    if (picker === "time" && (disabledHours || disabledMinutes || disabledSeconds)) {
-      warning(false, `'disabledHours', 'disabledMinutes', 'disabledSeconds' will be removed in the next major version, please use 'disabledTime' instead.`);
-    }
-  }
-
   // node_modules/ant-design-vue/es/vc-picker/Picker.js
   function Picker() {
     return defineComponent({
@@ -51733,7 +50606,7 @@ summary tabindex target title type usemap value width wmode wrap`;
           return (_a2 = props4.picker) !== null && _a2 !== void 0 ? _a2 : "date";
         });
         const needConfirmButton = computed2(() => picker.value === "date" && !!props4.showTime || picker.value === "time");
-        if (true) {
+        if (false) {
           legacyPropsWarning(props4);
         }
         const formatList = computed2(() => toArray2(getDefaultFormat(props4.format, picker.value, props4.showTime, props4.use12Hours)));
@@ -52032,7 +50905,7 @@ summary tabindex target title type usemap value width wmode wrap`;
             autocomplete
           });
           const inputNode = props4.inputRender ? props4.inputRender(mergedInputProps) : createVNode("input", mergedInputProps, null);
-          if (true) {
+          if (false) {
             warning(!defaultOpenValue, "`defaultOpenValue` may confuse user for the current value status. Please use `defaultValue` instead.");
           }
           const popupPlacement = direction === "rtl" ? "bottomRight" : "bottomLeft";
@@ -52268,11 +51141,11 @@ summary tabindex target title type usemap value width wmode wrap`;
   // node_modules/ant-design-vue/es/_util/hooks/_vueuse/useSupported.js
   function useSupported(callback) {
     let sync = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : false;
-    const isSupported2 = shallowRef();
-    const update = () => isSupported2.value = Boolean(callback());
+    const isSupported = shallowRef();
+    const update = () => isSupported.value = Boolean(callback());
     update();
     tryOnMounted(update, sync);
-    return isSupported2;
+    return isSupported;
   }
 
   // node_modules/ant-design-vue/es/_util/hooks/_vueuse/is.js
@@ -52301,7 +51174,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       window: window2 = defaultWindow
     } = options2, observerOptions = __rest21(options2, ["window"]);
     let observer;
-    const isSupported2 = useSupported(() => window2 && "ResizeObserver" in window2);
+    const isSupported = useSupported(() => window2 && "ResizeObserver" in window2);
     const cleanup2 = () => {
       if (observer) {
         observer.disconnect();
@@ -52310,7 +51183,7 @@ summary tabindex target title type usemap value width wmode wrap`;
     };
     const stopWatch = watch2(() => unrefElement(target), (el) => {
       cleanup2();
-      if (isSupported2.value && window2 && el) {
+      if (isSupported.value && window2 && el) {
         observer = new ResizeObserver(callback);
         observer.observe(el, observerOptions);
       }
@@ -52324,7 +51197,7 @@ summary tabindex target title type usemap value width wmode wrap`;
     };
     tryOnScopeDispose(stop2);
     return {
-      isSupported: isSupported2,
+      isSupported,
       stop: stop2
     };
   }
@@ -52414,7 +51287,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         const startInputRef = ref(null);
         const endInputRef = ref(null);
         const arrowRef = ref(null);
-        if (true) {
+        if (false) {
           legacyPropsWarning(props4);
         }
         const formatList = computed2(() => toArray2(getDefaultFormat(props4.format, props4.picker, props4.showTime, props4.use12Hours)));
@@ -52793,7 +51666,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         watch2([startStr, endStr], () => {
           setSelectedValue(mergedValue.value);
         });
-        if (true) {
+        if (false) {
           watchEffect(() => {
             const {
               value,
@@ -54103,7 +52976,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       start = generateConfig2.getYear(validRange[0]);
       end = generateConfig2.getYear(validRange[1]) + 1;
     }
-    const suffix = locale7 && locale7.year === "年" ? "年" : "";
+    const suffix = locale7 && locale7.year === "\u5E74" ? "\u5E74" : "";
     const options2 = [];
     for (let index3 = start; index3 < end; index3++) {
       options2.push({
@@ -56836,7 +55709,7 @@ summary tabindex target title type usemap value width wmode wrap`;
             e3.stopPropagation();
             onRemoveTab(e3);
           }
-        }, [(closeIcon === null || closeIcon === void 0 ? void 0 : closeIcon()) || ((_a2 = editable.removeIcon) === null || _a2 === void 0 ? void 0 : _a2.call(editable)) || "×"])]);
+        }, [(closeIcon === null || closeIcon === void 0 ? void 0 : closeIcon()) || ((_a2 = editable.removeIcon) === null || _a2 === void 0 ? void 0 : _a2.call(editable)) || "\xD7"])]);
         return renderWrapper ? renderWrapper(node2) : node2;
       };
     }
@@ -56853,7 +55726,7 @@ summary tabindex target title type usemap value width wmode wrap`;
     const offsetMap = ref(/* @__PURE__ */ new Map());
     watchEffect(() => {
       var _a2, _b;
-      const map2 = /* @__PURE__ */ new Map();
+      const map = /* @__PURE__ */ new Map();
       const tabsValue = tabs.value;
       const lastOffset = tabSizes.value.get((_a2 = tabsValue[0]) === null || _a2 === void 0 ? void 0 : _a2.key) || DEFAULT_SIZE;
       const rightOffset = lastOffset.left + lastOffset.width;
@@ -56865,11 +55738,11 @@ summary tabindex target title type usemap value width wmode wrap`;
         if (!data) {
           data = tabSizes.value.get((_b = tabsValue[i3 - 1]) === null || _b === void 0 ? void 0 : _b.key) || DEFAULT_SIZE;
         }
-        const entity = map2.get(key2) || _extends({}, data);
+        const entity = map.get(key2) || _extends({}, data);
         entity.right = rightOffset - entity.left - entity.width;
-        map2.set(key2, entity);
+        map.set(key2, entity);
       }
-      offsetMap.value = new Map(map2);
+      offsetMap.value = new Map(map);
     });
     return offsetMap;
   }
@@ -57127,7 +56000,7 @@ summary tabindex target title type usemap value width wmode wrap`;
                     e3.stopPropagation();
                     onRemoveTab(e3, tab.key);
                   }
-                }, [((_a3 = tab.closeIcon) === null || _a3 === void 0 ? void 0 : _a3.call(tab)) || ((_b = editable.removeIcon) === null || _b === void 0 ? void 0 : _b.call(editable)) || "×"])]
+                }, [((_a3 = tab.closeIcon) === null || _a3 === void 0 ? void 0 : _a3.call(tab)) || ((_b = editable.removeIcon) === null || _b === void 0 ? void 0 : _b.call(editable)) || "\xD7"])]
               });
             })]
           }),
@@ -63175,16 +62048,16 @@ summary tabindex target title type usemap value width wmode wrap`;
         settings = _extends({}, this.$props);
       }
       if (settings.centerMode) {
-        if (settings.slidesToScroll > 1 && true) {
+        if (settings.slidesToScroll > 1 && false) {
           console.warn(`slidesToScroll should be equal to 1 in centerMode, you are using ${settings.slidesToScroll}`);
         }
         settings.slidesToScroll = 1;
       }
       if (settings.fade) {
-        if (settings.slidesToShow > 1 && true) {
+        if (settings.slidesToShow > 1 && false) {
           console.warn(`slidesToShow should be equal to 1 when fade is true, you're using ${settings.slidesToShow}`);
         }
-        if (settings.slidesToScroll > 1 && true) {
+        if (settings.slidesToScroll > 1 && false) {
           console.warn(`slidesToScroll should be equal to 1 when fade is true, you're using ${settings.slidesToScroll}`);
         }
         settings.slidesToShow = 1;
@@ -63382,13 +62255,13 @@ summary tabindex target title type usemap value width wmode wrap`;
         ".slick-prev": {
           insetInlineStart: arrowOffset,
           "&::before": {
-            content: '"←"'
+            content: '"\u2190"'
           }
         },
         ".slick-next": {
           insetInlineEnd: arrowOffset,
           "&::before": {
-            content: '"→"'
+            content: '"\u2192"'
           }
         },
         // Dots
@@ -65233,7 +64106,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       }
       if (searchConfig.limit <= 0) {
         delete searchConfig.limit;
-        if (true) {
+        if (false) {
           warning(false, "'limit' of showSearch should be positive number or false.");
         }
       }
@@ -66327,7 +65200,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         } = info.values[0];
         onInternalSelect(valueCells);
       };
-      if (true) {
+      if (false) {
         watchEffect(() => {
           devWarning_default(!props4.onPopupVisibleChange, "Cascader", "`popupVisibleChange` is deprecated. Please use `dropdownVisibleChange` instead.");
           devWarning_default(props4.popupVisible === void 0, "Cascader", "`popupVisible` is deprecated. Please use `open` instead.");
@@ -66528,9 +65401,9 @@ summary tabindex target title type usemap value width wmode wrap`;
     ele.style[styleName] = value;
     return ele.style[styleName] !== origin;
   };
-  function isStyleSupport(styleName, styleValue2) {
-    if (!Array.isArray(styleName) && styleValue2 !== void 0) {
-      return isStyleValueSupport(styleName, styleValue2);
+  function isStyleSupport(styleName, styleValue) {
+    if (!Array.isArray(styleName) && styleValue !== void 0) {
+      return isStyleValueSupport(styleName, styleValue);
     }
     return isStyleNameSupport(styleName);
   }
@@ -66947,7 +65820,7 @@ summary tabindex target title type usemap value width wmode wrap`;
   var formatRegExp = /%[sdj%]/g;
   var warning4 = function warning5() {
   };
-  if (typeof process !== "undefined" && process.env && true && typeof window !== "undefined" && typeof document !== "undefined") {
+  if (typeof process !== "undefined" && process.env && false) {
     warning4 = function warning6(type4, errors) {
       if (typeof console !== "undefined" && console.warn && typeof ASYNC_VALIDATOR_NO_WARNING === "undefined") {
         if (errors.every(function(e3) {
@@ -67868,7 +66741,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         complete(results);
       }, source);
     };
-    _proto.getType = function getType2(rule) {
+    _proto.getType = function getType(rule) {
       if (rule.type === void 0 && rule.pattern instanceof RegExp) {
         rule.type = "pattern";
       }
@@ -70666,7 +69539,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         slots,
         emit: emit2
       } = _ref2;
-      if (true) {
+      if (false) {
         devWarning_default(!props4.dropdownClassName, "Cascader", "`dropdownClassName` is deprecated. Please use `popupClassName` instead.");
       }
       const formItemContext = useInjectFormItemContext();
@@ -70696,7 +69569,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       const [wrapSelectSSR, hashId] = style_default5(prefixCls);
       const [wrapCascaderSSR] = style_default27(cascaderPrefixCls);
       const isRtl = computed2(() => direction.value === "rtl");
-      if (true) {
+      if (false) {
         watchEffect(() => {
           devWarning_default(!props4.multiple || !props4.displayRender || !slots.displayRender, "Cascader", "`displayRender` not work on `multiple`. Please use `tagRender` instead.");
         });
@@ -73980,7 +72853,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       } = useConfigInject_default("tag", props4);
       const [wrapSSR, hashId] = style_default32(prefixCls);
       const visible = shallowRef(true);
-      if (true) {
+      if (false) {
         warning_default2(props4.visible === void 0, "Tag", '`visible` is deprecated, please use `<Tag v-show="visible" />` instead.');
       }
       watchEffect(() => {
@@ -74370,7 +73243,7 @@ summary tabindex target title type usemap value width wmode wrap`;
           const props4 = _props;
           const formItemContext = useInjectFormItemContext();
           const formItemInputContext = FormItemInputContext.useInject();
-          if (true) {
+          if (false) {
             devWarning_default(picker !== "quarter", displayName || "DatePicker", `DatePicker.${displayName} is legacy usage. Please use DatePicker[picker='${picker}'] directly.`);
             devWarning_default(!props4.dropdownClassName, displayName || "DatePicker", "`dropdownClassName` is deprecated. Please use `popupClassName` instead.");
             devWarning_default(!(props4.monthCellContentRender || slots.monthCellContentRender), displayName || "DatePicker", '`monthCellContentRender` is deprecated. Please use `monthCellRender"` instead.');
@@ -74619,7 +73492,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         const props4 = _props;
         const formItemContext = useInjectFormItemContext();
         const formItemInputContext = FormItemInputContext.useInject();
-        if (true) {
+        if (false) {
           devWarning_default(!props4.dropdownClassName, "RangePicker", "`dropdownClassName` is deprecated. Please use `popupClassName` instead.");
           devWarning_default(!attrs.getCalendarContainer, "DatePicker", '`getCalendarContainer` is deprecated. Please use `getPopupContainer"` instead.');
         }
@@ -76557,7 +75430,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         props4.getContainer === void 0 && (getPopupContainer === null || getPopupContainer === void 0 ? void 0 : getPopupContainer.value) ? () => getPopupContainer.value(document.body) : props4.getContainer
       ));
       devWarning_default(!props4.afterVisibleChange, "Drawer", "`afterVisibleChange` prop is deprecated, please use `@afterVisibleChange` event instead");
-      if (true) {
+      if (false) {
         [["visible", "open"], ["onUpdate:visible", "onUpdate:open"], ["onAfterVisibleChange", "onAfterOpenChange"]].forEach((_ref2) => {
           let [deprecatedName, newName] = _ref2;
           devWarning_default(!props4[deprecatedName], "Drawer", `\`${deprecatedName}\` is deprecated, please use \`${newName}\` instead.`);
@@ -77331,7 +76204,7 @@ summary tabindex target title type usemap value width wmode wrap`;
             })])]
           })
         });
-        if (true) {
+        if (false) {
           warning_default2(!(shape === "circle" && description), "FloatButton", "supported only when `shape` is `square`. Due to narrow space for text, short sentence is recommended.");
         }
         return wrapSSR(props4.href ? createVNode("a", _objectSpread2(_objectSpread2(_objectSpread2({
@@ -84562,17 +83435,17 @@ summary tabindex target title type usemap value width wmode wrap`;
   // node_modules/ant-design-vue/es/vc-pagination/locale/zh_CN.js
   var zh_CN_default = {
     // Options.jsx
-    items_per_page: "条/页",
-    jump_to: "跳至",
-    jump_to_confirm: "确定",
-    page: "页",
+    items_per_page: "\u6761/\u9875",
+    jump_to: "\u8DF3\u81F3",
+    jump_to_confirm: "\u786E\u5B9A",
+    page: "\u9875",
     // Pagination.jsx
-    prev_page: "上一页",
-    next_page: "下一页",
-    prev_5: "向前 5 页",
-    next_5: "向后 5 页",
-    prev_3: "向前 3 页",
-    next_3: "向后 3 页"
+    prev_page: "\u4E0A\u4E00\u9875",
+    next_page: "\u4E0B\u4E00\u9875",
+    prev_5: "\u5411\u524D 5 \u9875",
+    next_5: "\u5411\u540E 5 \u9875",
+    prev_3: "\u5411\u524D 3 \u9875",
+    next_3: "\u5411\u540E 3 \u9875"
   };
 
   // node_modules/ant-design-vue/es/vc-pagination/Pagination.js
@@ -85023,7 +83896,7 @@ summary tabindex target title type usemap value width wmode wrap`;
           "size": "3"
         }, null), createVNode("span", {
           "class": `${prefixCls}-slash`
-        }, [createTextVNode("／")]), allPages]), createVNode("li", {
+        }, [createTextVNode("\uFF0F")]), allPages]), createVNode("li", {
           "title": showTitle ? locale7.next_page : null,
           "onClick": this.next,
           "tabindex": hasNext ? 0 : null,
@@ -85871,7 +84744,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       const getIconsProps = (pre) => {
         const ellipsis = createVNode("span", {
           "class": `${pre}-item-ellipsis`
-        }, [createTextVNode("•••")]);
+        }, [createTextVNode("\u2022\u2022\u2022")]);
         const prevIcon = createVNode("button", {
           "class": `${pre}-item-link`,
           "type": "button",
@@ -87034,7 +85907,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         } = _ref2;
         triggerChange(value);
       };
-      const startMeasure2 = (measureText, measurePrefix, measureLocation) => {
+      const startMeasure = (measureText, measurePrefix, measureLocation) => {
         _extends(state, {
           measuring: true,
           measureText,
@@ -87107,7 +85980,7 @@ summary tabindex target title type usemap value width wmode wrap`;
           const matchOption = !!getOptions2(measureText).length;
           if (validateMeasure) {
             if (key2 === measurePrefix || key2 === "Shift" || measuring || measureText !== prevMeasureText && matchOption) {
-              startMeasure2(measureText, measurePrefix, measureIndex);
+              startMeasure(measureText, measurePrefix, measureIndex);
             }
           } else if (measuring) {
             stopMeasure();
@@ -87555,7 +86428,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         expose
       } = _ref;
       var _a2, _b, _c;
-      if (true) {
+      if (false) {
         devWarning_default(!flattenChildren(((_a2 = slots.default) === null || _a2 === void 0 ? void 0 : _a2.call(slots)) || []).length, "Mentions", "`Mentions.Option` is deprecated. Please use `options` instead.");
       }
       const {
@@ -88056,7 +86929,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         attrs
       } = _ref;
       const [locale7] = useLocaleReceiver("Modal");
-      if (true) {
+      if (false) {
         warning_default2(props4.visible === void 0, "Modal", `\`visible\` is deprecated, please use \`open\` instead.`);
       }
       return () => {
@@ -89800,7 +88673,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       } else if (typeof size === "number") {
         [width, height] = [size, size];
       } else {
-        if (true) {
+        if (false) {
           devWarning_default(false, "Progress", 'Type "circle" and "dashboard" do not accept array as `size`, please use number or preset size instead.');
         }
         width = (_b = (_a2 = size[0]) !== null && _a2 !== void 0 ? _a2 : size[1]) !== null && _b !== void 0 ? _b : 120;
@@ -89894,7 +88767,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       const sizeRef = computed2(() => getSize(mergedSize.value, "line", {
         strokeWidth: props4.strokeWidth
       }));
-      if (true) {
+      if (false) {
         devWarning_default("strokeWidth" in props4, "Progress", "`strokeWidth` is deprecated. Please use `size` instead.");
       }
       const percentStyle = computed2(() => {
@@ -90558,7 +89431,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         direction
       } = useConfigInject_default("progress", props4);
       const [wrapSSR, hashId] = style_default48(prefixCls);
-      if (true) {
+      if (false) {
         devWarning_default("successPercent" in props4, "Progress", "`successPercent` is deprecated. Please use `success.percent` instead.");
         devWarning_default("width" in props4, "Progress", "`width` is deprecated. Please use `size` instead.");
       }
@@ -94272,7 +93145,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         emit: emit2,
         expose
       } = _ref;
-      if (true) {
+      if (false) {
         [["tooltipVisible", "tooltipOpen"]].forEach((_ref2) => {
           let [deprecatedName, newName] = _ref2;
           devWarning_default(props4.tooltipVisible === void 0, "Slider", `\`${deprecatedName}\` is deprecated, please use \`${newName}\` instead.`);
@@ -96547,7 +95420,7 @@ summary tabindex target title type usemap value width wmode wrap`;
               column: column2.__originColumn__
             });
             if (isRenderCell(renderData)) {
-              if (true) {
+              if (false) {
                 warning(false, "`columns.customRender` return cell props is deprecated with perf issue, please use `customCell` instead.");
               }
               childNode = renderData.children;
@@ -97105,7 +95978,7 @@ summary tabindex target title type usemap value width wmode wrap`;
               height: 0,
               overflow: "hidden"
             }
-          }, [createTextVNode(" ")])])]
+          }, [createTextVNode("\xA0")])])]
         });
       };
     }
@@ -97472,28 +96345,6 @@ summary tabindex target title type usemap value width wmode wrap`;
       })];
     }, []);
   }
-  function warningFixed(flattenColumns) {
-    let allFixLeft = true;
-    for (let i3 = 0; i3 < flattenColumns.length; i3 += 1) {
-      const col = flattenColumns[i3];
-      if (allFixLeft && col.fixed !== "left") {
-        allFixLeft = false;
-      } else if (!allFixLeft && col.fixed === "left") {
-        warning(false, `Index ${i3 - 1} of \`columns\` missing \`fixed='left'\` prop.`);
-        break;
-      }
-    }
-    let allFixRight = true;
-    for (let i3 = flattenColumns.length - 1; i3 >= 0; i3 -= 1) {
-      const col = flattenColumns[i3];
-      if (allFixRight && col.fixed !== "right") {
-        allFixRight = false;
-      } else if (!allFixRight && col.fixed === "right") {
-        warning(false, `Index ${i3 + 1} of \`columns\` missing \`fixed='right'\` prop.`);
-        break;
-      }
-    }
-  }
   function revertForRtl(columns) {
     return columns.map((column2) => {
       const {
@@ -97531,7 +96382,7 @@ summary tabindex target title type usemap value width wmode wrap`;
     const withExpandColumns = computed2(() => {
       if (expandable.value) {
         let cloneColumns = baseColumns.value.slice();
-        if (expandIconColumnIndex.value >= 0) {
+        if (false) {
           warning(false, "`expandIconColumnIndex` is deprecated. Please use `Table.EXPAND_COLUMN` in `columns` instead.");
         }
         if (!cloneColumns.includes(EXPAND_COLUMN)) {
@@ -97540,7 +96391,7 @@ summary tabindex target title type usemap value width wmode wrap`;
             cloneColumns.splice(expandColIndex, 0, EXPAND_COLUMN);
           }
         }
-        if (cloneColumns.filter((c2) => c2 === EXPAND_COLUMN).length > 1) {
+        if (false) {
           warning(false, "There exist more than one `EXPAND_COLUMN` in `columns`.");
         }
         const expandColumnIndex = cloneColumns.indexOf(EXPAND_COLUMN);
@@ -97593,7 +96444,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         };
         return cloneColumns.map((col) => col === EXPAND_COLUMN ? expandColumn : col);
       }
-      if (baseColumns.value.includes(EXPAND_COLUMN)) {
+      if (false) {
         warning(false, "`expandable` is not config but there exist `EXPAND_COLUMN` in `columns`.");
       }
       return baseColumns.value.filter((col) => col !== EXPAND_COLUMN);
@@ -97616,7 +96467,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       }
       return flatColumns(mergedColumns.value);
     });
-    if (true) {
+    if (false) {
       watchEffect(() => {
         setTimeout(() => {
           warningFixed(flattenColumns.value);
@@ -98286,7 +97137,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         }
         return (record) => {
           const key2 = record && record[rowKey];
-          if (true) {
+          if (false) {
             warning(key2 !== void 0, "Each record in table should have a unique `key` prop, or set `rowKey` to an unique primary key.");
           }
           return key2;
@@ -98329,9 +97180,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         emit2("update:expandedRowKeys", newExpandedKeys);
         emit2("expandedRowsChange", newExpandedKeys);
       };
-      if (props4.expandedRowRender && mergedData.value.some((record) => {
-        return Array.isArray(record === null || record === void 0 ? void 0 : record[mergedChildrenColumnName.value]);
-      })) {
+      if (false) {
         warning(false, "`expandedRowRender` should not use with nested Table");
       }
       const componentWidth = ref(0);
@@ -98639,7 +97488,7 @@ summary tabindex target title type usemap value width wmode wrap`;
           fixHeader: fixHeader.value,
           scroll
         };
-        if (typeof customizeScrollBody === "function" && hasData.value && !fixHeader.value) {
+        if (false) {
           warning(false, "`components.body` with render props is only work on `scroll.y`.");
         }
         if (fixHeader.value || isSticky) {
@@ -98933,18 +97782,18 @@ summary tabindex target title type usemap value width wmode wrap`;
     }).keyEntities);
     const flattedData = computed2(() => flattenData(configRef.childrenColumnName.value, configRef.pageData.value));
     const checkboxPropsMap = computed2(() => {
-      const map2 = /* @__PURE__ */ new Map();
+      const map = /* @__PURE__ */ new Map();
       const getRowKey = configRef.getRowKey.value;
       const getCheckboxProps = mergedRowSelection.value.getCheckboxProps;
       flattedData.value.forEach((record, index3) => {
         const key2 = getRowKey(record, index3);
         const checkboxProps3 = (getCheckboxProps ? getCheckboxProps(record) : null) || {};
-        map2.set(key2, checkboxProps3);
-        if ("checked" in checkboxProps3 || "defaultChecked" in checkboxProps3) {
+        map.set(key2, checkboxProps3);
+        if (false) {
           devWarning_default(false, "Table", "Do not set `checked` or `defaultChecked` in `getCheckboxProps`. Please use `selectedRowKeys` instead.");
         }
       });
-      return map2;
+      return map;
     });
     const {
       maxLevel,
@@ -99106,7 +97955,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         getPopupContainer
       } = configRef;
       if (!rowSelectionRef.value) {
-        if (true) {
+        if (false) {
           devWarning_default(!columns.includes(SELECTION_COLUMN), "Table", "`rowSelection` is not config but `SELECTION_COLUMN` exists in the `columns`.");
         }
         return columns.filter((col) => col !== SELECTION_COLUMN);
@@ -99352,7 +98201,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         }
       }
       const selectionColumnIndex = cloneColumns.indexOf(SELECTION_COLUMN);
-      if (cloneColumns.filter((col) => col === SELECTION_COLUMN).length > 1) {
+      if (false) {
         devWarning_default(false, "Table", "Multiple `SELECTION_COLUMN` exist in `columns`.");
       }
       cloneColumns = cloneColumns.filter((column2, index3) => column2 !== SELECTION_COLUMN || index3 === selectionColumnIndex);
@@ -102783,7 +101632,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       });
       const filterDropdownOpen = computed2(() => props4.column.filterDropdownOpen || props4.column.filterDropdownVisible);
       const onFilterDropdownOpenChange = computed2(() => props4.column.onFilterDropdownOpenChange || props4.column.onFilterDropdownVisibleChange);
-      if (true) {
+      if (false) {
         [["filterDropdownVisible", "filterDropdownOpen", props4.column.filterDropdownVisible], ["onFilterDropdownVisibleChange", "onFilterDropdownOpenChange", props4.column.onFilterDropdownVisibleChange]].forEach((_ref4) => {
           let [deprecatedName, newName, prop] = _ref4;
           devWarning_default(prop === void 0 || prop === null, "Table", `\`${deprecatedName}\` is deprecated. Please use \`${newName}\` instead.`);
@@ -105498,24 +104347,24 @@ summary tabindex target title type usemap value width wmode wrap`;
 
   // node_modules/ant-design-vue/es/_util/transKeys.js
   var groupKeysMap = (keys2) => {
-    const map2 = /* @__PURE__ */ new Map();
+    const map = /* @__PURE__ */ new Map();
     keys2.forEach((key2, index3) => {
-      map2.set(key2, index3);
+      map.set(key2, index3);
     });
-    return map2;
+    return map;
   };
   var groupDisabledKeysMap = (dataSource) => {
-    const map2 = /* @__PURE__ */ new Map();
+    const map = /* @__PURE__ */ new Map();
     dataSource.forEach((_ref, index3) => {
       let {
         disabled,
         key: key2
       } = _ref;
       if (disabled) {
-        map2.set(key2, index3);
+        map.set(key2, index3);
       }
     });
-    return map2;
+    return map;
   };
 
   // node_modules/ant-design-vue/es/transfer/list.js
@@ -107114,7 +105963,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         }),
         processEntity: (entity, wrapper) => {
           const val = entity.node[fieldNamesValue.value];
-          if (true) {
+          if (false) {
             const key2 = entity.node.key;
             warning(!isNil(val), "TreeNode `value` is invalidate: undefined");
             warning(!wrapper.valueEntities.has(val), `Same \`value\` exist in the tree: ${val}`);
@@ -107207,31 +106056,6 @@ summary tabindex target title type usemap value width wmode wrap`;
       return dig(treeData.value);
     });
   };
-
-  // node_modules/ant-design-vue/es/vc-tree-select/utils/warningPropsUtil.js
-  function warningProps2(props4) {
-    const {
-      searchPlaceholder,
-      treeCheckStrictly,
-      treeCheckable,
-      labelInValue,
-      value,
-      multiple
-    } = props4;
-    warning(!searchPlaceholder, "`searchPlaceholder` has been removed, please use `placeholder` instead");
-    if (treeCheckStrictly && labelInValue === false) {
-      warning(false, "`treeCheckStrictly` will force set `labelInValue` to `true`.");
-    }
-    if (labelInValue || treeCheckStrictly) {
-      warning(toArray8(value).every((val) => val && typeof val === "object" && "value" in val), "Invalid prop `value` supplied to `TreeSelect`. You should use { label: string, value: string | number } or [{ label: string, value: string | number }] instead.");
-    }
-    if (treeCheckStrictly || multiple || treeCheckable) {
-      warning(!value || Array.isArray(value), "`value` should be an array when `TreeSelect` is checkable or multiple.");
-    } else {
-      warning(!Array.isArray(value), "`value` should not be array when `TreeSelect` is single mode.");
-    }
-  }
-  var warningPropsUtil_default2 = warningProps2;
 
   // node_modules/ant-design-vue/es/vc-tree-select/TreeSelect.js
   function treeSelectProps() {
@@ -107400,9 +106224,9 @@ summary tabindex target title type usemap value width wmode wrap`;
       const mergedCheckable = computed2(() => props4.treeCheckable || props4.treeCheckStrictly);
       const mergedLabelInValue = computed2(() => props4.treeCheckStrictly || props4.labelInValue);
       const mergedMultiple = computed2(() => mergedCheckable.value || props4.multiple);
-      if (true) {
+      if (false) {
         watchEffect(() => {
-          warningPropsUtil_default2(props4);
+          warningPropsUtil_default(props4);
         });
       }
       const mergedFieldNames = computed2(() => fillFieldNames4(props4.fieldNames));
@@ -108697,9 +107521,9 @@ summary tabindex target title type usemap value width wmode wrap`;
     };
   };
   var getTitleStyles = (token2) => {
-    const headings2 = [1, 2, 3, 4, 5];
+    const headings = [1, 2, 3, 4, 5];
     const styles2 = {};
-    headings2.forEach((headingLevel) => {
+    headings.forEach((headingLevel) => {
       styles2[`
       h${headingLevel}&,
       div&-h${headingLevel},
@@ -109362,7 +108186,7 @@ summary tabindex target title type usemap value width wmode wrap`;
   };
   var defaultMessage = "Copy to clipboard: #{key}, Enter";
   function format2(message) {
-    const copyKey = (/mac os x/i.test(navigator.userAgent) ? "⌘" : "Ctrl") + "+C";
+    const copyKey = (/mac os x/i.test(navigator.userAgent) ? "\u2318" : "Ctrl") + "+C";
     return message.replace(/#{\s*key\s*}/g, copyKey);
   }
   function copy(text2, options2) {
@@ -112480,7 +111304,7 @@ summary tabindex target title type usemap value width wmode wrap`;
       window: window2 = defaultWindow
     } = options2, mutationOptions = __rest79(options2, ["window"]);
     let observer;
-    const isSupported2 = useSupported(() => window2 && "MutationObserver" in window2);
+    const isSupported = useSupported(() => window2 && "MutationObserver" in window2);
     const cleanup2 = () => {
       if (observer) {
         observer.disconnect();
@@ -112489,7 +111313,7 @@ summary tabindex target title type usemap value width wmode wrap`;
     };
     const stopWatch = watch2(() => unrefElement(target), (el) => {
       cleanup2();
-      if (isSupported2.value && window2 && el) {
+      if (isSupported.value && window2 && el) {
         observer = new MutationObserver(callback);
         observer.observe(el, mutationOptions);
       }
@@ -112502,7 +111326,7 @@ summary tabindex target title type usemap value width wmode wrap`;
     };
     tryOnScopeDispose(stop2);
     return {
-      isSupported: isSupported2,
+      isSupported,
       stop: stop2
     };
   }
@@ -113360,12 +112184,12 @@ summary tabindex target title type usemap value width wmode wrap`;
           appendBits(seg.numChars, seg.mode.numCharCountBits(version3), bb);
           for (const b2 of seg.getData()) bb.push(b2);
         }
-        assert4(bb.length == dataUsedBits);
+        assert3(bb.length == dataUsedBits);
         const dataCapacityBits = QrCode.getNumDataCodewords(version3, ecl) * 8;
-        assert4(bb.length <= dataCapacityBits);
+        assert3(bb.length <= dataCapacityBits);
         appendBits(0, Math.min(4, dataCapacityBits - bb.length), bb);
         appendBits(0, (8 - bb.length % 8) % 8, bb);
-        assert4(bb.length % 8 == 0);
+        assert3(bb.length % 8 == 0);
         for (let padByte = 236; bb.length < dataCapacityBits; padByte ^= 236 ^ 17) appendBits(padByte, 8, bb);
         const dataCodewords = [];
         while (dataCodewords.length * 8 < bb.length) dataCodewords.push(0);
@@ -113407,7 +112231,7 @@ summary tabindex target title type usemap value width wmode wrap`;
             this.applyMask(i3);
           }
         }
-        assert4(0 <= msk && msk <= 7);
+        assert3(0 <= msk && msk <= 7);
         this.mask = msk;
         this.applyMask(msk);
         this.drawFormatBits(msk);
@@ -113451,7 +112275,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         let rem = data;
         for (let i3 = 0; i3 < 10; i3++) rem = rem << 1 ^ (rem >>> 9) * 1335;
         const bits = (data << 10 | rem) ^ 21522;
-        assert4(bits >>> 15 == 0);
+        assert3(bits >>> 15 == 0);
         for (let i3 = 0; i3 <= 5; i3++) this.setFunctionModule(8, i3, getBit(bits, i3));
         this.setFunctionModule(8, 7, getBit(bits, 6));
         this.setFunctionModule(8, 8, getBit(bits, 7));
@@ -113468,7 +112292,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         let rem = this.version;
         for (let i3 = 0; i3 < 12; i3++) rem = rem << 1 ^ (rem >>> 11) * 7973;
         const bits = this.version << 12 | rem;
-        assert4(bits >>> 18 == 0);
+        assert3(bits >>> 18 == 0);
         for (let i3 = 0; i3 < 18; i3++) {
           const color = getBit(bits, i3);
           const a2 = this.size - 11 + i3 % 3;
@@ -113529,7 +112353,7 @@ summary tabindex target title type usemap value width wmode wrap`;
             if (i3 != shortBlockLen - blockEccLen || j2 >= numShortBlocks) result.push(block2[i3]);
           });
         }
-        assert4(result.length == rawCodewords);
+        assert3(result.length == rawCodewords);
         return result;
       }
       // Draws the given sequence of 8-bit codewords (data and error correction) onto the entire
@@ -113551,7 +112375,7 @@ summary tabindex target title type usemap value width wmode wrap`;
             }
           }
         }
-        assert4(i3 == data.length * 8);
+        assert3(i3 == data.length * 8);
       }
       // XORs the codeword modules in this QR Code with the given mask pattern.
       // The function modules must be marked and the codeword bits must be drawn
@@ -113645,9 +112469,9 @@ summary tabindex target title type usemap value width wmode wrap`;
         for (const row of this.modules) dark = row.reduce((sum, color) => sum + (color ? 1 : 0), dark);
         const total = this.size * this.size;
         const k2 = Math.ceil(Math.abs(dark * 20 - total * 10) / total) - 1;
-        assert4(0 <= k2 && k2 <= 9);
+        assert3(0 <= k2 && k2 <= 9);
         result += k2 * QrCode.PENALTY_N4;
-        assert4(0 <= result && result <= 2568888);
+        assert3(0 <= result && result <= 2568888);
         return result;
       }
       /*-- Private helper functions --*/
@@ -113675,7 +112499,7 @@ summary tabindex target title type usemap value width wmode wrap`;
           result -= (25 * numAlign - 10) * numAlign - 55;
           if (ver >= 7) result -= 36;
         }
-        assert4(208 <= result && result <= 29648);
+        assert3(208 <= result && result <= 29648);
         return result;
       }
       // Returns the number of 8-bit data (i.e. not error correction) codewords contained in any
@@ -113720,14 +112544,14 @@ summary tabindex target title type usemap value width wmode wrap`;
           z2 = z2 << 1 ^ (z2 >>> 7) * 285;
           z2 ^= (y2 >>> i3 & 1) * x2;
         }
-        assert4(z2 >>> 8 == 0);
+        assert3(z2 >>> 8 == 0);
         return z2;
       }
       // Can only be called immediately after a light run is added, and
       // returns either 0, 1, or 2. A helper function for getPenaltyScore().
       finderPenaltyCountPatterns(runHistory) {
         const n3 = runHistory[1];
-        assert4(n3 <= this.size * 3);
+        assert3(n3 <= this.size * 3);
         const core = n3 > 0 && runHistory[2] == n3 && runHistory[3] == n3 * 3 && runHistory[4] == n3 && runHistory[5] == n3;
         return (core && runHistory[0] >= n3 * 4 && runHistory[6] >= n3 ? 1 : 0) + (core && runHistory[6] >= n3 * 4 && runHistory[0] >= n3 ? 1 : 0);
       }
@@ -113780,7 +112604,7 @@ summary tabindex target title type usemap value width wmode wrap`;
     function getBit(x2, i3) {
       return (x2 >>> i3 & 1) != 0;
     }
-    function assert4(cond) {
+    function assert3(cond) {
       if (!cond) throw new Error("Assertion error");
     }
     class QrSegment {
@@ -114235,7 +113059,7 @@ summary tabindex target title type usemap value width wmode wrap`;
         attrs,
         expose
       } = _ref;
-      if (true) {
+      if (false) {
         warning_default2(!(props4.icon && props4.errorLevel === "L"), "QRCode", "ErrorLevel `L` is not recommended to be used with `icon`, for scanning result would be affected by low level.");
       }
       const [locale7] = useLocaleReceiver("QRCode");
@@ -114454,7 +113278,7 @@ summary tabindex target title type usemap value width wmode wrap`;
           "class": `${prefixCls}-close`
         }, [createVNode("span", {
           "class": `${prefixCls}-close-x`
-        }, [createTextVNode("×")])]), createVNode("div", {
+        }, [createTextVNode("\xD7")])]), createVNode("div", {
           "class": `${prefixCls}-header`
         }, [createVNode("div", {
           "class": `${prefixCls}-title`
@@ -115724,65 +114548,65 @@ summary tabindex target title type usemap value width wmode wrap`;
   // node_modules/ant-design-vue/es/vc-picker/locale/zh_CN.js
   var locale4 = {
     locale: "zh_CN",
-    today: "今天",
-    now: "此刻",
-    backToToday: "返回今天",
-    ok: "确定",
-    timeSelect: "选择时间",
-    dateSelect: "选择日期",
-    weekSelect: "选择周",
-    clear: "清除",
-    month: "月",
-    year: "年",
-    previousMonth: "上个月 (翻页上键)",
-    nextMonth: "下个月 (翻页下键)",
-    monthSelect: "选择月份",
-    yearSelect: "选择年份",
-    decadeSelect: "选择年代",
-    yearFormat: "YYYY年",
-    dayFormat: "D日",
-    dateFormat: "YYYY年M月D日",
-    dateTimeFormat: "YYYY年M月D日 HH时mm分ss秒",
-    previousYear: "上一年 (Control键加左方向键)",
-    nextYear: "下一年 (Control键加右方向键)",
-    previousDecade: "上一年代",
-    nextDecade: "下一年代",
-    previousCentury: "上一世纪",
-    nextCentury: "下一世纪"
+    today: "\u4ECA\u5929",
+    now: "\u6B64\u523B",
+    backToToday: "\u8FD4\u56DE\u4ECA\u5929",
+    ok: "\u786E\u5B9A",
+    timeSelect: "\u9009\u62E9\u65F6\u95F4",
+    dateSelect: "\u9009\u62E9\u65E5\u671F",
+    weekSelect: "\u9009\u62E9\u5468",
+    clear: "\u6E05\u9664",
+    month: "\u6708",
+    year: "\u5E74",
+    previousMonth: "\u4E0A\u4E2A\u6708 (\u7FFB\u9875\u4E0A\u952E)",
+    nextMonth: "\u4E0B\u4E2A\u6708 (\u7FFB\u9875\u4E0B\u952E)",
+    monthSelect: "\u9009\u62E9\u6708\u4EFD",
+    yearSelect: "\u9009\u62E9\u5E74\u4EFD",
+    decadeSelect: "\u9009\u62E9\u5E74\u4EE3",
+    yearFormat: "YYYY\u5E74",
+    dayFormat: "D\u65E5",
+    dateFormat: "YYYY\u5E74M\u6708D\u65E5",
+    dateTimeFormat: "YYYY\u5E74M\u6708D\u65E5 HH\u65F6mm\u5206ss\u79D2",
+    previousYear: "\u4E0A\u4E00\u5E74 (Control\u952E\u52A0\u5DE6\u65B9\u5411\u952E)",
+    nextYear: "\u4E0B\u4E00\u5E74 (Control\u952E\u52A0\u53F3\u65B9\u5411\u952E)",
+    previousDecade: "\u4E0A\u4E00\u5E74\u4EE3",
+    nextDecade: "\u4E0B\u4E00\u5E74\u4EE3",
+    previousCentury: "\u4E0A\u4E00\u4E16\u7EAA",
+    nextCentury: "\u4E0B\u4E00\u4E16\u7EAA"
   };
   var zh_CN_default2 = locale4;
 
   // node_modules/ant-design-vue/es/time-picker/locale/zh_CN.js
   var locale5 = {
-    placeholder: "请选择时间",
-    rangePlaceholder: ["开始时间", "结束时间"]
+    placeholder: "\u8BF7\u9009\u62E9\u65F6\u95F4",
+    rangePlaceholder: ["\u5F00\u59CB\u65F6\u95F4", "\u7ED3\u675F\u65F6\u95F4"]
   };
   var zh_CN_default3 = locale5;
 
   // node_modules/ant-design-vue/es/date-picker/locale/zh_CN.js
   var locale6 = {
     lang: _extends({
-      placeholder: "请选择日期",
-      yearPlaceholder: "请选择年份",
-      quarterPlaceholder: "请选择季度",
-      monthPlaceholder: "请选择月份",
-      weekPlaceholder: "请选择周",
-      rangePlaceholder: ["开始日期", "结束日期"],
-      rangeYearPlaceholder: ["开始年份", "结束年份"],
-      rangeMonthPlaceholder: ["开始月份", "结束月份"],
-      rangeQuarterPlaceholder: ["开始季度", "结束季度"],
-      rangeWeekPlaceholder: ["开始周", "结束周"]
+      placeholder: "\u8BF7\u9009\u62E9\u65E5\u671F",
+      yearPlaceholder: "\u8BF7\u9009\u62E9\u5E74\u4EFD",
+      quarterPlaceholder: "\u8BF7\u9009\u62E9\u5B63\u5EA6",
+      monthPlaceholder: "\u8BF7\u9009\u62E9\u6708\u4EFD",
+      weekPlaceholder: "\u8BF7\u9009\u62E9\u5468",
+      rangePlaceholder: ["\u5F00\u59CB\u65E5\u671F", "\u7ED3\u675F\u65E5\u671F"],
+      rangeYearPlaceholder: ["\u5F00\u59CB\u5E74\u4EFD", "\u7ED3\u675F\u5E74\u4EFD"],
+      rangeMonthPlaceholder: ["\u5F00\u59CB\u6708\u4EFD", "\u7ED3\u675F\u6708\u4EFD"],
+      rangeQuarterPlaceholder: ["\u5F00\u59CB\u5B63\u5EA6", "\u7ED3\u675F\u5B63\u5EA6"],
+      rangeWeekPlaceholder: ["\u5F00\u59CB\u5468", "\u7ED3\u675F\u5468"]
     }, zh_CN_default2),
     timePickerLocale: _extends({}, zh_CN_default3)
   };
-  locale6.lang.ok = "确定";
+  locale6.lang.ok = "\u786E\u5B9A";
   var zh_CN_default4 = locale6;
 
   // node_modules/ant-design-vue/es/calendar/locale/zh_CN.js
   var zh_CN_default5 = zh_CN_default4;
 
   // node_modules/ant-design-vue/es/locale/zh_CN.js
-  var typeTemplate3 = "${label}不是一个有效的${type}";
+  var typeTemplate3 = "${label}\u4E0D\u662F\u4E00\u4E2A\u6709\u6548\u7684${type}";
   var localeValues2 = {
     locale: "zh-cn",
     Pagination: zh_CN_default,
@@ -115791,84 +114615,84 @@ summary tabindex target title type usemap value width wmode wrap`;
     Calendar: zh_CN_default5,
     // locales for all components
     global: {
-      placeholder: "请选择"
+      placeholder: "\u8BF7\u9009\u62E9"
     },
     Table: {
-      filterTitle: "筛选",
-      filterConfirm: "确定",
-      filterReset: "重置",
-      filterEmptyText: "无筛选项",
-      filterCheckall: "全选",
-      filterSearchPlaceholder: "在筛选项中搜索",
-      selectAll: "全选当页",
-      selectInvert: "反选当页",
-      selectNone: "清空所有",
-      selectionAll: "全选所有",
-      sortTitle: "排序",
-      expand: "展开行",
-      collapse: "关闭行",
-      triggerDesc: "点击降序",
-      triggerAsc: "点击升序",
-      cancelSort: "取消排序"
+      filterTitle: "\u7B5B\u9009",
+      filterConfirm: "\u786E\u5B9A",
+      filterReset: "\u91CD\u7F6E",
+      filterEmptyText: "\u65E0\u7B5B\u9009\u9879",
+      filterCheckall: "\u5168\u9009",
+      filterSearchPlaceholder: "\u5728\u7B5B\u9009\u9879\u4E2D\u641C\u7D22",
+      selectAll: "\u5168\u9009\u5F53\u9875",
+      selectInvert: "\u53CD\u9009\u5F53\u9875",
+      selectNone: "\u6E05\u7A7A\u6240\u6709",
+      selectionAll: "\u5168\u9009\u6240\u6709",
+      sortTitle: "\u6392\u5E8F",
+      expand: "\u5C55\u5F00\u884C",
+      collapse: "\u5173\u95ED\u884C",
+      triggerDesc: "\u70B9\u51FB\u964D\u5E8F",
+      triggerAsc: "\u70B9\u51FB\u5347\u5E8F",
+      cancelSort: "\u53D6\u6D88\u6392\u5E8F"
     },
     Tour: {
-      Next: "下一步",
-      Previous: "上一步",
-      Finish: "结束导览"
+      Next: "\u4E0B\u4E00\u6B65",
+      Previous: "\u4E0A\u4E00\u6B65",
+      Finish: "\u7ED3\u675F\u5BFC\u89C8"
     },
     Modal: {
-      okText: "确定",
-      cancelText: "取消",
-      justOkText: "知道了"
+      okText: "\u786E\u5B9A",
+      cancelText: "\u53D6\u6D88",
+      justOkText: "\u77E5\u9053\u4E86"
     },
     Popconfirm: {
-      cancelText: "取消",
-      okText: "确定"
+      cancelText: "\u53D6\u6D88",
+      okText: "\u786E\u5B9A"
     },
     Transfer: {
-      searchPlaceholder: "请输入搜索内容",
-      itemUnit: "项",
-      itemsUnit: "项",
-      remove: "删除",
-      selectCurrent: "全选当页",
-      removeCurrent: "删除当页",
-      selectAll: "全选所有",
-      removeAll: "删除全部",
-      selectInvert: "反选当页"
+      searchPlaceholder: "\u8BF7\u8F93\u5165\u641C\u7D22\u5185\u5BB9",
+      itemUnit: "\u9879",
+      itemsUnit: "\u9879",
+      remove: "\u5220\u9664",
+      selectCurrent: "\u5168\u9009\u5F53\u9875",
+      removeCurrent: "\u5220\u9664\u5F53\u9875",
+      selectAll: "\u5168\u9009\u6240\u6709",
+      removeAll: "\u5220\u9664\u5168\u90E8",
+      selectInvert: "\u53CD\u9009\u5F53\u9875"
     },
     Upload: {
-      uploading: "文件上传中",
-      removeFile: "删除文件",
-      uploadError: "上传错误",
-      previewFile: "预览文件",
-      downloadFile: "下载文件"
+      uploading: "\u6587\u4EF6\u4E0A\u4F20\u4E2D",
+      removeFile: "\u5220\u9664\u6587\u4EF6",
+      uploadError: "\u4E0A\u4F20\u9519\u8BEF",
+      previewFile: "\u9884\u89C8\u6587\u4EF6",
+      downloadFile: "\u4E0B\u8F7D\u6587\u4EF6"
     },
     Empty: {
-      description: "暂无数据"
+      description: "\u6682\u65E0\u6570\u636E"
     },
     Icon: {
-      icon: "图标"
+      icon: "\u56FE\u6807"
     },
     Text: {
-      edit: "编辑",
-      copy: "复制",
-      copied: "复制成功",
-      expand: "展开"
+      edit: "\u7F16\u8F91",
+      copy: "\u590D\u5236",
+      copied: "\u590D\u5236\u6210\u529F",
+      expand: "\u5C55\u5F00"
     },
     PageHeader: {
-      back: "返回"
+      back: "\u8FD4\u56DE"
     },
     Form: {
-      optional: "（可选）",
+      optional: "\uFF08\u53EF\u9009\uFF09",
       defaultValidateMessages: {
-        default: "字段验证错误${label}",
-        required: "请输入${label}",
-        enum: "${label}必须是其中一个[${enum}]",
-        whitespace: "${label}不能为空字符",
+        default: "\u5B57\u6BB5\u9A8C\u8BC1\u9519\u8BEF${label}",
+        required: "\u8BF7\u8F93\u5165${label}",
+        enum: "${label}\u5FC5\u987B\u662F\u5176\u4E2D\u4E00\u4E2A[${enum}]",
+        whitespace: "${label}\u4E0D\u80FD\u4E3A\u7A7A\u5B57\u7B26",
         date: {
-          format: "${label}日期格式无效",
-          parse: "${label}不能转换为日期",
-          invalid: "${label}是一个无效日期"
+          format: "${label}\u65E5\u671F\u683C\u5F0F\u65E0\u6548",
+          parse: "${label}\u4E0D\u80FD\u8F6C\u6362\u4E3A\u65E5\u671F",
+          invalid: "${label}\u662F\u4E00\u4E2A\u65E0\u6548\u65E5\u671F"
         },
         types: {
           string: typeTemplate3,
@@ -115886,35 +114710,35 @@ summary tabindex target title type usemap value width wmode wrap`;
           hex: typeTemplate3
         },
         string: {
-          len: "${label}须为${len}个字符",
-          min: "${label}最少${min}个字符",
-          max: "${label}最多${max}个字符",
-          range: "${label}须在${min}-${max}字符之间"
+          len: "${label}\u987B\u4E3A${len}\u4E2A\u5B57\u7B26",
+          min: "${label}\u6700\u5C11${min}\u4E2A\u5B57\u7B26",
+          max: "${label}\u6700\u591A${max}\u4E2A\u5B57\u7B26",
+          range: "${label}\u987B\u5728${min}-${max}\u5B57\u7B26\u4E4B\u95F4"
         },
         number: {
-          len: "${label}必须等于${len}",
-          min: "${label}最小值为${min}",
-          max: "${label}最大值为${max}",
-          range: "${label}须在${min}-${max}之间"
+          len: "${label}\u5FC5\u987B\u7B49\u4E8E${len}",
+          min: "${label}\u6700\u5C0F\u503C\u4E3A${min}",
+          max: "${label}\u6700\u5927\u503C\u4E3A${max}",
+          range: "${label}\u987B\u5728${min}-${max}\u4E4B\u95F4"
         },
         array: {
-          len: "须为${len}个${label}",
-          min: "最少${min}个${label}",
-          max: "最多${max}个${label}",
-          range: "${label}数量须在${min}-${max}之间"
+          len: "\u987B\u4E3A${len}\u4E2A${label}",
+          min: "\u6700\u5C11${min}\u4E2A${label}",
+          max: "\u6700\u591A${max}\u4E2A${label}",
+          range: "${label}\u6570\u91CF\u987B\u5728${min}-${max}\u4E4B\u95F4"
         },
         pattern: {
-          mismatch: "${label}与模式不匹配${pattern}"
+          mismatch: "${label}\u4E0E\u6A21\u5F0F\u4E0D\u5339\u914D${pattern}"
         }
       }
     },
     Image: {
-      preview: "预览"
+      preview: "\u9884\u89C8"
     },
     QRCode: {
-      expired: "二维码已过期",
-      refresh: "点击刷新",
-      scanned: "已扫描"
+      expired: "\u4E8C\u7EF4\u7801\u5DF2\u8FC7\u671F",
+      refresh: "\u70B9\u51FB\u5237\u65B0",
+      scanned: "\u5DF2\u626B\u63CF"
     }
   };
   var zh_CN_default6 = localeValues2;
@@ -118128,16 +116952,16 @@ ${text2}</tr>
         } else {
           error += " at position " + (start + 1) + ": ";
         }
-        var underlined = input.slice(start, end).replace(/[^]/g, "$&̲");
+        var underlined = input.slice(start, end).replace(/[^]/g, "$&\u0332");
         var left;
         if (start > 15) {
-          left = "…" + input.slice(start - 15, start);
+          left = "\u2026" + input.slice(start - 15, start);
         } else {
           left = input.slice(0, start);
         }
         var right;
         if (end + 15 < input.length) {
-          right = input.slice(end, end + 15) + "…";
+          right = input.slice(end, end + 15) + "\u2026";
         } else {
           right = input.slice(end);
         }
@@ -118199,7 +117023,7 @@ ${text2}</tr>
     var baseElem = getBaseElem(group);
     return baseElem.type === "mathord" || baseElem.type === "textord" || baseElem.type === "atom";
   };
-  var assert2 = function assert3(value) {
+  var assert = function assert2(value) {
     if (!value) {
       throw new Error("Expected non-null, but got " + String(value));
     }
@@ -118636,23 +117460,23 @@ ${text2}</tr>
   };
   var innerPath = function innerPath2(name, height) {
     switch (name) {
-      case "⎜":
+      case "\u239C":
         return "M291 0 H417 V" + height + " H291z M291 0 H417 V" + height + " H291z";
-      case "∣":
+      case "\u2223":
         return "M145 0 H188 V" + height + " H145z M145 0 H188 V" + height + " H145z";
-      case "∥":
+      case "\u2225":
         return "M145 0 H188 V" + height + " H145z M145 0 H188 V" + height + " H145z" + ("M367 0 H410 V" + height + " H367z M367 0 H410 V" + height + " H367z");
-      case "⎟":
+      case "\u239F":
         return "M457 0 H583 V" + height + " H457z M457 0 H583 V" + height + " H457z";
-      case "⎢":
+      case "\u23A2":
         return "M319 0 H403 V" + height + " H319z M319 0 H403 V" + height + " H319z";
-      case "⎥":
+      case "\u23A5":
         return "M263 0 H347 V" + height + " H263z M263 0 H347 V" + height + " H263z";
-      case "⎪":
+      case "\u23AA":
         return "M384 0 H504 V" + height + " H384z M384 0 H504 V" + height + " H384z";
-      case "⏐":
+      case "\u23D0":
         return "M312 0 H355 V" + height + " H312z M312 0 H355 V" + height + " H312z";
-      case "‖":
+      case "\u2016":
         return "M257 0 H300 V" + height + " H257z M257 0 H300 V" + height + " H257z" + ("M478 0 H521 V" + height + " H478z M478 0 H521 V" + height + " H478z");
       default:
         return "";
@@ -120967,77 +119791,77 @@ ${text2}</tr>
   };
   var extraCharacterMap = {
     // Latin-1
-    "Å": "A",
-    "Ð": "D",
-    "Þ": "o",
-    "å": "a",
-    "ð": "d",
-    "þ": "o",
+    "\xC5": "A",
+    "\xD0": "D",
+    "\xDE": "o",
+    "\xE5": "a",
+    "\xF0": "d",
+    "\xFE": "o",
     // Cyrillic
-    "А": "A",
-    "Б": "B",
-    "В": "B",
-    "Г": "F",
-    "Д": "A",
-    "Е": "E",
-    "Ж": "K",
-    "З": "3",
-    "И": "N",
-    "Й": "N",
-    "К": "K",
-    "Л": "N",
-    "М": "M",
-    "Н": "H",
-    "О": "O",
-    "П": "N",
-    "Р": "P",
-    "С": "C",
-    "Т": "T",
-    "У": "y",
-    "Ф": "O",
-    "Х": "X",
-    "Ц": "U",
-    "Ч": "h",
-    "Ш": "W",
-    "Щ": "W",
-    "Ъ": "B",
-    "Ы": "X",
-    "Ь": "B",
-    "Э": "3",
-    "Ю": "X",
-    "Я": "R",
-    "а": "a",
-    "б": "b",
-    "в": "a",
-    "г": "r",
-    "д": "y",
-    "е": "e",
-    "ж": "m",
-    "з": "e",
-    "и": "n",
-    "й": "n",
-    "к": "n",
-    "л": "n",
-    "м": "m",
-    "н": "n",
-    "о": "o",
-    "п": "n",
-    "р": "p",
-    "с": "c",
-    "т": "o",
-    "у": "y",
-    "ф": "b",
-    "х": "x",
-    "ц": "n",
-    "ч": "n",
-    "ш": "w",
-    "щ": "w",
-    "ъ": "a",
-    "ы": "m",
-    "ь": "a",
-    "э": "e",
-    "ю": "m",
-    "я": "r"
+    "\u0410": "A",
+    "\u0411": "B",
+    "\u0412": "B",
+    "\u0413": "F",
+    "\u0414": "A",
+    "\u0415": "E",
+    "\u0416": "K",
+    "\u0417": "3",
+    "\u0418": "N",
+    "\u0419": "N",
+    "\u041A": "K",
+    "\u041B": "N",
+    "\u041C": "M",
+    "\u041D": "H",
+    "\u041E": "O",
+    "\u041F": "N",
+    "\u0420": "P",
+    "\u0421": "C",
+    "\u0422": "T",
+    "\u0423": "y",
+    "\u0424": "O",
+    "\u0425": "X",
+    "\u0426": "U",
+    "\u0427": "h",
+    "\u0428": "W",
+    "\u0429": "W",
+    "\u042A": "B",
+    "\u042B": "X",
+    "\u042C": "B",
+    "\u042D": "3",
+    "\u042E": "X",
+    "\u042F": "R",
+    "\u0430": "a",
+    "\u0431": "b",
+    "\u0432": "a",
+    "\u0433": "r",
+    "\u0434": "y",
+    "\u0435": "e",
+    "\u0436": "m",
+    "\u0437": "e",
+    "\u0438": "n",
+    "\u0439": "n",
+    "\u043A": "n",
+    "\u043B": "n",
+    "\u043C": "m",
+    "\u043D": "n",
+    "\u043E": "o",
+    "\u043F": "n",
+    "\u0440": "p",
+    "\u0441": "c",
+    "\u0442": "o",
+    "\u0443": "y",
+    "\u0444": "b",
+    "\u0445": "x",
+    "\u0446": "n",
+    "\u0447": "n",
+    "\u0448": "w",
+    "\u0449": "w",
+    "\u044A": "a",
+    "\u044B": "m",
+    "\u044C": "a",
+    "\u044D": "e",
+    "\u044E": "m",
+    "\u044F": "r"
   };
   function setFontMetrics(fontName, metrics) {
     fontMetricsData[fontName] = metrics;
@@ -121603,11 +120427,11 @@ ${text2}</tr>
     }
   };
   var iCombinations = {
-    "î": "ı̂",
-    "ï": "ı̈",
-    "í": "ı́",
+    "\xEE": "\u0131\u0302",
+    "\xEF": "\u0131\u0308",
+    "\xED": "\u0131\u0301",
     // 'ī': '\u0131\u0304', // enable when we add Extended Latin
-    "ì": "ı̀"
+    "\xEC": "\u0131\u0300"
   };
   var SymbolNode = class {
     constructor(text2, height, depth, italic, skew, width, classes, style) {
@@ -121848,328 +120672,328 @@ ${text2}</tr>
   var rel = "rel";
   var spacing = "spacing";
   var textord = "textord";
-  defineSymbol(math, main, rel, "≡", "\\equiv", true);
-  defineSymbol(math, main, rel, "≺", "\\prec", true);
-  defineSymbol(math, main, rel, "≻", "\\succ", true);
-  defineSymbol(math, main, rel, "∼", "\\sim", true);
-  defineSymbol(math, main, rel, "⊥", "\\perp");
-  defineSymbol(math, main, rel, "⪯", "\\preceq", true);
-  defineSymbol(math, main, rel, "⪰", "\\succeq", true);
-  defineSymbol(math, main, rel, "≃", "\\simeq", true);
-  defineSymbol(math, main, rel, "∣", "\\mid", true);
-  defineSymbol(math, main, rel, "≪", "\\ll", true);
-  defineSymbol(math, main, rel, "≫", "\\gg", true);
-  defineSymbol(math, main, rel, "≍", "\\asymp", true);
-  defineSymbol(math, main, rel, "∥", "\\parallel");
-  defineSymbol(math, main, rel, "⋈", "\\bowtie", true);
-  defineSymbol(math, main, rel, "⌣", "\\smile", true);
-  defineSymbol(math, main, rel, "⊑", "\\sqsubseteq", true);
-  defineSymbol(math, main, rel, "⊒", "\\sqsupseteq", true);
-  defineSymbol(math, main, rel, "≐", "\\doteq", true);
-  defineSymbol(math, main, rel, "⌢", "\\frown", true);
-  defineSymbol(math, main, rel, "∋", "\\ni", true);
-  defineSymbol(math, main, rel, "∝", "\\propto", true);
-  defineSymbol(math, main, rel, "⊢", "\\vdash", true);
-  defineSymbol(math, main, rel, "⊣", "\\dashv", true);
-  defineSymbol(math, main, rel, "∋", "\\owns");
+  defineSymbol(math, main, rel, "\u2261", "\\equiv", true);
+  defineSymbol(math, main, rel, "\u227A", "\\prec", true);
+  defineSymbol(math, main, rel, "\u227B", "\\succ", true);
+  defineSymbol(math, main, rel, "\u223C", "\\sim", true);
+  defineSymbol(math, main, rel, "\u22A5", "\\perp");
+  defineSymbol(math, main, rel, "\u2AAF", "\\preceq", true);
+  defineSymbol(math, main, rel, "\u2AB0", "\\succeq", true);
+  defineSymbol(math, main, rel, "\u2243", "\\simeq", true);
+  defineSymbol(math, main, rel, "\u2223", "\\mid", true);
+  defineSymbol(math, main, rel, "\u226A", "\\ll", true);
+  defineSymbol(math, main, rel, "\u226B", "\\gg", true);
+  defineSymbol(math, main, rel, "\u224D", "\\asymp", true);
+  defineSymbol(math, main, rel, "\u2225", "\\parallel");
+  defineSymbol(math, main, rel, "\u22C8", "\\bowtie", true);
+  defineSymbol(math, main, rel, "\u2323", "\\smile", true);
+  defineSymbol(math, main, rel, "\u2291", "\\sqsubseteq", true);
+  defineSymbol(math, main, rel, "\u2292", "\\sqsupseteq", true);
+  defineSymbol(math, main, rel, "\u2250", "\\doteq", true);
+  defineSymbol(math, main, rel, "\u2322", "\\frown", true);
+  defineSymbol(math, main, rel, "\u220B", "\\ni", true);
+  defineSymbol(math, main, rel, "\u221D", "\\propto", true);
+  defineSymbol(math, main, rel, "\u22A2", "\\vdash", true);
+  defineSymbol(math, main, rel, "\u22A3", "\\dashv", true);
+  defineSymbol(math, main, rel, "\u220B", "\\owns");
   defineSymbol(math, main, punct, ".", "\\ldotp");
-  defineSymbol(math, main, punct, "⋅", "\\cdotp");
+  defineSymbol(math, main, punct, "\u22C5", "\\cdotp");
   defineSymbol(math, main, textord, "#", "\\#");
   defineSymbol(text, main, textord, "#", "\\#");
   defineSymbol(math, main, textord, "&", "\\&");
   defineSymbol(text, main, textord, "&", "\\&");
-  defineSymbol(math, main, textord, "ℵ", "\\aleph", true);
-  defineSymbol(math, main, textord, "∀", "\\forall", true);
-  defineSymbol(math, main, textord, "ℏ", "\\hbar", true);
-  defineSymbol(math, main, textord, "∃", "\\exists", true);
-  defineSymbol(math, main, textord, "∇", "\\nabla", true);
-  defineSymbol(math, main, textord, "♭", "\\flat", true);
-  defineSymbol(math, main, textord, "ℓ", "\\ell", true);
-  defineSymbol(math, main, textord, "♮", "\\natural", true);
-  defineSymbol(math, main, textord, "♣", "\\clubsuit", true);
-  defineSymbol(math, main, textord, "℘", "\\wp", true);
-  defineSymbol(math, main, textord, "♯", "\\sharp", true);
-  defineSymbol(math, main, textord, "♢", "\\diamondsuit", true);
-  defineSymbol(math, main, textord, "ℜ", "\\Re", true);
-  defineSymbol(math, main, textord, "♡", "\\heartsuit", true);
-  defineSymbol(math, main, textord, "ℑ", "\\Im", true);
-  defineSymbol(math, main, textord, "♠", "\\spadesuit", true);
-  defineSymbol(math, main, textord, "§", "\\S", true);
-  defineSymbol(text, main, textord, "§", "\\S");
-  defineSymbol(math, main, textord, "¶", "\\P", true);
-  defineSymbol(text, main, textord, "¶", "\\P");
-  defineSymbol(math, main, textord, "†", "\\dag");
-  defineSymbol(text, main, textord, "†", "\\dag");
-  defineSymbol(text, main, textord, "†", "\\textdagger");
-  defineSymbol(math, main, textord, "‡", "\\ddag");
-  defineSymbol(text, main, textord, "‡", "\\ddag");
-  defineSymbol(text, main, textord, "‡", "\\textdaggerdbl");
-  defineSymbol(math, main, close, "⎱", "\\rmoustache", true);
-  defineSymbol(math, main, open2, "⎰", "\\lmoustache", true);
-  defineSymbol(math, main, close, "⟯", "\\rgroup", true);
-  defineSymbol(math, main, open2, "⟮", "\\lgroup", true);
-  defineSymbol(math, main, bin, "∓", "\\mp", true);
-  defineSymbol(math, main, bin, "⊖", "\\ominus", true);
-  defineSymbol(math, main, bin, "⊎", "\\uplus", true);
-  defineSymbol(math, main, bin, "⊓", "\\sqcap", true);
-  defineSymbol(math, main, bin, "∗", "\\ast");
-  defineSymbol(math, main, bin, "⊔", "\\sqcup", true);
-  defineSymbol(math, main, bin, "◯", "\\bigcirc", true);
-  defineSymbol(math, main, bin, "∙", "\\bullet", true);
-  defineSymbol(math, main, bin, "‡", "\\ddagger");
-  defineSymbol(math, main, bin, "≀", "\\wr", true);
-  defineSymbol(math, main, bin, "⨿", "\\amalg");
+  defineSymbol(math, main, textord, "\u2135", "\\aleph", true);
+  defineSymbol(math, main, textord, "\u2200", "\\forall", true);
+  defineSymbol(math, main, textord, "\u210F", "\\hbar", true);
+  defineSymbol(math, main, textord, "\u2203", "\\exists", true);
+  defineSymbol(math, main, textord, "\u2207", "\\nabla", true);
+  defineSymbol(math, main, textord, "\u266D", "\\flat", true);
+  defineSymbol(math, main, textord, "\u2113", "\\ell", true);
+  defineSymbol(math, main, textord, "\u266E", "\\natural", true);
+  defineSymbol(math, main, textord, "\u2663", "\\clubsuit", true);
+  defineSymbol(math, main, textord, "\u2118", "\\wp", true);
+  defineSymbol(math, main, textord, "\u266F", "\\sharp", true);
+  defineSymbol(math, main, textord, "\u2662", "\\diamondsuit", true);
+  defineSymbol(math, main, textord, "\u211C", "\\Re", true);
+  defineSymbol(math, main, textord, "\u2661", "\\heartsuit", true);
+  defineSymbol(math, main, textord, "\u2111", "\\Im", true);
+  defineSymbol(math, main, textord, "\u2660", "\\spadesuit", true);
+  defineSymbol(math, main, textord, "\xA7", "\\S", true);
+  defineSymbol(text, main, textord, "\xA7", "\\S");
+  defineSymbol(math, main, textord, "\xB6", "\\P", true);
+  defineSymbol(text, main, textord, "\xB6", "\\P");
+  defineSymbol(math, main, textord, "\u2020", "\\dag");
+  defineSymbol(text, main, textord, "\u2020", "\\dag");
+  defineSymbol(text, main, textord, "\u2020", "\\textdagger");
+  defineSymbol(math, main, textord, "\u2021", "\\ddag");
+  defineSymbol(text, main, textord, "\u2021", "\\ddag");
+  defineSymbol(text, main, textord, "\u2021", "\\textdaggerdbl");
+  defineSymbol(math, main, close, "\u23B1", "\\rmoustache", true);
+  defineSymbol(math, main, open2, "\u23B0", "\\lmoustache", true);
+  defineSymbol(math, main, close, "\u27EF", "\\rgroup", true);
+  defineSymbol(math, main, open2, "\u27EE", "\\lgroup", true);
+  defineSymbol(math, main, bin, "\u2213", "\\mp", true);
+  defineSymbol(math, main, bin, "\u2296", "\\ominus", true);
+  defineSymbol(math, main, bin, "\u228E", "\\uplus", true);
+  defineSymbol(math, main, bin, "\u2293", "\\sqcap", true);
+  defineSymbol(math, main, bin, "\u2217", "\\ast");
+  defineSymbol(math, main, bin, "\u2294", "\\sqcup", true);
+  defineSymbol(math, main, bin, "\u25EF", "\\bigcirc", true);
+  defineSymbol(math, main, bin, "\u2219", "\\bullet", true);
+  defineSymbol(math, main, bin, "\u2021", "\\ddagger");
+  defineSymbol(math, main, bin, "\u2240", "\\wr", true);
+  defineSymbol(math, main, bin, "\u2A3F", "\\amalg");
   defineSymbol(math, main, bin, "&", "\\And");
-  defineSymbol(math, main, rel, "⟵", "\\longleftarrow", true);
-  defineSymbol(math, main, rel, "⇐", "\\Leftarrow", true);
-  defineSymbol(math, main, rel, "⟸", "\\Longleftarrow", true);
-  defineSymbol(math, main, rel, "⟶", "\\longrightarrow", true);
-  defineSymbol(math, main, rel, "⇒", "\\Rightarrow", true);
-  defineSymbol(math, main, rel, "⟹", "\\Longrightarrow", true);
-  defineSymbol(math, main, rel, "↔", "\\leftrightarrow", true);
-  defineSymbol(math, main, rel, "⟷", "\\longleftrightarrow", true);
-  defineSymbol(math, main, rel, "⇔", "\\Leftrightarrow", true);
-  defineSymbol(math, main, rel, "⟺", "\\Longleftrightarrow", true);
-  defineSymbol(math, main, rel, "↦", "\\mapsto", true);
-  defineSymbol(math, main, rel, "⟼", "\\longmapsto", true);
-  defineSymbol(math, main, rel, "↗", "\\nearrow", true);
-  defineSymbol(math, main, rel, "↩", "\\hookleftarrow", true);
-  defineSymbol(math, main, rel, "↪", "\\hookrightarrow", true);
-  defineSymbol(math, main, rel, "↘", "\\searrow", true);
-  defineSymbol(math, main, rel, "↼", "\\leftharpoonup", true);
-  defineSymbol(math, main, rel, "⇀", "\\rightharpoonup", true);
-  defineSymbol(math, main, rel, "↙", "\\swarrow", true);
-  defineSymbol(math, main, rel, "↽", "\\leftharpoondown", true);
-  defineSymbol(math, main, rel, "⇁", "\\rightharpoondown", true);
-  defineSymbol(math, main, rel, "↖", "\\nwarrow", true);
-  defineSymbol(math, main, rel, "⇌", "\\rightleftharpoons", true);
-  defineSymbol(math, ams, rel, "≮", "\\nless", true);
-  defineSymbol(math, ams, rel, "", "\\@nleqslant");
-  defineSymbol(math, ams, rel, "", "\\@nleqq");
-  defineSymbol(math, ams, rel, "⪇", "\\lneq", true);
-  defineSymbol(math, ams, rel, "≨", "\\lneqq", true);
-  defineSymbol(math, ams, rel, "", "\\@lvertneqq");
-  defineSymbol(math, ams, rel, "⋦", "\\lnsim", true);
-  defineSymbol(math, ams, rel, "⪉", "\\lnapprox", true);
-  defineSymbol(math, ams, rel, "⊀", "\\nprec", true);
-  defineSymbol(math, ams, rel, "⋠", "\\npreceq", true);
-  defineSymbol(math, ams, rel, "⋨", "\\precnsim", true);
-  defineSymbol(math, ams, rel, "⪹", "\\precnapprox", true);
-  defineSymbol(math, ams, rel, "≁", "\\nsim", true);
-  defineSymbol(math, ams, rel, "", "\\@nshortmid");
-  defineSymbol(math, ams, rel, "∤", "\\nmid", true);
-  defineSymbol(math, ams, rel, "⊬", "\\nvdash", true);
-  defineSymbol(math, ams, rel, "⊭", "\\nvDash", true);
-  defineSymbol(math, ams, rel, "⋪", "\\ntriangleleft");
-  defineSymbol(math, ams, rel, "⋬", "\\ntrianglelefteq", true);
-  defineSymbol(math, ams, rel, "⊊", "\\subsetneq", true);
-  defineSymbol(math, ams, rel, "", "\\@varsubsetneq");
-  defineSymbol(math, ams, rel, "⫋", "\\subsetneqq", true);
-  defineSymbol(math, ams, rel, "", "\\@varsubsetneqq");
-  defineSymbol(math, ams, rel, "≯", "\\ngtr", true);
-  defineSymbol(math, ams, rel, "", "\\@ngeqslant");
-  defineSymbol(math, ams, rel, "", "\\@ngeqq");
-  defineSymbol(math, ams, rel, "⪈", "\\gneq", true);
-  defineSymbol(math, ams, rel, "≩", "\\gneqq", true);
-  defineSymbol(math, ams, rel, "", "\\@gvertneqq");
-  defineSymbol(math, ams, rel, "⋧", "\\gnsim", true);
-  defineSymbol(math, ams, rel, "⪊", "\\gnapprox", true);
-  defineSymbol(math, ams, rel, "⊁", "\\nsucc", true);
-  defineSymbol(math, ams, rel, "⋡", "\\nsucceq", true);
-  defineSymbol(math, ams, rel, "⋩", "\\succnsim", true);
-  defineSymbol(math, ams, rel, "⪺", "\\succnapprox", true);
-  defineSymbol(math, ams, rel, "≆", "\\ncong", true);
-  defineSymbol(math, ams, rel, "", "\\@nshortparallel");
-  defineSymbol(math, ams, rel, "∦", "\\nparallel", true);
-  defineSymbol(math, ams, rel, "⊯", "\\nVDash", true);
-  defineSymbol(math, ams, rel, "⋫", "\\ntriangleright");
-  defineSymbol(math, ams, rel, "⋭", "\\ntrianglerighteq", true);
-  defineSymbol(math, ams, rel, "", "\\@nsupseteqq");
-  defineSymbol(math, ams, rel, "⊋", "\\supsetneq", true);
-  defineSymbol(math, ams, rel, "", "\\@varsupsetneq");
-  defineSymbol(math, ams, rel, "⫌", "\\supsetneqq", true);
-  defineSymbol(math, ams, rel, "", "\\@varsupsetneqq");
-  defineSymbol(math, ams, rel, "⊮", "\\nVdash", true);
-  defineSymbol(math, ams, rel, "⪵", "\\precneqq", true);
-  defineSymbol(math, ams, rel, "⪶", "\\succneqq", true);
-  defineSymbol(math, ams, rel, "", "\\@nsubseteqq");
-  defineSymbol(math, ams, bin, "⊴", "\\unlhd");
-  defineSymbol(math, ams, bin, "⊵", "\\unrhd");
-  defineSymbol(math, ams, rel, "↚", "\\nleftarrow", true);
-  defineSymbol(math, ams, rel, "↛", "\\nrightarrow", true);
-  defineSymbol(math, ams, rel, "⇍", "\\nLeftarrow", true);
-  defineSymbol(math, ams, rel, "⇏", "\\nRightarrow", true);
-  defineSymbol(math, ams, rel, "↮", "\\nleftrightarrow", true);
-  defineSymbol(math, ams, rel, "⇎", "\\nLeftrightarrow", true);
-  defineSymbol(math, ams, rel, "△", "\\vartriangle");
-  defineSymbol(math, ams, textord, "ℏ", "\\hslash");
-  defineSymbol(math, ams, textord, "▽", "\\triangledown");
-  defineSymbol(math, ams, textord, "◊", "\\lozenge");
-  defineSymbol(math, ams, textord, "Ⓢ", "\\circledS");
-  defineSymbol(math, ams, textord, "®", "\\circledR");
-  defineSymbol(text, ams, textord, "®", "\\circledR");
-  defineSymbol(math, ams, textord, "∡", "\\measuredangle", true);
-  defineSymbol(math, ams, textord, "∄", "\\nexists");
-  defineSymbol(math, ams, textord, "℧", "\\mho");
-  defineSymbol(math, ams, textord, "Ⅎ", "\\Finv", true);
-  defineSymbol(math, ams, textord, "⅁", "\\Game", true);
-  defineSymbol(math, ams, textord, "‵", "\\backprime");
-  defineSymbol(math, ams, textord, "▲", "\\blacktriangle");
-  defineSymbol(math, ams, textord, "▼", "\\blacktriangledown");
-  defineSymbol(math, ams, textord, "■", "\\blacksquare");
-  defineSymbol(math, ams, textord, "⧫", "\\blacklozenge");
-  defineSymbol(math, ams, textord, "★", "\\bigstar");
-  defineSymbol(math, ams, textord, "∢", "\\sphericalangle", true);
-  defineSymbol(math, ams, textord, "∁", "\\complement", true);
-  defineSymbol(math, ams, textord, "ð", "\\eth", true);
-  defineSymbol(text, main, textord, "ð", "ð");
-  defineSymbol(math, ams, textord, "╱", "\\diagup");
-  defineSymbol(math, ams, textord, "╲", "\\diagdown");
-  defineSymbol(math, ams, textord, "□", "\\square");
-  defineSymbol(math, ams, textord, "□", "\\Box");
-  defineSymbol(math, ams, textord, "◊", "\\Diamond");
-  defineSymbol(math, ams, textord, "¥", "\\yen", true);
-  defineSymbol(text, ams, textord, "¥", "\\yen", true);
-  defineSymbol(math, ams, textord, "✓", "\\checkmark", true);
-  defineSymbol(text, ams, textord, "✓", "\\checkmark");
-  defineSymbol(math, ams, textord, "ℶ", "\\beth", true);
-  defineSymbol(math, ams, textord, "ℸ", "\\daleth", true);
-  defineSymbol(math, ams, textord, "ℷ", "\\gimel", true);
-  defineSymbol(math, ams, textord, "ϝ", "\\digamma", true);
-  defineSymbol(math, ams, textord, "ϰ", "\\varkappa");
-  defineSymbol(math, ams, open2, "┌", "\\@ulcorner", true);
-  defineSymbol(math, ams, close, "┐", "\\@urcorner", true);
-  defineSymbol(math, ams, open2, "└", "\\@llcorner", true);
-  defineSymbol(math, ams, close, "┘", "\\@lrcorner", true);
-  defineSymbol(math, ams, rel, "≦", "\\leqq", true);
-  defineSymbol(math, ams, rel, "⩽", "\\leqslant", true);
-  defineSymbol(math, ams, rel, "⪕", "\\eqslantless", true);
-  defineSymbol(math, ams, rel, "≲", "\\lesssim", true);
-  defineSymbol(math, ams, rel, "⪅", "\\lessapprox", true);
-  defineSymbol(math, ams, rel, "≊", "\\approxeq", true);
-  defineSymbol(math, ams, bin, "⋖", "\\lessdot");
-  defineSymbol(math, ams, rel, "⋘", "\\lll", true);
-  defineSymbol(math, ams, rel, "≶", "\\lessgtr", true);
-  defineSymbol(math, ams, rel, "⋚", "\\lesseqgtr", true);
-  defineSymbol(math, ams, rel, "⪋", "\\lesseqqgtr", true);
-  defineSymbol(math, ams, rel, "≑", "\\doteqdot");
-  defineSymbol(math, ams, rel, "≓", "\\risingdotseq", true);
-  defineSymbol(math, ams, rel, "≒", "\\fallingdotseq", true);
-  defineSymbol(math, ams, rel, "∽", "\\backsim", true);
-  defineSymbol(math, ams, rel, "⋍", "\\backsimeq", true);
-  defineSymbol(math, ams, rel, "⫅", "\\subseteqq", true);
-  defineSymbol(math, ams, rel, "⋐", "\\Subset", true);
-  defineSymbol(math, ams, rel, "⊏", "\\sqsubset", true);
-  defineSymbol(math, ams, rel, "≼", "\\preccurlyeq", true);
-  defineSymbol(math, ams, rel, "⋞", "\\curlyeqprec", true);
-  defineSymbol(math, ams, rel, "≾", "\\precsim", true);
-  defineSymbol(math, ams, rel, "⪷", "\\precapprox", true);
-  defineSymbol(math, ams, rel, "⊲", "\\vartriangleleft");
-  defineSymbol(math, ams, rel, "⊴", "\\trianglelefteq");
-  defineSymbol(math, ams, rel, "⊨", "\\vDash", true);
-  defineSymbol(math, ams, rel, "⊪", "\\Vvdash", true);
-  defineSymbol(math, ams, rel, "⌣", "\\smallsmile");
-  defineSymbol(math, ams, rel, "⌢", "\\smallfrown");
-  defineSymbol(math, ams, rel, "≏", "\\bumpeq", true);
-  defineSymbol(math, ams, rel, "≎", "\\Bumpeq", true);
-  defineSymbol(math, ams, rel, "≧", "\\geqq", true);
-  defineSymbol(math, ams, rel, "⩾", "\\geqslant", true);
-  defineSymbol(math, ams, rel, "⪖", "\\eqslantgtr", true);
-  defineSymbol(math, ams, rel, "≳", "\\gtrsim", true);
-  defineSymbol(math, ams, rel, "⪆", "\\gtrapprox", true);
-  defineSymbol(math, ams, bin, "⋗", "\\gtrdot");
-  defineSymbol(math, ams, rel, "⋙", "\\ggg", true);
-  defineSymbol(math, ams, rel, "≷", "\\gtrless", true);
-  defineSymbol(math, ams, rel, "⋛", "\\gtreqless", true);
-  defineSymbol(math, ams, rel, "⪌", "\\gtreqqless", true);
-  defineSymbol(math, ams, rel, "≖", "\\eqcirc", true);
-  defineSymbol(math, ams, rel, "≗", "\\circeq", true);
-  defineSymbol(math, ams, rel, "≜", "\\triangleq", true);
-  defineSymbol(math, ams, rel, "∼", "\\thicksim");
-  defineSymbol(math, ams, rel, "≈", "\\thickapprox");
-  defineSymbol(math, ams, rel, "⫆", "\\supseteqq", true);
-  defineSymbol(math, ams, rel, "⋑", "\\Supset", true);
-  defineSymbol(math, ams, rel, "⊐", "\\sqsupset", true);
-  defineSymbol(math, ams, rel, "≽", "\\succcurlyeq", true);
-  defineSymbol(math, ams, rel, "⋟", "\\curlyeqsucc", true);
-  defineSymbol(math, ams, rel, "≿", "\\succsim", true);
-  defineSymbol(math, ams, rel, "⪸", "\\succapprox", true);
-  defineSymbol(math, ams, rel, "⊳", "\\vartriangleright");
-  defineSymbol(math, ams, rel, "⊵", "\\trianglerighteq");
-  defineSymbol(math, ams, rel, "⊩", "\\Vdash", true);
-  defineSymbol(math, ams, rel, "∣", "\\shortmid");
-  defineSymbol(math, ams, rel, "∥", "\\shortparallel");
-  defineSymbol(math, ams, rel, "≬", "\\between", true);
-  defineSymbol(math, ams, rel, "⋔", "\\pitchfork", true);
-  defineSymbol(math, ams, rel, "∝", "\\varpropto");
-  defineSymbol(math, ams, rel, "◀", "\\blacktriangleleft");
-  defineSymbol(math, ams, rel, "∴", "\\therefore", true);
-  defineSymbol(math, ams, rel, "∍", "\\backepsilon");
-  defineSymbol(math, ams, rel, "▶", "\\blacktriangleright");
-  defineSymbol(math, ams, rel, "∵", "\\because", true);
-  defineSymbol(math, ams, rel, "⋘", "\\llless");
-  defineSymbol(math, ams, rel, "⋙", "\\gggtr");
-  defineSymbol(math, ams, bin, "⊲", "\\lhd");
-  defineSymbol(math, ams, bin, "⊳", "\\rhd");
-  defineSymbol(math, ams, rel, "≂", "\\eqsim", true);
-  defineSymbol(math, main, rel, "⋈", "\\Join");
-  defineSymbol(math, ams, rel, "≑", "\\Doteq", true);
-  defineSymbol(math, ams, bin, "∔", "\\dotplus", true);
-  defineSymbol(math, ams, bin, "∖", "\\smallsetminus");
-  defineSymbol(math, ams, bin, "⋒", "\\Cap", true);
-  defineSymbol(math, ams, bin, "⋓", "\\Cup", true);
-  defineSymbol(math, ams, bin, "⩞", "\\doublebarwedge", true);
-  defineSymbol(math, ams, bin, "⊟", "\\boxminus", true);
-  defineSymbol(math, ams, bin, "⊞", "\\boxplus", true);
-  defineSymbol(math, ams, bin, "⋇", "\\divideontimes", true);
-  defineSymbol(math, ams, bin, "⋉", "\\ltimes", true);
-  defineSymbol(math, ams, bin, "⋊", "\\rtimes", true);
-  defineSymbol(math, ams, bin, "⋋", "\\leftthreetimes", true);
-  defineSymbol(math, ams, bin, "⋌", "\\rightthreetimes", true);
-  defineSymbol(math, ams, bin, "⋏", "\\curlywedge", true);
-  defineSymbol(math, ams, bin, "⋎", "\\curlyvee", true);
-  defineSymbol(math, ams, bin, "⊝", "\\circleddash", true);
-  defineSymbol(math, ams, bin, "⊛", "\\circledast", true);
-  defineSymbol(math, ams, bin, "⋅", "\\centerdot");
-  defineSymbol(math, ams, bin, "⊺", "\\intercal", true);
-  defineSymbol(math, ams, bin, "⋒", "\\doublecap");
-  defineSymbol(math, ams, bin, "⋓", "\\doublecup");
-  defineSymbol(math, ams, bin, "⊠", "\\boxtimes", true);
-  defineSymbol(math, ams, rel, "⇢", "\\dashrightarrow", true);
-  defineSymbol(math, ams, rel, "⇠", "\\dashleftarrow", true);
-  defineSymbol(math, ams, rel, "⇇", "\\leftleftarrows", true);
-  defineSymbol(math, ams, rel, "⇆", "\\leftrightarrows", true);
-  defineSymbol(math, ams, rel, "⇚", "\\Lleftarrow", true);
-  defineSymbol(math, ams, rel, "↞", "\\twoheadleftarrow", true);
-  defineSymbol(math, ams, rel, "↢", "\\leftarrowtail", true);
-  defineSymbol(math, ams, rel, "↫", "\\looparrowleft", true);
-  defineSymbol(math, ams, rel, "⇋", "\\leftrightharpoons", true);
-  defineSymbol(math, ams, rel, "↶", "\\curvearrowleft", true);
-  defineSymbol(math, ams, rel, "↺", "\\circlearrowleft", true);
-  defineSymbol(math, ams, rel, "↰", "\\Lsh", true);
-  defineSymbol(math, ams, rel, "⇈", "\\upuparrows", true);
-  defineSymbol(math, ams, rel, "↿", "\\upharpoonleft", true);
-  defineSymbol(math, ams, rel, "⇃", "\\downharpoonleft", true);
-  defineSymbol(math, main, rel, "⊶", "\\origof", true);
-  defineSymbol(math, main, rel, "⊷", "\\imageof", true);
-  defineSymbol(math, ams, rel, "⊸", "\\multimap", true);
-  defineSymbol(math, ams, rel, "↭", "\\leftrightsquigarrow", true);
-  defineSymbol(math, ams, rel, "⇉", "\\rightrightarrows", true);
-  defineSymbol(math, ams, rel, "⇄", "\\rightleftarrows", true);
-  defineSymbol(math, ams, rel, "↠", "\\twoheadrightarrow", true);
-  defineSymbol(math, ams, rel, "↣", "\\rightarrowtail", true);
-  defineSymbol(math, ams, rel, "↬", "\\looparrowright", true);
-  defineSymbol(math, ams, rel, "↷", "\\curvearrowright", true);
-  defineSymbol(math, ams, rel, "↻", "\\circlearrowright", true);
-  defineSymbol(math, ams, rel, "↱", "\\Rsh", true);
-  defineSymbol(math, ams, rel, "⇊", "\\downdownarrows", true);
-  defineSymbol(math, ams, rel, "↾", "\\upharpoonright", true);
-  defineSymbol(math, ams, rel, "⇂", "\\downharpoonright", true);
-  defineSymbol(math, ams, rel, "⇝", "\\rightsquigarrow", true);
-  defineSymbol(math, ams, rel, "⇝", "\\leadsto");
-  defineSymbol(math, ams, rel, "⇛", "\\Rrightarrow", true);
-  defineSymbol(math, ams, rel, "↾", "\\restriction");
-  defineSymbol(math, main, textord, "‘", "`");
+  defineSymbol(math, main, rel, "\u27F5", "\\longleftarrow", true);
+  defineSymbol(math, main, rel, "\u21D0", "\\Leftarrow", true);
+  defineSymbol(math, main, rel, "\u27F8", "\\Longleftarrow", true);
+  defineSymbol(math, main, rel, "\u27F6", "\\longrightarrow", true);
+  defineSymbol(math, main, rel, "\u21D2", "\\Rightarrow", true);
+  defineSymbol(math, main, rel, "\u27F9", "\\Longrightarrow", true);
+  defineSymbol(math, main, rel, "\u2194", "\\leftrightarrow", true);
+  defineSymbol(math, main, rel, "\u27F7", "\\longleftrightarrow", true);
+  defineSymbol(math, main, rel, "\u21D4", "\\Leftrightarrow", true);
+  defineSymbol(math, main, rel, "\u27FA", "\\Longleftrightarrow", true);
+  defineSymbol(math, main, rel, "\u21A6", "\\mapsto", true);
+  defineSymbol(math, main, rel, "\u27FC", "\\longmapsto", true);
+  defineSymbol(math, main, rel, "\u2197", "\\nearrow", true);
+  defineSymbol(math, main, rel, "\u21A9", "\\hookleftarrow", true);
+  defineSymbol(math, main, rel, "\u21AA", "\\hookrightarrow", true);
+  defineSymbol(math, main, rel, "\u2198", "\\searrow", true);
+  defineSymbol(math, main, rel, "\u21BC", "\\leftharpoonup", true);
+  defineSymbol(math, main, rel, "\u21C0", "\\rightharpoonup", true);
+  defineSymbol(math, main, rel, "\u2199", "\\swarrow", true);
+  defineSymbol(math, main, rel, "\u21BD", "\\leftharpoondown", true);
+  defineSymbol(math, main, rel, "\u21C1", "\\rightharpoondown", true);
+  defineSymbol(math, main, rel, "\u2196", "\\nwarrow", true);
+  defineSymbol(math, main, rel, "\u21CC", "\\rightleftharpoons", true);
+  defineSymbol(math, ams, rel, "\u226E", "\\nless", true);
+  defineSymbol(math, ams, rel, "\uE010", "\\@nleqslant");
+  defineSymbol(math, ams, rel, "\uE011", "\\@nleqq");
+  defineSymbol(math, ams, rel, "\u2A87", "\\lneq", true);
+  defineSymbol(math, ams, rel, "\u2268", "\\lneqq", true);
+  defineSymbol(math, ams, rel, "\uE00C", "\\@lvertneqq");
+  defineSymbol(math, ams, rel, "\u22E6", "\\lnsim", true);
+  defineSymbol(math, ams, rel, "\u2A89", "\\lnapprox", true);
+  defineSymbol(math, ams, rel, "\u2280", "\\nprec", true);
+  defineSymbol(math, ams, rel, "\u22E0", "\\npreceq", true);
+  defineSymbol(math, ams, rel, "\u22E8", "\\precnsim", true);
+  defineSymbol(math, ams, rel, "\u2AB9", "\\precnapprox", true);
+  defineSymbol(math, ams, rel, "\u2241", "\\nsim", true);
+  defineSymbol(math, ams, rel, "\uE006", "\\@nshortmid");
+  defineSymbol(math, ams, rel, "\u2224", "\\nmid", true);
+  defineSymbol(math, ams, rel, "\u22AC", "\\nvdash", true);
+  defineSymbol(math, ams, rel, "\u22AD", "\\nvDash", true);
+  defineSymbol(math, ams, rel, "\u22EA", "\\ntriangleleft");
+  defineSymbol(math, ams, rel, "\u22EC", "\\ntrianglelefteq", true);
+  defineSymbol(math, ams, rel, "\u228A", "\\subsetneq", true);
+  defineSymbol(math, ams, rel, "\uE01A", "\\@varsubsetneq");
+  defineSymbol(math, ams, rel, "\u2ACB", "\\subsetneqq", true);
+  defineSymbol(math, ams, rel, "\uE017", "\\@varsubsetneqq");
+  defineSymbol(math, ams, rel, "\u226F", "\\ngtr", true);
+  defineSymbol(math, ams, rel, "\uE00F", "\\@ngeqslant");
+  defineSymbol(math, ams, rel, "\uE00E", "\\@ngeqq");
+  defineSymbol(math, ams, rel, "\u2A88", "\\gneq", true);
+  defineSymbol(math, ams, rel, "\u2269", "\\gneqq", true);
+  defineSymbol(math, ams, rel, "\uE00D", "\\@gvertneqq");
+  defineSymbol(math, ams, rel, "\u22E7", "\\gnsim", true);
+  defineSymbol(math, ams, rel, "\u2A8A", "\\gnapprox", true);
+  defineSymbol(math, ams, rel, "\u2281", "\\nsucc", true);
+  defineSymbol(math, ams, rel, "\u22E1", "\\nsucceq", true);
+  defineSymbol(math, ams, rel, "\u22E9", "\\succnsim", true);
+  defineSymbol(math, ams, rel, "\u2ABA", "\\succnapprox", true);
+  defineSymbol(math, ams, rel, "\u2246", "\\ncong", true);
+  defineSymbol(math, ams, rel, "\uE007", "\\@nshortparallel");
+  defineSymbol(math, ams, rel, "\u2226", "\\nparallel", true);
+  defineSymbol(math, ams, rel, "\u22AF", "\\nVDash", true);
+  defineSymbol(math, ams, rel, "\u22EB", "\\ntriangleright");
+  defineSymbol(math, ams, rel, "\u22ED", "\\ntrianglerighteq", true);
+  defineSymbol(math, ams, rel, "\uE018", "\\@nsupseteqq");
+  defineSymbol(math, ams, rel, "\u228B", "\\supsetneq", true);
+  defineSymbol(math, ams, rel, "\uE01B", "\\@varsupsetneq");
+  defineSymbol(math, ams, rel, "\u2ACC", "\\supsetneqq", true);
+  defineSymbol(math, ams, rel, "\uE019", "\\@varsupsetneqq");
+  defineSymbol(math, ams, rel, "\u22AE", "\\nVdash", true);
+  defineSymbol(math, ams, rel, "\u2AB5", "\\precneqq", true);
+  defineSymbol(math, ams, rel, "\u2AB6", "\\succneqq", true);
+  defineSymbol(math, ams, rel, "\uE016", "\\@nsubseteqq");
+  defineSymbol(math, ams, bin, "\u22B4", "\\unlhd");
+  defineSymbol(math, ams, bin, "\u22B5", "\\unrhd");
+  defineSymbol(math, ams, rel, "\u219A", "\\nleftarrow", true);
+  defineSymbol(math, ams, rel, "\u219B", "\\nrightarrow", true);
+  defineSymbol(math, ams, rel, "\u21CD", "\\nLeftarrow", true);
+  defineSymbol(math, ams, rel, "\u21CF", "\\nRightarrow", true);
+  defineSymbol(math, ams, rel, "\u21AE", "\\nleftrightarrow", true);
+  defineSymbol(math, ams, rel, "\u21CE", "\\nLeftrightarrow", true);
+  defineSymbol(math, ams, rel, "\u25B3", "\\vartriangle");
+  defineSymbol(math, ams, textord, "\u210F", "\\hslash");
+  defineSymbol(math, ams, textord, "\u25BD", "\\triangledown");
+  defineSymbol(math, ams, textord, "\u25CA", "\\lozenge");
+  defineSymbol(math, ams, textord, "\u24C8", "\\circledS");
+  defineSymbol(math, ams, textord, "\xAE", "\\circledR");
+  defineSymbol(text, ams, textord, "\xAE", "\\circledR");
+  defineSymbol(math, ams, textord, "\u2221", "\\measuredangle", true);
+  defineSymbol(math, ams, textord, "\u2204", "\\nexists");
+  defineSymbol(math, ams, textord, "\u2127", "\\mho");
+  defineSymbol(math, ams, textord, "\u2132", "\\Finv", true);
+  defineSymbol(math, ams, textord, "\u2141", "\\Game", true);
+  defineSymbol(math, ams, textord, "\u2035", "\\backprime");
+  defineSymbol(math, ams, textord, "\u25B2", "\\blacktriangle");
+  defineSymbol(math, ams, textord, "\u25BC", "\\blacktriangledown");
+  defineSymbol(math, ams, textord, "\u25A0", "\\blacksquare");
+  defineSymbol(math, ams, textord, "\u29EB", "\\blacklozenge");
+  defineSymbol(math, ams, textord, "\u2605", "\\bigstar");
+  defineSymbol(math, ams, textord, "\u2222", "\\sphericalangle", true);
+  defineSymbol(math, ams, textord, "\u2201", "\\complement", true);
+  defineSymbol(math, ams, textord, "\xF0", "\\eth", true);
+  defineSymbol(text, main, textord, "\xF0", "\xF0");
+  defineSymbol(math, ams, textord, "\u2571", "\\diagup");
+  defineSymbol(math, ams, textord, "\u2572", "\\diagdown");
+  defineSymbol(math, ams, textord, "\u25A1", "\\square");
+  defineSymbol(math, ams, textord, "\u25A1", "\\Box");
+  defineSymbol(math, ams, textord, "\u25CA", "\\Diamond");
+  defineSymbol(math, ams, textord, "\xA5", "\\yen", true);
+  defineSymbol(text, ams, textord, "\xA5", "\\yen", true);
+  defineSymbol(math, ams, textord, "\u2713", "\\checkmark", true);
+  defineSymbol(text, ams, textord, "\u2713", "\\checkmark");
+  defineSymbol(math, ams, textord, "\u2136", "\\beth", true);
+  defineSymbol(math, ams, textord, "\u2138", "\\daleth", true);
+  defineSymbol(math, ams, textord, "\u2137", "\\gimel", true);
+  defineSymbol(math, ams, textord, "\u03DD", "\\digamma", true);
+  defineSymbol(math, ams, textord, "\u03F0", "\\varkappa");
+  defineSymbol(math, ams, open2, "\u250C", "\\@ulcorner", true);
+  defineSymbol(math, ams, close, "\u2510", "\\@urcorner", true);
+  defineSymbol(math, ams, open2, "\u2514", "\\@llcorner", true);
+  defineSymbol(math, ams, close, "\u2518", "\\@lrcorner", true);
+  defineSymbol(math, ams, rel, "\u2266", "\\leqq", true);
+  defineSymbol(math, ams, rel, "\u2A7D", "\\leqslant", true);
+  defineSymbol(math, ams, rel, "\u2A95", "\\eqslantless", true);
+  defineSymbol(math, ams, rel, "\u2272", "\\lesssim", true);
+  defineSymbol(math, ams, rel, "\u2A85", "\\lessapprox", true);
+  defineSymbol(math, ams, rel, "\u224A", "\\approxeq", true);
+  defineSymbol(math, ams, bin, "\u22D6", "\\lessdot");
+  defineSymbol(math, ams, rel, "\u22D8", "\\lll", true);
+  defineSymbol(math, ams, rel, "\u2276", "\\lessgtr", true);
+  defineSymbol(math, ams, rel, "\u22DA", "\\lesseqgtr", true);
+  defineSymbol(math, ams, rel, "\u2A8B", "\\lesseqqgtr", true);
+  defineSymbol(math, ams, rel, "\u2251", "\\doteqdot");
+  defineSymbol(math, ams, rel, "\u2253", "\\risingdotseq", true);
+  defineSymbol(math, ams, rel, "\u2252", "\\fallingdotseq", true);
+  defineSymbol(math, ams, rel, "\u223D", "\\backsim", true);
+  defineSymbol(math, ams, rel, "\u22CD", "\\backsimeq", true);
+  defineSymbol(math, ams, rel, "\u2AC5", "\\subseteqq", true);
+  defineSymbol(math, ams, rel, "\u22D0", "\\Subset", true);
+  defineSymbol(math, ams, rel, "\u228F", "\\sqsubset", true);
+  defineSymbol(math, ams, rel, "\u227C", "\\preccurlyeq", true);
+  defineSymbol(math, ams, rel, "\u22DE", "\\curlyeqprec", true);
+  defineSymbol(math, ams, rel, "\u227E", "\\precsim", true);
+  defineSymbol(math, ams, rel, "\u2AB7", "\\precapprox", true);
+  defineSymbol(math, ams, rel, "\u22B2", "\\vartriangleleft");
+  defineSymbol(math, ams, rel, "\u22B4", "\\trianglelefteq");
+  defineSymbol(math, ams, rel, "\u22A8", "\\vDash", true);
+  defineSymbol(math, ams, rel, "\u22AA", "\\Vvdash", true);
+  defineSymbol(math, ams, rel, "\u2323", "\\smallsmile");
+  defineSymbol(math, ams, rel, "\u2322", "\\smallfrown");
+  defineSymbol(math, ams, rel, "\u224F", "\\bumpeq", true);
+  defineSymbol(math, ams, rel, "\u224E", "\\Bumpeq", true);
+  defineSymbol(math, ams, rel, "\u2267", "\\geqq", true);
+  defineSymbol(math, ams, rel, "\u2A7E", "\\geqslant", true);
+  defineSymbol(math, ams, rel, "\u2A96", "\\eqslantgtr", true);
+  defineSymbol(math, ams, rel, "\u2273", "\\gtrsim", true);
+  defineSymbol(math, ams, rel, "\u2A86", "\\gtrapprox", true);
+  defineSymbol(math, ams, bin, "\u22D7", "\\gtrdot");
+  defineSymbol(math, ams, rel, "\u22D9", "\\ggg", true);
+  defineSymbol(math, ams, rel, "\u2277", "\\gtrless", true);
+  defineSymbol(math, ams, rel, "\u22DB", "\\gtreqless", true);
+  defineSymbol(math, ams, rel, "\u2A8C", "\\gtreqqless", true);
+  defineSymbol(math, ams, rel, "\u2256", "\\eqcirc", true);
+  defineSymbol(math, ams, rel, "\u2257", "\\circeq", true);
+  defineSymbol(math, ams, rel, "\u225C", "\\triangleq", true);
+  defineSymbol(math, ams, rel, "\u223C", "\\thicksim");
+  defineSymbol(math, ams, rel, "\u2248", "\\thickapprox");
+  defineSymbol(math, ams, rel, "\u2AC6", "\\supseteqq", true);
+  defineSymbol(math, ams, rel, "\u22D1", "\\Supset", true);
+  defineSymbol(math, ams, rel, "\u2290", "\\sqsupset", true);
+  defineSymbol(math, ams, rel, "\u227D", "\\succcurlyeq", true);
+  defineSymbol(math, ams, rel, "\u22DF", "\\curlyeqsucc", true);
+  defineSymbol(math, ams, rel, "\u227F", "\\succsim", true);
+  defineSymbol(math, ams, rel, "\u2AB8", "\\succapprox", true);
+  defineSymbol(math, ams, rel, "\u22B3", "\\vartriangleright");
+  defineSymbol(math, ams, rel, "\u22B5", "\\trianglerighteq");
+  defineSymbol(math, ams, rel, "\u22A9", "\\Vdash", true);
+  defineSymbol(math, ams, rel, "\u2223", "\\shortmid");
+  defineSymbol(math, ams, rel, "\u2225", "\\shortparallel");
+  defineSymbol(math, ams, rel, "\u226C", "\\between", true);
+  defineSymbol(math, ams, rel, "\u22D4", "\\pitchfork", true);
+  defineSymbol(math, ams, rel, "\u221D", "\\varpropto");
+  defineSymbol(math, ams, rel, "\u25C0", "\\blacktriangleleft");
+  defineSymbol(math, ams, rel, "\u2234", "\\therefore", true);
+  defineSymbol(math, ams, rel, "\u220D", "\\backepsilon");
+  defineSymbol(math, ams, rel, "\u25B6", "\\blacktriangleright");
+  defineSymbol(math, ams, rel, "\u2235", "\\because", true);
+  defineSymbol(math, ams, rel, "\u22D8", "\\llless");
+  defineSymbol(math, ams, rel, "\u22D9", "\\gggtr");
+  defineSymbol(math, ams, bin, "\u22B2", "\\lhd");
+  defineSymbol(math, ams, bin, "\u22B3", "\\rhd");
+  defineSymbol(math, ams, rel, "\u2242", "\\eqsim", true);
+  defineSymbol(math, main, rel, "\u22C8", "\\Join");
+  defineSymbol(math, ams, rel, "\u2251", "\\Doteq", true);
+  defineSymbol(math, ams, bin, "\u2214", "\\dotplus", true);
+  defineSymbol(math, ams, bin, "\u2216", "\\smallsetminus");
+  defineSymbol(math, ams, bin, "\u22D2", "\\Cap", true);
+  defineSymbol(math, ams, bin, "\u22D3", "\\Cup", true);
+  defineSymbol(math, ams, bin, "\u2A5E", "\\doublebarwedge", true);
+  defineSymbol(math, ams, bin, "\u229F", "\\boxminus", true);
+  defineSymbol(math, ams, bin, "\u229E", "\\boxplus", true);
+  defineSymbol(math, ams, bin, "\u22C7", "\\divideontimes", true);
+  defineSymbol(math, ams, bin, "\u22C9", "\\ltimes", true);
+  defineSymbol(math, ams, bin, "\u22CA", "\\rtimes", true);
+  defineSymbol(math, ams, bin, "\u22CB", "\\leftthreetimes", true);
+  defineSymbol(math, ams, bin, "\u22CC", "\\rightthreetimes", true);
+  defineSymbol(math, ams, bin, "\u22CF", "\\curlywedge", true);
+  defineSymbol(math, ams, bin, "\u22CE", "\\curlyvee", true);
+  defineSymbol(math, ams, bin, "\u229D", "\\circleddash", true);
+  defineSymbol(math, ams, bin, "\u229B", "\\circledast", true);
+  defineSymbol(math, ams, bin, "\u22C5", "\\centerdot");
+  defineSymbol(math, ams, bin, "\u22BA", "\\intercal", true);
+  defineSymbol(math, ams, bin, "\u22D2", "\\doublecap");
+  defineSymbol(math, ams, bin, "\u22D3", "\\doublecup");
+  defineSymbol(math, ams, bin, "\u22A0", "\\boxtimes", true);
+  defineSymbol(math, ams, rel, "\u21E2", "\\dashrightarrow", true);
+  defineSymbol(math, ams, rel, "\u21E0", "\\dashleftarrow", true);
+  defineSymbol(math, ams, rel, "\u21C7", "\\leftleftarrows", true);
+  defineSymbol(math, ams, rel, "\u21C6", "\\leftrightarrows", true);
+  defineSymbol(math, ams, rel, "\u21DA", "\\Lleftarrow", true);
+  defineSymbol(math, ams, rel, "\u219E", "\\twoheadleftarrow", true);
+  defineSymbol(math, ams, rel, "\u21A2", "\\leftarrowtail", true);
+  defineSymbol(math, ams, rel, "\u21AB", "\\looparrowleft", true);
+  defineSymbol(math, ams, rel, "\u21CB", "\\leftrightharpoons", true);
+  defineSymbol(math, ams, rel, "\u21B6", "\\curvearrowleft", true);
+  defineSymbol(math, ams, rel, "\u21BA", "\\circlearrowleft", true);
+  defineSymbol(math, ams, rel, "\u21B0", "\\Lsh", true);
+  defineSymbol(math, ams, rel, "\u21C8", "\\upuparrows", true);
+  defineSymbol(math, ams, rel, "\u21BF", "\\upharpoonleft", true);
+  defineSymbol(math, ams, rel, "\u21C3", "\\downharpoonleft", true);
+  defineSymbol(math, main, rel, "\u22B6", "\\origof", true);
+  defineSymbol(math, main, rel, "\u22B7", "\\imageof", true);
+  defineSymbol(math, ams, rel, "\u22B8", "\\multimap", true);
+  defineSymbol(math, ams, rel, "\u21AD", "\\leftrightsquigarrow", true);
+  defineSymbol(math, ams, rel, "\u21C9", "\\rightrightarrows", true);
+  defineSymbol(math, ams, rel, "\u21C4", "\\rightleftarrows", true);
+  defineSymbol(math, ams, rel, "\u21A0", "\\twoheadrightarrow", true);
+  defineSymbol(math, ams, rel, "\u21A3", "\\rightarrowtail", true);
+  defineSymbol(math, ams, rel, "\u21AC", "\\looparrowright", true);
+  defineSymbol(math, ams, rel, "\u21B7", "\\curvearrowright", true);
+  defineSymbol(math, ams, rel, "\u21BB", "\\circlearrowright", true);
+  defineSymbol(math, ams, rel, "\u21B1", "\\Rsh", true);
+  defineSymbol(math, ams, rel, "\u21CA", "\\downdownarrows", true);
+  defineSymbol(math, ams, rel, "\u21BE", "\\upharpoonright", true);
+  defineSymbol(math, ams, rel, "\u21C2", "\\downharpoonright", true);
+  defineSymbol(math, ams, rel, "\u21DD", "\\rightsquigarrow", true);
+  defineSymbol(math, ams, rel, "\u21DD", "\\leadsto");
+  defineSymbol(math, ams, rel, "\u21DB", "\\Rrightarrow", true);
+  defineSymbol(math, ams, rel, "\u21BE", "\\restriction");
+  defineSymbol(math, main, textord, "\u2018", "`");
   defineSymbol(math, main, textord, "$", "\\$");
   defineSymbol(text, main, textord, "$", "\\$");
   defineSymbol(text, main, textord, "$", "\\textdollar");
@@ -122178,146 +121002,146 @@ ${text2}</tr>
   defineSymbol(math, main, textord, "_", "\\_");
   defineSymbol(text, main, textord, "_", "\\_");
   defineSymbol(text, main, textord, "_", "\\textunderscore");
-  defineSymbol(math, main, textord, "∠", "\\angle", true);
-  defineSymbol(math, main, textord, "∞", "\\infty", true);
-  defineSymbol(math, main, textord, "′", "\\prime");
-  defineSymbol(math, main, textord, "△", "\\triangle");
-  defineSymbol(math, main, textord, "Γ", "\\Gamma", true);
-  defineSymbol(math, main, textord, "Δ", "\\Delta", true);
-  defineSymbol(math, main, textord, "Θ", "\\Theta", true);
-  defineSymbol(math, main, textord, "Λ", "\\Lambda", true);
-  defineSymbol(math, main, textord, "Ξ", "\\Xi", true);
-  defineSymbol(math, main, textord, "Π", "\\Pi", true);
-  defineSymbol(math, main, textord, "Σ", "\\Sigma", true);
-  defineSymbol(math, main, textord, "Υ", "\\Upsilon", true);
-  defineSymbol(math, main, textord, "Φ", "\\Phi", true);
-  defineSymbol(math, main, textord, "Ψ", "\\Psi", true);
-  defineSymbol(math, main, textord, "Ω", "\\Omega", true);
-  defineSymbol(math, main, textord, "A", "Α");
-  defineSymbol(math, main, textord, "B", "Β");
-  defineSymbol(math, main, textord, "E", "Ε");
-  defineSymbol(math, main, textord, "Z", "Ζ");
-  defineSymbol(math, main, textord, "H", "Η");
-  defineSymbol(math, main, textord, "I", "Ι");
-  defineSymbol(math, main, textord, "K", "Κ");
-  defineSymbol(math, main, textord, "M", "Μ");
-  defineSymbol(math, main, textord, "N", "Ν");
-  defineSymbol(math, main, textord, "O", "Ο");
-  defineSymbol(math, main, textord, "P", "Ρ");
-  defineSymbol(math, main, textord, "T", "Τ");
-  defineSymbol(math, main, textord, "X", "Χ");
-  defineSymbol(math, main, textord, "¬", "\\neg", true);
-  defineSymbol(math, main, textord, "¬", "\\lnot");
-  defineSymbol(math, main, textord, "⊤", "\\top");
-  defineSymbol(math, main, textord, "⊥", "\\bot");
-  defineSymbol(math, main, textord, "∅", "\\emptyset");
-  defineSymbol(math, ams, textord, "∅", "\\varnothing");
-  defineSymbol(math, main, mathord, "α", "\\alpha", true);
-  defineSymbol(math, main, mathord, "β", "\\beta", true);
-  defineSymbol(math, main, mathord, "γ", "\\gamma", true);
-  defineSymbol(math, main, mathord, "δ", "\\delta", true);
-  defineSymbol(math, main, mathord, "ϵ", "\\epsilon", true);
-  defineSymbol(math, main, mathord, "ζ", "\\zeta", true);
-  defineSymbol(math, main, mathord, "η", "\\eta", true);
-  defineSymbol(math, main, mathord, "θ", "\\theta", true);
-  defineSymbol(math, main, mathord, "ι", "\\iota", true);
-  defineSymbol(math, main, mathord, "κ", "\\kappa", true);
-  defineSymbol(math, main, mathord, "λ", "\\lambda", true);
-  defineSymbol(math, main, mathord, "μ", "\\mu", true);
-  defineSymbol(math, main, mathord, "ν", "\\nu", true);
-  defineSymbol(math, main, mathord, "ξ", "\\xi", true);
-  defineSymbol(math, main, mathord, "ο", "\\omicron", true);
-  defineSymbol(math, main, mathord, "π", "\\pi", true);
-  defineSymbol(math, main, mathord, "ρ", "\\rho", true);
-  defineSymbol(math, main, mathord, "σ", "\\sigma", true);
-  defineSymbol(math, main, mathord, "τ", "\\tau", true);
-  defineSymbol(math, main, mathord, "υ", "\\upsilon", true);
-  defineSymbol(math, main, mathord, "ϕ", "\\phi", true);
-  defineSymbol(math, main, mathord, "χ", "\\chi", true);
-  defineSymbol(math, main, mathord, "ψ", "\\psi", true);
-  defineSymbol(math, main, mathord, "ω", "\\omega", true);
-  defineSymbol(math, main, mathord, "ε", "\\varepsilon", true);
-  defineSymbol(math, main, mathord, "ϑ", "\\vartheta", true);
-  defineSymbol(math, main, mathord, "ϖ", "\\varpi", true);
-  defineSymbol(math, main, mathord, "ϱ", "\\varrho", true);
-  defineSymbol(math, main, mathord, "ς", "\\varsigma", true);
-  defineSymbol(math, main, mathord, "φ", "\\varphi", true);
-  defineSymbol(math, main, bin, "∗", "*", true);
+  defineSymbol(math, main, textord, "\u2220", "\\angle", true);
+  defineSymbol(math, main, textord, "\u221E", "\\infty", true);
+  defineSymbol(math, main, textord, "\u2032", "\\prime");
+  defineSymbol(math, main, textord, "\u25B3", "\\triangle");
+  defineSymbol(math, main, textord, "\u0393", "\\Gamma", true);
+  defineSymbol(math, main, textord, "\u0394", "\\Delta", true);
+  defineSymbol(math, main, textord, "\u0398", "\\Theta", true);
+  defineSymbol(math, main, textord, "\u039B", "\\Lambda", true);
+  defineSymbol(math, main, textord, "\u039E", "\\Xi", true);
+  defineSymbol(math, main, textord, "\u03A0", "\\Pi", true);
+  defineSymbol(math, main, textord, "\u03A3", "\\Sigma", true);
+  defineSymbol(math, main, textord, "\u03A5", "\\Upsilon", true);
+  defineSymbol(math, main, textord, "\u03A6", "\\Phi", true);
+  defineSymbol(math, main, textord, "\u03A8", "\\Psi", true);
+  defineSymbol(math, main, textord, "\u03A9", "\\Omega", true);
+  defineSymbol(math, main, textord, "A", "\u0391");
+  defineSymbol(math, main, textord, "B", "\u0392");
+  defineSymbol(math, main, textord, "E", "\u0395");
+  defineSymbol(math, main, textord, "Z", "\u0396");
+  defineSymbol(math, main, textord, "H", "\u0397");
+  defineSymbol(math, main, textord, "I", "\u0399");
+  defineSymbol(math, main, textord, "K", "\u039A");
+  defineSymbol(math, main, textord, "M", "\u039C");
+  defineSymbol(math, main, textord, "N", "\u039D");
+  defineSymbol(math, main, textord, "O", "\u039F");
+  defineSymbol(math, main, textord, "P", "\u03A1");
+  defineSymbol(math, main, textord, "T", "\u03A4");
+  defineSymbol(math, main, textord, "X", "\u03A7");
+  defineSymbol(math, main, textord, "\xAC", "\\neg", true);
+  defineSymbol(math, main, textord, "\xAC", "\\lnot");
+  defineSymbol(math, main, textord, "\u22A4", "\\top");
+  defineSymbol(math, main, textord, "\u22A5", "\\bot");
+  defineSymbol(math, main, textord, "\u2205", "\\emptyset");
+  defineSymbol(math, ams, textord, "\u2205", "\\varnothing");
+  defineSymbol(math, main, mathord, "\u03B1", "\\alpha", true);
+  defineSymbol(math, main, mathord, "\u03B2", "\\beta", true);
+  defineSymbol(math, main, mathord, "\u03B3", "\\gamma", true);
+  defineSymbol(math, main, mathord, "\u03B4", "\\delta", true);
+  defineSymbol(math, main, mathord, "\u03F5", "\\epsilon", true);
+  defineSymbol(math, main, mathord, "\u03B6", "\\zeta", true);
+  defineSymbol(math, main, mathord, "\u03B7", "\\eta", true);
+  defineSymbol(math, main, mathord, "\u03B8", "\\theta", true);
+  defineSymbol(math, main, mathord, "\u03B9", "\\iota", true);
+  defineSymbol(math, main, mathord, "\u03BA", "\\kappa", true);
+  defineSymbol(math, main, mathord, "\u03BB", "\\lambda", true);
+  defineSymbol(math, main, mathord, "\u03BC", "\\mu", true);
+  defineSymbol(math, main, mathord, "\u03BD", "\\nu", true);
+  defineSymbol(math, main, mathord, "\u03BE", "\\xi", true);
+  defineSymbol(math, main, mathord, "\u03BF", "\\omicron", true);
+  defineSymbol(math, main, mathord, "\u03C0", "\\pi", true);
+  defineSymbol(math, main, mathord, "\u03C1", "\\rho", true);
+  defineSymbol(math, main, mathord, "\u03C3", "\\sigma", true);
+  defineSymbol(math, main, mathord, "\u03C4", "\\tau", true);
+  defineSymbol(math, main, mathord, "\u03C5", "\\upsilon", true);
+  defineSymbol(math, main, mathord, "\u03D5", "\\phi", true);
+  defineSymbol(math, main, mathord, "\u03C7", "\\chi", true);
+  defineSymbol(math, main, mathord, "\u03C8", "\\psi", true);
+  defineSymbol(math, main, mathord, "\u03C9", "\\omega", true);
+  defineSymbol(math, main, mathord, "\u03B5", "\\varepsilon", true);
+  defineSymbol(math, main, mathord, "\u03D1", "\\vartheta", true);
+  defineSymbol(math, main, mathord, "\u03D6", "\\varpi", true);
+  defineSymbol(math, main, mathord, "\u03F1", "\\varrho", true);
+  defineSymbol(math, main, mathord, "\u03C2", "\\varsigma", true);
+  defineSymbol(math, main, mathord, "\u03C6", "\\varphi", true);
+  defineSymbol(math, main, bin, "\u2217", "*", true);
   defineSymbol(math, main, bin, "+", "+");
-  defineSymbol(math, main, bin, "−", "-", true);
-  defineSymbol(math, main, bin, "⋅", "\\cdot", true);
-  defineSymbol(math, main, bin, "∘", "\\circ", true);
-  defineSymbol(math, main, bin, "÷", "\\div", true);
-  defineSymbol(math, main, bin, "±", "\\pm", true);
-  defineSymbol(math, main, bin, "×", "\\times", true);
-  defineSymbol(math, main, bin, "∩", "\\cap", true);
-  defineSymbol(math, main, bin, "∪", "\\cup", true);
-  defineSymbol(math, main, bin, "∖", "\\setminus", true);
-  defineSymbol(math, main, bin, "∧", "\\land");
-  defineSymbol(math, main, bin, "∨", "\\lor");
-  defineSymbol(math, main, bin, "∧", "\\wedge", true);
-  defineSymbol(math, main, bin, "∨", "\\vee", true);
-  defineSymbol(math, main, textord, "√", "\\surd");
-  defineSymbol(math, main, open2, "⟨", "\\langle", true);
-  defineSymbol(math, main, open2, "∣", "\\lvert");
-  defineSymbol(math, main, open2, "∥", "\\lVert");
+  defineSymbol(math, main, bin, "\u2212", "-", true);
+  defineSymbol(math, main, bin, "\u22C5", "\\cdot", true);
+  defineSymbol(math, main, bin, "\u2218", "\\circ", true);
+  defineSymbol(math, main, bin, "\xF7", "\\div", true);
+  defineSymbol(math, main, bin, "\xB1", "\\pm", true);
+  defineSymbol(math, main, bin, "\xD7", "\\times", true);
+  defineSymbol(math, main, bin, "\u2229", "\\cap", true);
+  defineSymbol(math, main, bin, "\u222A", "\\cup", true);
+  defineSymbol(math, main, bin, "\u2216", "\\setminus", true);
+  defineSymbol(math, main, bin, "\u2227", "\\land");
+  defineSymbol(math, main, bin, "\u2228", "\\lor");
+  defineSymbol(math, main, bin, "\u2227", "\\wedge", true);
+  defineSymbol(math, main, bin, "\u2228", "\\vee", true);
+  defineSymbol(math, main, textord, "\u221A", "\\surd");
+  defineSymbol(math, main, open2, "\u27E8", "\\langle", true);
+  defineSymbol(math, main, open2, "\u2223", "\\lvert");
+  defineSymbol(math, main, open2, "\u2225", "\\lVert");
   defineSymbol(math, main, close, "?", "?");
   defineSymbol(math, main, close, "!", "!");
-  defineSymbol(math, main, close, "⟩", "\\rangle", true);
-  defineSymbol(math, main, close, "∣", "\\rvert");
-  defineSymbol(math, main, close, "∥", "\\rVert");
+  defineSymbol(math, main, close, "\u27E9", "\\rangle", true);
+  defineSymbol(math, main, close, "\u2223", "\\rvert");
+  defineSymbol(math, main, close, "\u2225", "\\rVert");
   defineSymbol(math, main, rel, "=", "=");
   defineSymbol(math, main, rel, ":", ":");
-  defineSymbol(math, main, rel, "≈", "\\approx", true);
-  defineSymbol(math, main, rel, "≅", "\\cong", true);
-  defineSymbol(math, main, rel, "≥", "\\ge");
-  defineSymbol(math, main, rel, "≥", "\\geq", true);
-  defineSymbol(math, main, rel, "←", "\\gets");
+  defineSymbol(math, main, rel, "\u2248", "\\approx", true);
+  defineSymbol(math, main, rel, "\u2245", "\\cong", true);
+  defineSymbol(math, main, rel, "\u2265", "\\ge");
+  defineSymbol(math, main, rel, "\u2265", "\\geq", true);
+  defineSymbol(math, main, rel, "\u2190", "\\gets");
   defineSymbol(math, main, rel, ">", "\\gt", true);
-  defineSymbol(math, main, rel, "∈", "\\in", true);
-  defineSymbol(math, main, rel, "", "\\@not");
-  defineSymbol(math, main, rel, "⊂", "\\subset", true);
-  defineSymbol(math, main, rel, "⊃", "\\supset", true);
-  defineSymbol(math, main, rel, "⊆", "\\subseteq", true);
-  defineSymbol(math, main, rel, "⊇", "\\supseteq", true);
-  defineSymbol(math, ams, rel, "⊈", "\\nsubseteq", true);
-  defineSymbol(math, ams, rel, "⊉", "\\nsupseteq", true);
-  defineSymbol(math, main, rel, "⊨", "\\models");
-  defineSymbol(math, main, rel, "←", "\\leftarrow", true);
-  defineSymbol(math, main, rel, "≤", "\\le");
-  defineSymbol(math, main, rel, "≤", "\\leq", true);
+  defineSymbol(math, main, rel, "\u2208", "\\in", true);
+  defineSymbol(math, main, rel, "\uE020", "\\@not");
+  defineSymbol(math, main, rel, "\u2282", "\\subset", true);
+  defineSymbol(math, main, rel, "\u2283", "\\supset", true);
+  defineSymbol(math, main, rel, "\u2286", "\\subseteq", true);
+  defineSymbol(math, main, rel, "\u2287", "\\supseteq", true);
+  defineSymbol(math, ams, rel, "\u2288", "\\nsubseteq", true);
+  defineSymbol(math, ams, rel, "\u2289", "\\nsupseteq", true);
+  defineSymbol(math, main, rel, "\u22A8", "\\models");
+  defineSymbol(math, main, rel, "\u2190", "\\leftarrow", true);
+  defineSymbol(math, main, rel, "\u2264", "\\le");
+  defineSymbol(math, main, rel, "\u2264", "\\leq", true);
   defineSymbol(math, main, rel, "<", "\\lt", true);
-  defineSymbol(math, main, rel, "→", "\\rightarrow", true);
-  defineSymbol(math, main, rel, "→", "\\to");
-  defineSymbol(math, ams, rel, "≱", "\\ngeq", true);
-  defineSymbol(math, ams, rel, "≰", "\\nleq", true);
-  defineSymbol(math, main, spacing, " ", "\\ ");
-  defineSymbol(math, main, spacing, " ", "\\space");
-  defineSymbol(math, main, spacing, " ", "\\nobreakspace");
-  defineSymbol(text, main, spacing, " ", "\\ ");
-  defineSymbol(text, main, spacing, " ", " ");
-  defineSymbol(text, main, spacing, " ", "\\space");
-  defineSymbol(text, main, spacing, " ", "\\nobreakspace");
+  defineSymbol(math, main, rel, "\u2192", "\\rightarrow", true);
+  defineSymbol(math, main, rel, "\u2192", "\\to");
+  defineSymbol(math, ams, rel, "\u2271", "\\ngeq", true);
+  defineSymbol(math, ams, rel, "\u2270", "\\nleq", true);
+  defineSymbol(math, main, spacing, "\xA0", "\\ ");
+  defineSymbol(math, main, spacing, "\xA0", "\\space");
+  defineSymbol(math, main, spacing, "\xA0", "\\nobreakspace");
+  defineSymbol(text, main, spacing, "\xA0", "\\ ");
+  defineSymbol(text, main, spacing, "\xA0", " ");
+  defineSymbol(text, main, spacing, "\xA0", "\\space");
+  defineSymbol(text, main, spacing, "\xA0", "\\nobreakspace");
   defineSymbol(math, main, spacing, null, "\\nobreak");
   defineSymbol(math, main, spacing, null, "\\allowbreak");
   defineSymbol(math, main, punct, ",", ",");
   defineSymbol(math, main, punct, ";", ";");
-  defineSymbol(math, ams, bin, "⊼", "\\barwedge", true);
-  defineSymbol(math, ams, bin, "⊻", "\\veebar", true);
-  defineSymbol(math, main, bin, "⊙", "\\odot", true);
-  defineSymbol(math, main, bin, "⊕", "\\oplus", true);
-  defineSymbol(math, main, bin, "⊗", "\\otimes", true);
-  defineSymbol(math, main, textord, "∂", "\\partial", true);
-  defineSymbol(math, main, bin, "⊘", "\\oslash", true);
-  defineSymbol(math, ams, bin, "⊚", "\\circledcirc", true);
-  defineSymbol(math, ams, bin, "⊡", "\\boxdot", true);
-  defineSymbol(math, main, bin, "△", "\\bigtriangleup");
-  defineSymbol(math, main, bin, "▽", "\\bigtriangledown");
-  defineSymbol(math, main, bin, "†", "\\dagger");
-  defineSymbol(math, main, bin, "⋄", "\\diamond");
-  defineSymbol(math, main, bin, "⋆", "\\star");
-  defineSymbol(math, main, bin, "◃", "\\triangleleft");
-  defineSymbol(math, main, bin, "▹", "\\triangleright");
+  defineSymbol(math, ams, bin, "\u22BC", "\\barwedge", true);
+  defineSymbol(math, ams, bin, "\u22BB", "\\veebar", true);
+  defineSymbol(math, main, bin, "\u2299", "\\odot", true);
+  defineSymbol(math, main, bin, "\u2295", "\\oplus", true);
+  defineSymbol(math, main, bin, "\u2297", "\\otimes", true);
+  defineSymbol(math, main, textord, "\u2202", "\\partial", true);
+  defineSymbol(math, main, bin, "\u2298", "\\oslash", true);
+  defineSymbol(math, ams, bin, "\u229A", "\\circledcirc", true);
+  defineSymbol(math, ams, bin, "\u22A1", "\\boxdot", true);
+  defineSymbol(math, main, bin, "\u25B3", "\\bigtriangleup");
+  defineSymbol(math, main, bin, "\u25BD", "\\bigtriangledown");
+  defineSymbol(math, main, bin, "\u2020", "\\dagger");
+  defineSymbol(math, main, bin, "\u22C4", "\\diamond");
+  defineSymbol(math, main, bin, "\u22C6", "\\star");
+  defineSymbol(math, main, bin, "\u25C3", "\\triangleleft");
+  defineSymbol(math, main, bin, "\u25B9", "\\triangleright");
   defineSymbol(math, main, open2, "{", "\\{");
   defineSymbol(text, main, textord, "{", "\\{");
   defineSymbol(text, main, textord, "{", "\\textbraceleft");
@@ -122334,118 +121158,118 @@ ${text2}</tr>
   defineSymbol(math, main, close, ")", "\\rparen", true);
   defineSymbol(text, main, textord, "<", "\\textless", true);
   defineSymbol(text, main, textord, ">", "\\textgreater", true);
-  defineSymbol(math, main, open2, "⌊", "\\lfloor", true);
-  defineSymbol(math, main, close, "⌋", "\\rfloor", true);
-  defineSymbol(math, main, open2, "⌈", "\\lceil", true);
-  defineSymbol(math, main, close, "⌉", "\\rceil", true);
+  defineSymbol(math, main, open2, "\u230A", "\\lfloor", true);
+  defineSymbol(math, main, close, "\u230B", "\\rfloor", true);
+  defineSymbol(math, main, open2, "\u2308", "\\lceil", true);
+  defineSymbol(math, main, close, "\u2309", "\\rceil", true);
   defineSymbol(math, main, textord, "\\", "\\backslash");
-  defineSymbol(math, main, textord, "∣", "|");
-  defineSymbol(math, main, textord, "∣", "\\vert");
+  defineSymbol(math, main, textord, "\u2223", "|");
+  defineSymbol(math, main, textord, "\u2223", "\\vert");
   defineSymbol(text, main, textord, "|", "\\textbar", true);
-  defineSymbol(math, main, textord, "∥", "\\|");
-  defineSymbol(math, main, textord, "∥", "\\Vert");
-  defineSymbol(text, main, textord, "∥", "\\textbardbl");
+  defineSymbol(math, main, textord, "\u2225", "\\|");
+  defineSymbol(math, main, textord, "\u2225", "\\Vert");
+  defineSymbol(text, main, textord, "\u2225", "\\textbardbl");
   defineSymbol(text, main, textord, "~", "\\textasciitilde");
   defineSymbol(text, main, textord, "\\", "\\textbackslash");
   defineSymbol(text, main, textord, "^", "\\textasciicircum");
-  defineSymbol(math, main, rel, "↑", "\\uparrow", true);
-  defineSymbol(math, main, rel, "⇑", "\\Uparrow", true);
-  defineSymbol(math, main, rel, "↓", "\\downarrow", true);
-  defineSymbol(math, main, rel, "⇓", "\\Downarrow", true);
-  defineSymbol(math, main, rel, "↕", "\\updownarrow", true);
-  defineSymbol(math, main, rel, "⇕", "\\Updownarrow", true);
-  defineSymbol(math, main, op, "∐", "\\coprod");
-  defineSymbol(math, main, op, "⋁", "\\bigvee");
-  defineSymbol(math, main, op, "⋀", "\\bigwedge");
-  defineSymbol(math, main, op, "⨄", "\\biguplus");
-  defineSymbol(math, main, op, "⋂", "\\bigcap");
-  defineSymbol(math, main, op, "⋃", "\\bigcup");
-  defineSymbol(math, main, op, "∫", "\\int");
-  defineSymbol(math, main, op, "∫", "\\intop");
-  defineSymbol(math, main, op, "∬", "\\iint");
-  defineSymbol(math, main, op, "∭", "\\iiint");
-  defineSymbol(math, main, op, "∏", "\\prod");
-  defineSymbol(math, main, op, "∑", "\\sum");
-  defineSymbol(math, main, op, "⨂", "\\bigotimes");
-  defineSymbol(math, main, op, "⨁", "\\bigoplus");
-  defineSymbol(math, main, op, "⨀", "\\bigodot");
-  defineSymbol(math, main, op, "∮", "\\oint");
-  defineSymbol(math, main, op, "∯", "\\oiint");
-  defineSymbol(math, main, op, "∰", "\\oiiint");
-  defineSymbol(math, main, op, "⨆", "\\bigsqcup");
-  defineSymbol(math, main, op, "∫", "\\smallint");
-  defineSymbol(text, main, inner, "…", "\\textellipsis");
-  defineSymbol(math, main, inner, "…", "\\mathellipsis");
-  defineSymbol(text, main, inner, "…", "\\ldots", true);
-  defineSymbol(math, main, inner, "…", "\\ldots", true);
-  defineSymbol(math, main, inner, "⋯", "\\@cdots", true);
-  defineSymbol(math, main, inner, "⋱", "\\ddots", true);
-  defineSymbol(math, main, textord, "⋮", "\\varvdots");
-  defineSymbol(text, main, textord, "⋮", "\\varvdots");
-  defineSymbol(math, main, accent, "ˊ", "\\acute");
-  defineSymbol(math, main, accent, "ˋ", "\\grave");
-  defineSymbol(math, main, accent, "¨", "\\ddot");
+  defineSymbol(math, main, rel, "\u2191", "\\uparrow", true);
+  defineSymbol(math, main, rel, "\u21D1", "\\Uparrow", true);
+  defineSymbol(math, main, rel, "\u2193", "\\downarrow", true);
+  defineSymbol(math, main, rel, "\u21D3", "\\Downarrow", true);
+  defineSymbol(math, main, rel, "\u2195", "\\updownarrow", true);
+  defineSymbol(math, main, rel, "\u21D5", "\\Updownarrow", true);
+  defineSymbol(math, main, op, "\u2210", "\\coprod");
+  defineSymbol(math, main, op, "\u22C1", "\\bigvee");
+  defineSymbol(math, main, op, "\u22C0", "\\bigwedge");
+  defineSymbol(math, main, op, "\u2A04", "\\biguplus");
+  defineSymbol(math, main, op, "\u22C2", "\\bigcap");
+  defineSymbol(math, main, op, "\u22C3", "\\bigcup");
+  defineSymbol(math, main, op, "\u222B", "\\int");
+  defineSymbol(math, main, op, "\u222B", "\\intop");
+  defineSymbol(math, main, op, "\u222C", "\\iint");
+  defineSymbol(math, main, op, "\u222D", "\\iiint");
+  defineSymbol(math, main, op, "\u220F", "\\prod");
+  defineSymbol(math, main, op, "\u2211", "\\sum");
+  defineSymbol(math, main, op, "\u2A02", "\\bigotimes");
+  defineSymbol(math, main, op, "\u2A01", "\\bigoplus");
+  defineSymbol(math, main, op, "\u2A00", "\\bigodot");
+  defineSymbol(math, main, op, "\u222E", "\\oint");
+  defineSymbol(math, main, op, "\u222F", "\\oiint");
+  defineSymbol(math, main, op, "\u2230", "\\oiiint");
+  defineSymbol(math, main, op, "\u2A06", "\\bigsqcup");
+  defineSymbol(math, main, op, "\u222B", "\\smallint");
+  defineSymbol(text, main, inner, "\u2026", "\\textellipsis");
+  defineSymbol(math, main, inner, "\u2026", "\\mathellipsis");
+  defineSymbol(text, main, inner, "\u2026", "\\ldots", true);
+  defineSymbol(math, main, inner, "\u2026", "\\ldots", true);
+  defineSymbol(math, main, inner, "\u22EF", "\\@cdots", true);
+  defineSymbol(math, main, inner, "\u22F1", "\\ddots", true);
+  defineSymbol(math, main, textord, "\u22EE", "\\varvdots");
+  defineSymbol(text, main, textord, "\u22EE", "\\varvdots");
+  defineSymbol(math, main, accent, "\u02CA", "\\acute");
+  defineSymbol(math, main, accent, "\u02CB", "\\grave");
+  defineSymbol(math, main, accent, "\xA8", "\\ddot");
   defineSymbol(math, main, accent, "~", "\\tilde");
-  defineSymbol(math, main, accent, "ˉ", "\\bar");
-  defineSymbol(math, main, accent, "˘", "\\breve");
-  defineSymbol(math, main, accent, "ˇ", "\\check");
+  defineSymbol(math, main, accent, "\u02C9", "\\bar");
+  defineSymbol(math, main, accent, "\u02D8", "\\breve");
+  defineSymbol(math, main, accent, "\u02C7", "\\check");
   defineSymbol(math, main, accent, "^", "\\hat");
-  defineSymbol(math, main, accent, "⃗", "\\vec");
-  defineSymbol(math, main, accent, "˙", "\\dot");
-  defineSymbol(math, main, accent, "˚", "\\mathring");
-  defineSymbol(math, main, mathord, "", "\\@imath");
-  defineSymbol(math, main, mathord, "", "\\@jmath");
-  defineSymbol(math, main, textord, "ı", "ı");
-  defineSymbol(math, main, textord, "ȷ", "ȷ");
-  defineSymbol(text, main, textord, "ı", "\\i", true);
-  defineSymbol(text, main, textord, "ȷ", "\\j", true);
-  defineSymbol(text, main, textord, "ß", "\\ss", true);
-  defineSymbol(text, main, textord, "æ", "\\ae", true);
-  defineSymbol(text, main, textord, "œ", "\\oe", true);
-  defineSymbol(text, main, textord, "ø", "\\o", true);
-  defineSymbol(text, main, textord, "Æ", "\\AE", true);
-  defineSymbol(text, main, textord, "Œ", "\\OE", true);
-  defineSymbol(text, main, textord, "Ø", "\\O", true);
-  defineSymbol(text, main, accent, "ˊ", "\\'");
-  defineSymbol(text, main, accent, "ˋ", "\\`");
-  defineSymbol(text, main, accent, "ˆ", "\\^");
-  defineSymbol(text, main, accent, "˜", "\\~");
-  defineSymbol(text, main, accent, "ˉ", "\\=");
-  defineSymbol(text, main, accent, "˘", "\\u");
-  defineSymbol(text, main, accent, "˙", "\\.");
-  defineSymbol(text, main, accent, "¸", "\\c");
-  defineSymbol(text, main, accent, "˚", "\\r");
-  defineSymbol(text, main, accent, "ˇ", "\\v");
-  defineSymbol(text, main, accent, "¨", '\\"');
-  defineSymbol(text, main, accent, "˝", "\\H");
-  defineSymbol(text, main, accent, "◯", "\\textcircled");
+  defineSymbol(math, main, accent, "\u20D7", "\\vec");
+  defineSymbol(math, main, accent, "\u02D9", "\\dot");
+  defineSymbol(math, main, accent, "\u02DA", "\\mathring");
+  defineSymbol(math, main, mathord, "\uE131", "\\@imath");
+  defineSymbol(math, main, mathord, "\uE237", "\\@jmath");
+  defineSymbol(math, main, textord, "\u0131", "\u0131");
+  defineSymbol(math, main, textord, "\u0237", "\u0237");
+  defineSymbol(text, main, textord, "\u0131", "\\i", true);
+  defineSymbol(text, main, textord, "\u0237", "\\j", true);
+  defineSymbol(text, main, textord, "\xDF", "\\ss", true);
+  defineSymbol(text, main, textord, "\xE6", "\\ae", true);
+  defineSymbol(text, main, textord, "\u0153", "\\oe", true);
+  defineSymbol(text, main, textord, "\xF8", "\\o", true);
+  defineSymbol(text, main, textord, "\xC6", "\\AE", true);
+  defineSymbol(text, main, textord, "\u0152", "\\OE", true);
+  defineSymbol(text, main, textord, "\xD8", "\\O", true);
+  defineSymbol(text, main, accent, "\u02CA", "\\'");
+  defineSymbol(text, main, accent, "\u02CB", "\\`");
+  defineSymbol(text, main, accent, "\u02C6", "\\^");
+  defineSymbol(text, main, accent, "\u02DC", "\\~");
+  defineSymbol(text, main, accent, "\u02C9", "\\=");
+  defineSymbol(text, main, accent, "\u02D8", "\\u");
+  defineSymbol(text, main, accent, "\u02D9", "\\.");
+  defineSymbol(text, main, accent, "\xB8", "\\c");
+  defineSymbol(text, main, accent, "\u02DA", "\\r");
+  defineSymbol(text, main, accent, "\u02C7", "\\v");
+  defineSymbol(text, main, accent, "\xA8", '\\"');
+  defineSymbol(text, main, accent, "\u02DD", "\\H");
+  defineSymbol(text, main, accent, "\u25EF", "\\textcircled");
   var ligatures = {
     "--": true,
     "---": true,
     "``": true,
     "''": true
   };
-  defineSymbol(text, main, textord, "–", "--", true);
-  defineSymbol(text, main, textord, "–", "\\textendash");
-  defineSymbol(text, main, textord, "—", "---", true);
-  defineSymbol(text, main, textord, "—", "\\textemdash");
-  defineSymbol(text, main, textord, "‘", "`", true);
-  defineSymbol(text, main, textord, "‘", "\\textquoteleft");
-  defineSymbol(text, main, textord, "’", "'", true);
-  defineSymbol(text, main, textord, "’", "\\textquoteright");
-  defineSymbol(text, main, textord, "“", "``", true);
-  defineSymbol(text, main, textord, "“", "\\textquotedblleft");
-  defineSymbol(text, main, textord, "”", "''", true);
-  defineSymbol(text, main, textord, "”", "\\textquotedblright");
-  defineSymbol(math, main, textord, "°", "\\degree", true);
-  defineSymbol(text, main, textord, "°", "\\degree");
-  defineSymbol(text, main, textord, "°", "\\textdegree", true);
-  defineSymbol(math, main, textord, "£", "\\pounds");
-  defineSymbol(math, main, textord, "£", "\\mathsterling", true);
-  defineSymbol(text, main, textord, "£", "\\pounds");
-  defineSymbol(text, main, textord, "£", "\\textsterling", true);
-  defineSymbol(math, ams, textord, "✠", "\\maltese");
-  defineSymbol(text, ams, textord, "✠", "\\maltese");
+  defineSymbol(text, main, textord, "\u2013", "--", true);
+  defineSymbol(text, main, textord, "\u2013", "\\textendash");
+  defineSymbol(text, main, textord, "\u2014", "---", true);
+  defineSymbol(text, main, textord, "\u2014", "\\textemdash");
+  defineSymbol(text, main, textord, "\u2018", "`", true);
+  defineSymbol(text, main, textord, "\u2018", "\\textquoteleft");
+  defineSymbol(text, main, textord, "\u2019", "'", true);
+  defineSymbol(text, main, textord, "\u2019", "\\textquoteright");
+  defineSymbol(text, main, textord, "\u201C", "``", true);
+  defineSymbol(text, main, textord, "\u201C", "\\textquotedblleft");
+  defineSymbol(text, main, textord, "\u201D", "''", true);
+  defineSymbol(text, main, textord, "\u201D", "\\textquotedblright");
+  defineSymbol(math, main, textord, "\xB0", "\\degree", true);
+  defineSymbol(text, main, textord, "\xB0", "\\degree");
+  defineSymbol(text, main, textord, "\xB0", "\\textdegree", true);
+  defineSymbol(math, main, textord, "\xA3", "\\pounds");
+  defineSymbol(math, main, textord, "\xA3", "\\mathsterling", true);
+  defineSymbol(text, main, textord, "\xA3", "\\pounds");
+  defineSymbol(text, main, textord, "\xA3", "\\textsterling", true);
+  defineSymbol(math, ams, textord, "\u2720", "\\maltese");
+  defineSymbol(text, ams, textord, "\u2720", "\\maltese");
   var mathTextSymbols = '0123456789/@."';
   for (i3 = 0; i3 < mathTextSymbols.length; i3++) {
     ch = mathTextSymbols.charAt(i3);
@@ -122468,22 +121292,22 @@ ${text2}</tr>
   }
   var _ch2;
   var _i2;
-  defineSymbol(math, ams, textord, "C", "ℂ");
-  defineSymbol(text, ams, textord, "C", "ℂ");
-  defineSymbol(math, ams, textord, "H", "ℍ");
-  defineSymbol(text, ams, textord, "H", "ℍ");
-  defineSymbol(math, ams, textord, "N", "ℕ");
-  defineSymbol(text, ams, textord, "N", "ℕ");
-  defineSymbol(math, ams, textord, "P", "ℙ");
-  defineSymbol(text, ams, textord, "P", "ℙ");
-  defineSymbol(math, ams, textord, "Q", "ℚ");
-  defineSymbol(text, ams, textord, "Q", "ℚ");
-  defineSymbol(math, ams, textord, "R", "ℝ");
-  defineSymbol(text, ams, textord, "R", "ℝ");
-  defineSymbol(math, ams, textord, "Z", "ℤ");
-  defineSymbol(text, ams, textord, "Z", "ℤ");
-  defineSymbol(math, main, mathord, "h", "ℎ");
-  defineSymbol(text, main, mathord, "h", "ℎ");
+  defineSymbol(math, ams, textord, "C", "\u2102");
+  defineSymbol(text, ams, textord, "C", "\u2102");
+  defineSymbol(math, ams, textord, "H", "\u210D");
+  defineSymbol(text, ams, textord, "H", "\u210D");
+  defineSymbol(math, ams, textord, "N", "\u2115");
+  defineSymbol(text, ams, textord, "N", "\u2115");
+  defineSymbol(math, ams, textord, "P", "\u2119");
+  defineSymbol(text, ams, textord, "P", "\u2119");
+  defineSymbol(math, ams, textord, "Q", "\u211A");
+  defineSymbol(text, ams, textord, "Q", "\u211A");
+  defineSymbol(math, ams, textord, "R", "\u211D");
+  defineSymbol(text, ams, textord, "R", "\u211D");
+  defineSymbol(math, ams, textord, "Z", "\u2124");
+  defineSymbol(text, ams, textord, "Z", "\u2124");
+  defineSymbol(math, main, mathord, "h", "\u210E");
+  defineSymbol(text, main, mathord, "h", "\u210E");
   var wideChar = "";
   for (_i3 = 0; _i3 < letters.length; _i3++) {
     _ch3 = letters.charAt(_i3);
@@ -122545,7 +121369,7 @@ ${text2}</tr>
   }
   var _ch4;
   var _i4;
-  var extraLatin = "ÐÞþ";
+  var extraLatin = "\xD0\xDE\xFE";
   for (_i5 = 0; _i5 < extraLatin.length; _i5++) {
     _ch5 = extraLatin.charAt(_i5);
     defineSymbol(math, main, mathord, _ch5, _ch5);
@@ -122941,7 +121765,7 @@ ${text2}</tr>
       var emptySpan = makeSpan$2([], []);
       var depthStrut = makeSpan$2(["vlist"], [emptySpan]);
       depthStrut.style.height = makeEm(-minPos);
-      var topStrut = makeSpan$2(["vlist-s"], [new SymbolNode("​")]);
+      var topStrut = makeSpan$2(["vlist-s"], [new SymbolNode("\u200B")]);
       rows = [makeSpan$2(["vlist-r"], [vlist, topStrut]), makeSpan$2(["vlist-r"], [depthStrut])];
     } else {
       rows = [makeSpan$2(["vlist-r"], [vlist])];
@@ -123578,21 +122402,21 @@ ${text2}</tr>
       this.character = void 0;
       this.width = width;
       if (width >= 0.05555 && width <= 0.05556) {
-        this.character = " ";
+        this.character = "\u200A";
       } else if (width >= 0.1666 && width <= 0.1667) {
-        this.character = " ";
+        this.character = "\u2009";
       } else if (width >= 0.2222 && width <= 0.2223) {
-        this.character = " ";
+        this.character = "\u2005";
       } else if (width >= 0.2777 && width <= 0.2778) {
-        this.character = "  ";
+        this.character = "\u2005\u200A";
       } else if (width >= -0.05556 && width <= -0.05555) {
-        this.character = " ⁣";
+        this.character = "\u200A\u2063";
       } else if (width >= -0.1667 && width <= -0.1666) {
-        this.character = " ⁣";
+        this.character = "\u2009\u2063";
       } else if (width >= -0.2223 && width <= -0.2222) {
-        this.character = " ⁣";
+        this.character = "\u205F\u2063";
       } else if (width >= -0.2778 && width <= -0.2777) {
-        this.character = " ⁣";
+        this.character = "\u2005\u2063";
       } else {
         this.character = null;
       }
@@ -123754,10 +122578,10 @@ ${text2}</tr>
           }
         } else if (lastGroup.type === "mi" && lastGroup.children.length === 1) {
           var lastChild = lastGroup.children[0];
-          if (lastChild instanceof TextNode && lastChild.text === "̸" && (_group.type === "mo" || _group.type === "mi" || _group.type === "mn")) {
+          if (lastChild instanceof TextNode && lastChild.text === "\u0338" && (_group.type === "mo" || _group.type === "mi" || _group.type === "mn")) {
             var child = _group.children[0];
             if (child instanceof TextNode && child.text.length > 0) {
-              child.text = child.text.slice(0, 1) + "̸" + child.text.slice(1);
+              child.text = child.text.slice(0, 1) + "\u0338" + child.text.slice(1);
               groups.pop();
             }
           }
@@ -123844,48 +122668,48 @@ ${text2}</tr>
   };
   var stretchyCodePoint = {
     widehat: "^",
-    widecheck: "ˇ",
+    widecheck: "\u02C7",
     widetilde: "~",
     utilde: "~",
-    overleftarrow: "←",
-    underleftarrow: "←",
-    xleftarrow: "←",
-    overrightarrow: "→",
-    underrightarrow: "→",
-    xrightarrow: "→",
-    underbrace: "⏟",
-    overbrace: "⏞",
-    overgroup: "⏠",
-    undergroup: "⏡",
-    overleftrightarrow: "↔",
-    underleftrightarrow: "↔",
-    xleftrightarrow: "↔",
-    Overrightarrow: "⇒",
-    xRightarrow: "⇒",
-    overleftharpoon: "↼",
-    xleftharpoonup: "↼",
-    overrightharpoon: "⇀",
-    xrightharpoonup: "⇀",
-    xLeftarrow: "⇐",
-    xLeftrightarrow: "⇔",
-    xhookleftarrow: "↩",
-    xhookrightarrow: "↪",
-    xmapsto: "↦",
-    xrightharpoondown: "⇁",
-    xleftharpoondown: "↽",
-    xrightleftharpoons: "⇌",
-    xleftrightharpoons: "⇋",
-    xtwoheadleftarrow: "↞",
-    xtwoheadrightarrow: "↠",
+    overleftarrow: "\u2190",
+    underleftarrow: "\u2190",
+    xleftarrow: "\u2190",
+    overrightarrow: "\u2192",
+    underrightarrow: "\u2192",
+    xrightarrow: "\u2192",
+    underbrace: "\u23DF",
+    overbrace: "\u23DE",
+    overgroup: "\u23E0",
+    undergroup: "\u23E1",
+    overleftrightarrow: "\u2194",
+    underleftrightarrow: "\u2194",
+    xleftrightarrow: "\u2194",
+    Overrightarrow: "\u21D2",
+    xRightarrow: "\u21D2",
+    overleftharpoon: "\u21BC",
+    xleftharpoonup: "\u21BC",
+    overrightharpoon: "\u21C0",
+    xrightharpoonup: "\u21C0",
+    xLeftarrow: "\u21D0",
+    xLeftrightarrow: "\u21D4",
+    xhookleftarrow: "\u21A9",
+    xhookrightarrow: "\u21AA",
+    xmapsto: "\u21A6",
+    xrightharpoondown: "\u21C1",
+    xleftharpoondown: "\u21BD",
+    xrightleftharpoons: "\u21CC",
+    xleftrightharpoons: "\u21CB",
+    xtwoheadleftarrow: "\u219E",
+    xtwoheadrightarrow: "\u21A0",
     xlongequal: "=",
-    xtofrom: "⇄",
-    xrightleftarrows: "⇄",
-    xrightequilibrium: "⇌",
+    xtofrom: "\u21C4",
+    xrightleftarrows: "\u21C4",
+    xrightequilibrium: "\u21CC",
     // Not a perfect match.
-    xleftequilibrium: "⇋",
+    xleftequilibrium: "\u21CB",
     // None better available.
-    "\\cdrightarrow": "→",
-    "\\cdleftarrow": "←",
+    "\\cdrightarrow": "\u2192",
+    "\\cdleftarrow": "\u2190",
     "\\cdlongequal": "="
   };
   var mathMLnode = function mathMLnode2(label) {
@@ -125292,112 +124116,112 @@ ${text2}</tr>
     middle = null;
     var font = "Size1-Regular";
     if (delim === "\\uparrow") {
-      repeat = bottom = "⏐";
+      repeat = bottom = "\u23D0";
     } else if (delim === "\\Uparrow") {
-      repeat = bottom = "‖";
+      repeat = bottom = "\u2016";
     } else if (delim === "\\downarrow") {
-      top = repeat = "⏐";
+      top = repeat = "\u23D0";
     } else if (delim === "\\Downarrow") {
-      top = repeat = "‖";
+      top = repeat = "\u2016";
     } else if (delim === "\\updownarrow") {
       top = "\\uparrow";
-      repeat = "⏐";
+      repeat = "\u23D0";
       bottom = "\\downarrow";
     } else if (delim === "\\Updownarrow") {
       top = "\\Uparrow";
-      repeat = "‖";
+      repeat = "\u2016";
       bottom = "\\Downarrow";
     } else if (utils2.contains(verts, delim)) {
-      repeat = "∣";
+      repeat = "\u2223";
       svgLabel = "vert";
       viewBoxWidth = 333;
     } else if (utils2.contains(doubleVerts, delim)) {
-      repeat = "∥";
+      repeat = "\u2225";
       svgLabel = "doublevert";
       viewBoxWidth = 556;
     } else if (delim === "[" || delim === "\\lbrack") {
-      top = "⎡";
-      repeat = "⎢";
-      bottom = "⎣";
+      top = "\u23A1";
+      repeat = "\u23A2";
+      bottom = "\u23A3";
       font = "Size4-Regular";
       svgLabel = "lbrack";
       viewBoxWidth = 667;
     } else if (delim === "]" || delim === "\\rbrack") {
-      top = "⎤";
-      repeat = "⎥";
-      bottom = "⎦";
+      top = "\u23A4";
+      repeat = "\u23A5";
+      bottom = "\u23A6";
       font = "Size4-Regular";
       svgLabel = "rbrack";
       viewBoxWidth = 667;
-    } else if (delim === "\\lfloor" || delim === "⌊") {
-      repeat = top = "⎢";
-      bottom = "⎣";
+    } else if (delim === "\\lfloor" || delim === "\u230A") {
+      repeat = top = "\u23A2";
+      bottom = "\u23A3";
       font = "Size4-Regular";
       svgLabel = "lfloor";
       viewBoxWidth = 667;
-    } else if (delim === "\\lceil" || delim === "⌈") {
-      top = "⎡";
-      repeat = bottom = "⎢";
+    } else if (delim === "\\lceil" || delim === "\u2308") {
+      top = "\u23A1";
+      repeat = bottom = "\u23A2";
       font = "Size4-Regular";
       svgLabel = "lceil";
       viewBoxWidth = 667;
-    } else if (delim === "\\rfloor" || delim === "⌋") {
-      repeat = top = "⎥";
-      bottom = "⎦";
+    } else if (delim === "\\rfloor" || delim === "\u230B") {
+      repeat = top = "\u23A5";
+      bottom = "\u23A6";
       font = "Size4-Regular";
       svgLabel = "rfloor";
       viewBoxWidth = 667;
-    } else if (delim === "\\rceil" || delim === "⌉") {
-      top = "⎤";
-      repeat = bottom = "⎥";
+    } else if (delim === "\\rceil" || delim === "\u2309") {
+      top = "\u23A4";
+      repeat = bottom = "\u23A5";
       font = "Size4-Regular";
       svgLabel = "rceil";
       viewBoxWidth = 667;
     } else if (delim === "(" || delim === "\\lparen") {
-      top = "⎛";
-      repeat = "⎜";
-      bottom = "⎝";
+      top = "\u239B";
+      repeat = "\u239C";
+      bottom = "\u239D";
       font = "Size4-Regular";
       svgLabel = "lparen";
       viewBoxWidth = 875;
     } else if (delim === ")" || delim === "\\rparen") {
-      top = "⎞";
-      repeat = "⎟";
-      bottom = "⎠";
+      top = "\u239E";
+      repeat = "\u239F";
+      bottom = "\u23A0";
       font = "Size4-Regular";
       svgLabel = "rparen";
       viewBoxWidth = 875;
     } else if (delim === "\\{" || delim === "\\lbrace") {
-      top = "⎧";
-      middle = "⎨";
-      bottom = "⎩";
-      repeat = "⎪";
+      top = "\u23A7";
+      middle = "\u23A8";
+      bottom = "\u23A9";
+      repeat = "\u23AA";
       font = "Size4-Regular";
     } else if (delim === "\\}" || delim === "\\rbrace") {
-      top = "⎫";
-      middle = "⎬";
-      bottom = "⎭";
-      repeat = "⎪";
+      top = "\u23AB";
+      middle = "\u23AC";
+      bottom = "\u23AD";
+      repeat = "\u23AA";
       font = "Size4-Regular";
-    } else if (delim === "\\lgroup" || delim === "⟮") {
-      top = "⎧";
-      bottom = "⎩";
-      repeat = "⎪";
+    } else if (delim === "\\lgroup" || delim === "\u27EE") {
+      top = "\u23A7";
+      bottom = "\u23A9";
+      repeat = "\u23AA";
       font = "Size4-Regular";
-    } else if (delim === "\\rgroup" || delim === "⟯") {
-      top = "⎫";
-      bottom = "⎭";
-      repeat = "⎪";
+    } else if (delim === "\\rgroup" || delim === "\u27EF") {
+      top = "\u23AB";
+      bottom = "\u23AD";
+      repeat = "\u23AA";
       font = "Size4-Regular";
-    } else if (delim === "\\lmoustache" || delim === "⎰") {
-      top = "⎧";
-      bottom = "⎭";
-      repeat = "⎪";
+    } else if (delim === "\\lmoustache" || delim === "\u23B0") {
+      top = "\u23A7";
+      bottom = "\u23AD";
+      repeat = "\u23AA";
       font = "Size4-Regular";
-    } else if (delim === "\\rmoustache" || delim === "⎱") {
-      top = "⎫";
-      bottom = "⎩";
-      repeat = "⎪";
+    } else if (delim === "\\rmoustache" || delim === "\u23B1") {
+      top = "\u23AB";
+      bottom = "\u23A9";
+      repeat = "\u23AA";
       font = "Size4-Regular";
     }
     var topMetrics = getMetrics(top, font, mode);
@@ -125530,14 +124354,14 @@ ${text2}</tr>
       ruleWidth: (options2.fontMetrics().sqrtRuleThickness + extraVinculum) * sizeMultiplier
     };
   };
-  var stackLargeDelimiters = ["(", "\\lparen", ")", "\\rparen", "[", "\\lbrack", "]", "\\rbrack", "\\{", "\\lbrace", "\\}", "\\rbrace", "\\lfloor", "\\rfloor", "⌊", "⌋", "\\lceil", "\\rceil", "⌈", "⌉", "\\surd"];
-  var stackAlwaysDelimiters = ["\\uparrow", "\\downarrow", "\\updownarrow", "\\Uparrow", "\\Downarrow", "\\Updownarrow", "|", "\\|", "\\vert", "\\Vert", "\\lvert", "\\rvert", "\\lVert", "\\rVert", "\\lgroup", "\\rgroup", "⟮", "⟯", "\\lmoustache", "\\rmoustache", "⎰", "⎱"];
+  var stackLargeDelimiters = ["(", "\\lparen", ")", "\\rparen", "[", "\\lbrack", "]", "\\rbrack", "\\{", "\\lbrace", "\\}", "\\rbrace", "\\lfloor", "\\rfloor", "\u230A", "\u230B", "\\lceil", "\\rceil", "\u2308", "\u2309", "\\surd"];
+  var stackAlwaysDelimiters = ["\\uparrow", "\\downarrow", "\\updownarrow", "\\Uparrow", "\\Downarrow", "\\Updownarrow", "|", "\\|", "\\vert", "\\Vert", "\\lvert", "\\rvert", "\\lVert", "\\rVert", "\\lgroup", "\\rgroup", "\u27EE", "\u27EF", "\\lmoustache", "\\rmoustache", "\u23B0", "\u23B1"];
   var stackNeverDelimiters = ["<", ">", "\\langle", "\\rangle", "/", "\\backslash", "\\lt", "\\gt"];
   var sizeToMaxHeight = [0, 1.2, 1.8, 2.4, 3];
   var makeSizedDelim = function makeSizedDelim2(delim, size, options2, mode, classes) {
-    if (delim === "<" || delim === "\\lt" || delim === "⟨") {
+    if (delim === "<" || delim === "\\lt" || delim === "\u27E8") {
       delim = "\\langle";
-    } else if (delim === ">" || delim === "\\gt" || delim === "⟩") {
+    } else if (delim === ">" || delim === "\\gt" || delim === "\u27E9") {
       delim = "\\rangle";
     }
     if (utils2.contains(stackLargeDelimiters, delim) || utils2.contains(stackNeverDelimiters, delim)) {
@@ -125636,9 +124460,9 @@ ${text2}</tr>
     return sequence[sequence.length - 1];
   };
   var makeCustomSizedDelim = function makeCustomSizedDelim2(delim, height, center, options2, mode, classes) {
-    if (delim === "<" || delim === "\\lt" || delim === "⟨") {
+    if (delim === "<" || delim === "\\lt" || delim === "\u27E8") {
       delim = "\\langle";
-    } else if (delim === ">" || delim === "\\gt" || delim === "⟩") {
+    } else if (delim === ">" || delim === "\\gt" || delim === "\u27E9") {
       delim = "\\rangle";
     }
     var sequence;
@@ -125751,7 +124575,7 @@ ${text2}</tr>
       size: 4
     }
   };
-  var delimiters = ["(", "\\lparen", ")", "\\rparen", "[", "\\lbrack", "]", "\\rbrack", "\\{", "\\lbrace", "\\}", "\\rbrace", "\\lfloor", "\\rfloor", "⌊", "⌋", "\\lceil", "\\rceil", "⌈", "⌉", "<", ">", "\\langle", "⟨", "\\rangle", "⟩", "\\lt", "\\gt", "\\lvert", "\\rvert", "\\lVert", "\\rVert", "\\lgroup", "\\rgroup", "⟮", "⟯", "\\lmoustache", "\\rmoustache", "⎰", "⎱", "/", "\\backslash", "|", "\\vert", "\\|", "\\Vert", "\\uparrow", "\\Uparrow", "\\downarrow", "\\Downarrow", "\\updownarrow", "\\Updownarrow", "."];
+  var delimiters = ["(", "\\lparen", ")", "\\rparen", "[", "\\lbrack", "]", "\\rbrack", "\\{", "\\lbrace", "\\}", "\\rbrace", "\\lfloor", "\\rfloor", "\u230A", "\u230B", "\\lceil", "\\rceil", "\u2308", "\u2309", "<", ">", "\\langle", "\u27E8", "\\rangle", "\u27E9", "\\lt", "\\gt", "\\lvert", "\\rvert", "\\lVert", "\\rVert", "\\lgroup", "\\rgroup", "\u27EE", "\u27EF", "\\lmoustache", "\\rmoustache", "\u23B0", "\u23B1", "/", "\\backslash", "|", "\\vert", "\\|", "\\Vert", "\\uparrow", "\\Uparrow", "\\downarrow", "\\Downarrow", "\\updownarrow", "\\Updownarrow", "."];
   function checkDelimiter(delim, context2) {
     var symDelim = checkSymbolNodeType(delim);
     if (symDelim && utils2.contains(delimiters, symDelim.text)) {
@@ -127713,7 +126537,7 @@ ${text2}</tr>
         funcName
       } = _ref6;
       var numer = args[0];
-      var barSize = assert2(assertNodeType(args[1], "infix").size);
+      var barSize = assert(assertNodeType(args[1], "infix").size);
       var denom = args[2];
       var hasBarLine = barSize.number > 0;
       return {
@@ -128571,7 +127395,7 @@ ${text2}</tr>
       node2 = new MathNode("mo", buildExpression2(group.body, options2));
     } else {
       node2 = new MathNode("mi", [new TextNode(group.name.slice(1))]);
-      var operator = new MathNode("mo", [makeText("⁡", "text")]);
+      var operator = new MathNode("mo", [makeText("\u2061", "text")]);
       if (group.parentIsSupSub) {
         node2 = new MathNode("mrow", [node2, operator]);
       } else {
@@ -128581,22 +127405,22 @@ ${text2}</tr>
     return node2;
   };
   var singleCharBigOps = {
-    "∏": "\\prod",
-    "∐": "\\coprod",
-    "∑": "\\sum",
-    "⋀": "\\bigwedge",
-    "⋁": "\\bigvee",
-    "⋂": "\\bigcap",
-    "⋃": "\\bigcup",
-    "⨀": "\\bigodot",
-    "⨁": "\\bigoplus",
-    "⨂": "\\bigotimes",
-    "⨄": "\\biguplus",
-    "⨆": "\\bigsqcup"
+    "\u220F": "\\prod",
+    "\u2210": "\\coprod",
+    "\u2211": "\\sum",
+    "\u22C0": "\\bigwedge",
+    "\u22C1": "\\bigvee",
+    "\u22C2": "\\bigcap",
+    "\u22C3": "\\bigcup",
+    "\u2A00": "\\bigodot",
+    "\u2A01": "\\bigoplus",
+    "\u2A02": "\\bigotimes",
+    "\u2A04": "\\biguplus",
+    "\u2A06": "\\bigsqcup"
   };
   defineFunction({
     type: "op",
-    names: ["\\coprod", "\\bigvee", "\\bigwedge", "\\biguplus", "\\bigcap", "\\bigcup", "\\intop", "\\prod", "\\sum", "\\bigotimes", "\\bigoplus", "\\bigodot", "\\bigsqcup", "\\smallint", "∏", "∐", "∑", "⋀", "⋁", "⋂", "⋃", "⨀", "⨁", "⨂", "⨄", "⨆"],
+    names: ["\\coprod", "\\bigvee", "\\bigwedge", "\\biguplus", "\\bigcap", "\\bigcup", "\\intop", "\\prod", "\\sum", "\\bigotimes", "\\bigoplus", "\\bigodot", "\\bigsqcup", "\\smallint", "\u220F", "\u2210", "\u2211", "\u22C0", "\u22C1", "\u22C2", "\u22C3", "\u2A00", "\u2A01", "\u2A02", "\u2A04", "\u2A06"],
     props: {
       numArgs: 0
     },
@@ -128646,12 +127470,12 @@ ${text2}</tr>
     mathmlBuilder: mathmlBuilder$1
   });
   var singleCharIntegrals = {
-    "∫": "\\int",
-    "∬": "\\iint",
-    "∭": "\\iiint",
-    "∮": "\\oint",
-    "∯": "\\oiint",
-    "∰": "\\oiiint"
+    "\u222B": "\\int",
+    "\u222C": "\\iint",
+    "\u222D": "\\iiint",
+    "\u222E": "\\oint",
+    "\u222F": "\\oiint",
+    "\u2230": "\\oiiint"
   };
   defineFunction({
     type: "op",
@@ -128701,7 +127525,7 @@ ${text2}</tr>
   });
   defineFunction({
     type: "op",
-    names: ["\\int", "\\iint", "\\iiint", "\\oint", "\\oiint", "\\oiiint", "∫", "∬", "∭", "∮", "∯", "∰"],
+    names: ["\\int", "\\iint", "\\iiint", "\\oint", "\\oiint", "\\oiiint", "\u222B", "\u222C", "\u222D", "\u222E", "\u222F", "\u2230"],
     props: {
       numArgs: 0
     },
@@ -128807,7 +127631,7 @@ ${text2}</tr>
     }
     var identifier2 = new mathMLTree.MathNode("mi", expression);
     identifier2.setAttribute("mathvariant", "normal");
-    var operator = new mathMLTree.MathNode("mo", [makeText("⁡", "text")]);
+    var operator = new mathMLTree.MathNode("mo", [makeText("\u2061", "text")]);
     if (group.parentIsSupSub) {
       return new mathMLTree.MathNode("mrow", [identifier2, operator]);
     } else {
@@ -128891,7 +127715,7 @@ ${text2}</tr>
       return buildCommon.makeSpan(["mord", "overline"], [vlist], options2);
     },
     mathmlBuilder(group, options2) {
-      var operator = new mathMLTree.MathNode("mo", [new mathMLTree.TextNode("‾")]);
+      var operator = new mathMLTree.MathNode("mo", [new mathMLTree.TextNode("\u203E")]);
       operator.setAttribute("stretchy", "true");
       var node2 = new mathMLTree.MathNode("mover", [buildGroup2(group.body, options2), operator]);
       node2.setAttribute("accent", "true");
@@ -129678,7 +128502,7 @@ ${text2}</tr>
     mathmlBuilder(group, options2) {
       var node2;
       if (regularSpace.hasOwnProperty(group.text)) {
-        node2 = new mathMLTree.MathNode("mtext", [new mathMLTree.TextNode(" ")]);
+        node2 = new mathMLTree.MathNode("mtext", [new mathMLTree.TextNode("\xA0")]);
       } else if (cssSpace.hasOwnProperty(group.text)) {
         return new mathMLTree.MathNode("mspace");
       } else {
@@ -129815,7 +128639,7 @@ ${text2}</tr>
       return buildCommon.makeSpan(["mord", "underline"], [vlist], options2);
     },
     mathmlBuilder(group, options2) {
-      var operator = new mathMLTree.MathNode("mo", [new mathMLTree.TextNode("‾")]);
+      var operator = new mathMLTree.MathNode("mo", [new mathMLTree.TextNode("\u203E")]);
       operator.setAttribute("stretchy", "true");
       var node2 = new mathMLTree.MathNode("munder", [buildGroup2(group.body, options2), operator]);
       node2.setAttribute("accentunder", "true");
@@ -129888,18 +128712,18 @@ ${text2}</tr>
       return node2;
     }
   });
-  var makeVerb = (group) => group.body.replace(/ /g, group.star ? "␣" : " ");
+  var makeVerb = (group) => group.body.replace(/ /g, group.star ? "\u2423" : "\xA0");
   var functions = _functions;
   var spaceRegexString = "[ \r\n	]";
   var controlWordRegexString = "\\\\[a-zA-Z@]+";
   var controlSymbolRegexString = "\\\\[^\uD800-\uDFFF]";
   var controlWordWhitespaceRegexString = "(" + controlWordRegexString + ")" + spaceRegexString + "*";
   var controlSpaceRegexString = "\\\\(\n|[ \r	]+\n?)[ \r	]*";
-  var combiningDiacriticalMarkString = "[̀-ͯ]";
+  var combiningDiacriticalMarkString = "[\u0300-\u036F]";
   var combiningDiacriticalMarksEndRegex = new RegExp(combiningDiacriticalMarkString + "+$");
   var tokenRegexString = "(" + spaceRegexString + "+)|" + // whitespace
   (controlSpaceRegexString + "|") + // \whitespace
-  "([!-\\[\\]-‧‪-퟿豈-￿]" + // single codepoint
+  "([!-\\[\\]-\u2027\u202A-\uD7FF\uF900-\uFFFF]" + // single codepoint
   (combiningDiacriticalMarkString + "*") + // ...plus accents
   "|[\uD800-\uDBFF][\uDC00-\uDFFF]" + // surrogate pair
   (combiningDiacriticalMarkString + "*") + // ...plus accents
@@ -130248,56 +129072,56 @@ ${text2}</tr>
   defineMacro("\\rq", "'");
   defineMacro("\\aa", "\\r a");
   defineMacro("\\AA", "\\r A");
-  defineMacro("\\textcopyright", "\\html@mathml{\\textcircled{c}}{\\char`©}");
+  defineMacro("\\textcopyright", "\\html@mathml{\\textcircled{c}}{\\char`\xA9}");
   defineMacro("\\copyright", "\\TextOrMath{\\textcopyright}{\\text{\\textcopyright}}");
-  defineMacro("\\textregistered", "\\html@mathml{\\textcircled{\\scriptsize R}}{\\char`®}");
-  defineMacro("ℬ", "\\mathscr{B}");
-  defineMacro("ℰ", "\\mathscr{E}");
-  defineMacro("ℱ", "\\mathscr{F}");
-  defineMacro("ℋ", "\\mathscr{H}");
-  defineMacro("ℐ", "\\mathscr{I}");
-  defineMacro("ℒ", "\\mathscr{L}");
-  defineMacro("ℳ", "\\mathscr{M}");
-  defineMacro("ℛ", "\\mathscr{R}");
-  defineMacro("ℭ", "\\mathfrak{C}");
-  defineMacro("ℌ", "\\mathfrak{H}");
-  defineMacro("ℨ", "\\mathfrak{Z}");
+  defineMacro("\\textregistered", "\\html@mathml{\\textcircled{\\scriptsize R}}{\\char`\xAE}");
+  defineMacro("\u212C", "\\mathscr{B}");
+  defineMacro("\u2130", "\\mathscr{E}");
+  defineMacro("\u2131", "\\mathscr{F}");
+  defineMacro("\u210B", "\\mathscr{H}");
+  defineMacro("\u2110", "\\mathscr{I}");
+  defineMacro("\u2112", "\\mathscr{L}");
+  defineMacro("\u2133", "\\mathscr{M}");
+  defineMacro("\u211B", "\\mathscr{R}");
+  defineMacro("\u212D", "\\mathfrak{C}");
+  defineMacro("\u210C", "\\mathfrak{H}");
+  defineMacro("\u2128", "\\mathfrak{Z}");
   defineMacro("\\Bbbk", "\\Bbb{k}");
-  defineMacro("·", "\\cdotp");
+  defineMacro("\xB7", "\\cdotp");
   defineMacro("\\llap", "\\mathllap{\\textrm{#1}}");
   defineMacro("\\rlap", "\\mathrlap{\\textrm{#1}}");
   defineMacro("\\clap", "\\mathclap{\\textrm{#1}}");
   defineMacro("\\mathstrut", "\\vphantom{(}");
   defineMacro("\\underbar", "\\underline{\\text{#1}}");
   defineMacro("\\not", '\\html@mathml{\\mathrel{\\mathrlap\\@not}}{\\char"338}');
-  defineMacro("\\neq", "\\html@mathml{\\mathrel{\\not=}}{\\mathrel{\\char`≠}}");
+  defineMacro("\\neq", "\\html@mathml{\\mathrel{\\not=}}{\\mathrel{\\char`\u2260}}");
   defineMacro("\\ne", "\\neq");
-  defineMacro("≠", "\\neq");
-  defineMacro("\\notin", "\\html@mathml{\\mathrel{{\\in}\\mathllap{/\\mskip1mu}}}{\\mathrel{\\char`∉}}");
-  defineMacro("∉", "\\notin");
-  defineMacro("≘", "\\html@mathml{\\mathrel{=\\kern{-1em}\\raisebox{0.4em}{$\\scriptsize\\frown$}}}{\\mathrel{\\char`≘}}");
-  defineMacro("≙", "\\html@mathml{\\stackrel{\\tiny\\wedge}{=}}{\\mathrel{\\char`≘}}");
-  defineMacro("≚", "\\html@mathml{\\stackrel{\\tiny\\vee}{=}}{\\mathrel{\\char`≚}}");
-  defineMacro("≛", "\\html@mathml{\\stackrel{\\scriptsize\\star}{=}}{\\mathrel{\\char`≛}}");
-  defineMacro("≝", "\\html@mathml{\\stackrel{\\tiny\\mathrm{def}}{=}}{\\mathrel{\\char`≝}}");
-  defineMacro("≞", "\\html@mathml{\\stackrel{\\tiny\\mathrm{m}}{=}}{\\mathrel{\\char`≞}}");
-  defineMacro("≟", "\\html@mathml{\\stackrel{\\tiny?}{=}}{\\mathrel{\\char`≟}}");
-  defineMacro("⟂", "\\perp");
-  defineMacro("‼", "\\mathclose{!\\mkern-0.8mu!}");
-  defineMacro("∌", "\\notni");
-  defineMacro("⌜", "\\ulcorner");
-  defineMacro("⌝", "\\urcorner");
-  defineMacro("⌞", "\\llcorner");
-  defineMacro("⌟", "\\lrcorner");
-  defineMacro("©", "\\copyright");
-  defineMacro("®", "\\textregistered");
-  defineMacro("️", "\\textregistered");
+  defineMacro("\u2260", "\\neq");
+  defineMacro("\\notin", "\\html@mathml{\\mathrel{{\\in}\\mathllap{/\\mskip1mu}}}{\\mathrel{\\char`\u2209}}");
+  defineMacro("\u2209", "\\notin");
+  defineMacro("\u2258", "\\html@mathml{\\mathrel{=\\kern{-1em}\\raisebox{0.4em}{$\\scriptsize\\frown$}}}{\\mathrel{\\char`\u2258}}");
+  defineMacro("\u2259", "\\html@mathml{\\stackrel{\\tiny\\wedge}{=}}{\\mathrel{\\char`\u2258}}");
+  defineMacro("\u225A", "\\html@mathml{\\stackrel{\\tiny\\vee}{=}}{\\mathrel{\\char`\u225A}}");
+  defineMacro("\u225B", "\\html@mathml{\\stackrel{\\scriptsize\\star}{=}}{\\mathrel{\\char`\u225B}}");
+  defineMacro("\u225D", "\\html@mathml{\\stackrel{\\tiny\\mathrm{def}}{=}}{\\mathrel{\\char`\u225D}}");
+  defineMacro("\u225E", "\\html@mathml{\\stackrel{\\tiny\\mathrm{m}}{=}}{\\mathrel{\\char`\u225E}}");
+  defineMacro("\u225F", "\\html@mathml{\\stackrel{\\tiny?}{=}}{\\mathrel{\\char`\u225F}}");
+  defineMacro("\u27C2", "\\perp");
+  defineMacro("\u203C", "\\mathclose{!\\mkern-0.8mu!}");
+  defineMacro("\u220C", "\\notni");
+  defineMacro("\u231C", "\\ulcorner");
+  defineMacro("\u231D", "\\urcorner");
+  defineMacro("\u231E", "\\llcorner");
+  defineMacro("\u231F", "\\lrcorner");
+  defineMacro("\xA9", "\\copyright");
+  defineMacro("\xAE", "\\textregistered");
+  defineMacro("\uFE0F", "\\textregistered");
   defineMacro("\\ulcorner", '\\html@mathml{\\@ulcorner}{\\mathop{\\char"231c}}');
   defineMacro("\\urcorner", '\\html@mathml{\\@urcorner}{\\mathop{\\char"231d}}');
   defineMacro("\\llcorner", '\\html@mathml{\\@llcorner}{\\mathop{\\char"231e}}');
   defineMacro("\\lrcorner", '\\html@mathml{\\@lrcorner}{\\mathop{\\char"231f}}');
   defineMacro("\\vdots", "{\\varvdots\\rule{0pt}{15pt}}");
-  defineMacro("⋮", "\\vdots");
+  defineMacro("\u22EE", "\\vdots");
   defineMacro("\\varGamma", "\\mathit{\\Gamma}");
   defineMacro("\\varDelta", "\\mathit{\\Delta}");
   defineMacro("\\varTheta", "\\mathit{\\Theta}");
@@ -130492,11 +129316,11 @@ ${text2}</tr>
   defineMacro("\\Colonapprox", '\\html@mathml{\\mathrel{\\dblcolon\\mathrel{\\mkern-1.2mu}\\approx}}{\\mathop{\\char"2237\\char"2248}}');
   defineMacro("\\colonsim", '\\html@mathml{\\mathrel{\\vcentcolon\\mathrel{\\mkern-1.2mu}\\sim}}{\\mathop{\\char"3a\\char"223c}}');
   defineMacro("\\Colonsim", '\\html@mathml{\\mathrel{\\dblcolon\\mathrel{\\mkern-1.2mu}\\sim}}{\\mathop{\\char"2237\\char"223c}}');
-  defineMacro("∷", "\\dblcolon");
-  defineMacro("∹", "\\eqcolon");
-  defineMacro("≔", "\\coloneqq");
-  defineMacro("≕", "\\eqqcolon");
-  defineMacro("⩴", "\\Coloneqq");
+  defineMacro("\u2237", "\\dblcolon");
+  defineMacro("\u2239", "\\eqcolon");
+  defineMacro("\u2254", "\\coloneqq");
+  defineMacro("\u2255", "\\eqqcolon");
+  defineMacro("\u2A74", "\\Coloneqq");
   defineMacro("\\ratio", "\\vcentcolon");
   defineMacro("\\coloncolon", "\\dblcolon");
   defineMacro("\\colonequals", "\\coloneqq");
@@ -130513,7 +129337,7 @@ ${text2}</tr>
   defineMacro("\\simcoloncolon", "\\mathrel{\\sim\\mathrel{\\mkern-1.2mu}\\dblcolon}");
   defineMacro("\\approxcolon", "\\mathrel{\\approx\\mathrel{\\mkern-1.2mu}\\vcentcolon}");
   defineMacro("\\approxcoloncolon", "\\mathrel{\\approx\\mathrel{\\mkern-1.2mu}\\dblcolon}");
-  defineMacro("\\notni", "\\html@mathml{\\not\\ni}{\\mathrel{\\char`∌}}");
+  defineMacro("\\notni", "\\html@mathml{\\not\\ni}{\\mathrel{\\char`\u220C}}");
   defineMacro("\\limsup", "\\DOTSB\\operatorname*{lim\\,sup}");
   defineMacro("\\liminf", "\\DOTSB\\operatorname*{lim\\,inf}");
   defineMacro("\\injlim", "\\DOTSB\\operatorname*{inj\\,lim}");
@@ -130522,32 +129346,32 @@ ${text2}</tr>
   defineMacro("\\varliminf", "\\DOTSB\\operatorname*{\\underline{lim}}");
   defineMacro("\\varinjlim", "\\DOTSB\\operatorname*{\\underrightarrow{lim}}");
   defineMacro("\\varprojlim", "\\DOTSB\\operatorname*{\\underleftarrow{lim}}");
-  defineMacro("\\gvertneqq", "\\html@mathml{\\@gvertneqq}{≩}");
-  defineMacro("\\lvertneqq", "\\html@mathml{\\@lvertneqq}{≨}");
-  defineMacro("\\ngeqq", "\\html@mathml{\\@ngeqq}{≱}");
-  defineMacro("\\ngeqslant", "\\html@mathml{\\@ngeqslant}{≱}");
-  defineMacro("\\nleqq", "\\html@mathml{\\@nleqq}{≰}");
-  defineMacro("\\nleqslant", "\\html@mathml{\\@nleqslant}{≰}");
-  defineMacro("\\nshortmid", "\\html@mathml{\\@nshortmid}{∤}");
-  defineMacro("\\nshortparallel", "\\html@mathml{\\@nshortparallel}{∦}");
-  defineMacro("\\nsubseteqq", "\\html@mathml{\\@nsubseteqq}{⊈}");
-  defineMacro("\\nsupseteqq", "\\html@mathml{\\@nsupseteqq}{⊉}");
-  defineMacro("\\varsubsetneq", "\\html@mathml{\\@varsubsetneq}{⊊}");
-  defineMacro("\\varsubsetneqq", "\\html@mathml{\\@varsubsetneqq}{⫋}");
-  defineMacro("\\varsupsetneq", "\\html@mathml{\\@varsupsetneq}{⊋}");
-  defineMacro("\\varsupsetneqq", "\\html@mathml{\\@varsupsetneqq}{⫌}");
-  defineMacro("\\imath", "\\html@mathml{\\@imath}{ı}");
-  defineMacro("\\jmath", "\\html@mathml{\\@jmath}{ȷ}");
-  defineMacro("\\llbracket", "\\html@mathml{\\mathopen{[\\mkern-3.2mu[}}{\\mathopen{\\char`⟦}}");
-  defineMacro("\\rrbracket", "\\html@mathml{\\mathclose{]\\mkern-3.2mu]}}{\\mathclose{\\char`⟧}}");
-  defineMacro("⟦", "\\llbracket");
-  defineMacro("⟧", "\\rrbracket");
-  defineMacro("\\lBrace", "\\html@mathml{\\mathopen{\\{\\mkern-3.2mu[}}{\\mathopen{\\char`⦃}}");
-  defineMacro("\\rBrace", "\\html@mathml{\\mathclose{]\\mkern-3.2mu\\}}}{\\mathclose{\\char`⦄}}");
-  defineMacro("⦃", "\\lBrace");
-  defineMacro("⦄", "\\rBrace");
-  defineMacro("\\minuso", "\\mathbin{\\html@mathml{{\\mathrlap{\\mathchoice{\\kern{0.145em}}{\\kern{0.145em}}{\\kern{0.1015em}}{\\kern{0.0725em}}\\circ}{-}}}{\\char`⦵}}");
-  defineMacro("⦵", "\\minuso");
+  defineMacro("\\gvertneqq", "\\html@mathml{\\@gvertneqq}{\u2269}");
+  defineMacro("\\lvertneqq", "\\html@mathml{\\@lvertneqq}{\u2268}");
+  defineMacro("\\ngeqq", "\\html@mathml{\\@ngeqq}{\u2271}");
+  defineMacro("\\ngeqslant", "\\html@mathml{\\@ngeqslant}{\u2271}");
+  defineMacro("\\nleqq", "\\html@mathml{\\@nleqq}{\u2270}");
+  defineMacro("\\nleqslant", "\\html@mathml{\\@nleqslant}{\u2270}");
+  defineMacro("\\nshortmid", "\\html@mathml{\\@nshortmid}{\u2224}");
+  defineMacro("\\nshortparallel", "\\html@mathml{\\@nshortparallel}{\u2226}");
+  defineMacro("\\nsubseteqq", "\\html@mathml{\\@nsubseteqq}{\u2288}");
+  defineMacro("\\nsupseteqq", "\\html@mathml{\\@nsupseteqq}{\u2289}");
+  defineMacro("\\varsubsetneq", "\\html@mathml{\\@varsubsetneq}{\u228A}");
+  defineMacro("\\varsubsetneqq", "\\html@mathml{\\@varsubsetneqq}{\u2ACB}");
+  defineMacro("\\varsupsetneq", "\\html@mathml{\\@varsupsetneq}{\u228B}");
+  defineMacro("\\varsupsetneqq", "\\html@mathml{\\@varsupsetneqq}{\u2ACC}");
+  defineMacro("\\imath", "\\html@mathml{\\@imath}{\u0131}");
+  defineMacro("\\jmath", "\\html@mathml{\\@jmath}{\u0237}");
+  defineMacro("\\llbracket", "\\html@mathml{\\mathopen{[\\mkern-3.2mu[}}{\\mathopen{\\char`\u27E6}}");
+  defineMacro("\\rrbracket", "\\html@mathml{\\mathclose{]\\mkern-3.2mu]}}{\\mathclose{\\char`\u27E7}}");
+  defineMacro("\u27E6", "\\llbracket");
+  defineMacro("\u27E7", "\\rrbracket");
+  defineMacro("\\lBrace", "\\html@mathml{\\mathopen{\\{\\mkern-3.2mu[}}{\\mathopen{\\char`\u2983}}");
+  defineMacro("\\rBrace", "\\html@mathml{\\mathclose{]\\mkern-3.2mu\\}}}{\\mathclose{\\char`\u2984}}");
+  defineMacro("\u2983", "\\lBrace");
+  defineMacro("\u2984", "\\rBrace");
+  defineMacro("\\minuso", "\\mathbin{\\html@mathml{{\\mathrlap{\\mathchoice{\\kern{0.145em}}{\\kern{0.145em}}{\\kern{0.1015em}}{\\kern{0.0725em}}\\circ}{-}}}{\\char`\u29B5}}");
+  defineMacro("\u29B5", "\\minuso");
   defineMacro("\\darr", "\\downarrow");
   defineMacro("\\dArr", "\\Downarrow");
   defineMacro("\\Darr", "\\Downarrow");
@@ -131118,502 +129942,502 @@ ${text2}</tr>
   };
   var unicodeSubRegEx = /^[₊₋₌₍₎₀₁₂₃₄₅₆₇₈₉ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓᵦᵧᵨᵩᵪ]/;
   var uSubsAndSups = Object.freeze({
-    "₊": "+",
-    "₋": "-",
-    "₌": "=",
-    "₍": "(",
-    "₎": ")",
-    "₀": "0",
-    "₁": "1",
-    "₂": "2",
-    "₃": "3",
-    "₄": "4",
-    "₅": "5",
-    "₆": "6",
-    "₇": "7",
-    "₈": "8",
-    "₉": "9",
-    "ₐ": "a",
-    "ₑ": "e",
-    "ₕ": "h",
-    "ᵢ": "i",
-    "ⱼ": "j",
-    "ₖ": "k",
-    "ₗ": "l",
-    "ₘ": "m",
-    "ₙ": "n",
-    "ₒ": "o",
-    "ₚ": "p",
-    "ᵣ": "r",
-    "ₛ": "s",
-    "ₜ": "t",
-    "ᵤ": "u",
-    "ᵥ": "v",
-    "ₓ": "x",
-    "ᵦ": "β",
-    "ᵧ": "γ",
-    "ᵨ": "ρ",
-    "ᵩ": "ϕ",
-    "ᵪ": "χ",
-    "⁺": "+",
-    "⁻": "-",
-    "⁼": "=",
-    "⁽": "(",
-    "⁾": ")",
-    "⁰": "0",
-    "¹": "1",
-    "²": "2",
-    "³": "3",
-    "⁴": "4",
-    "⁵": "5",
-    "⁶": "6",
-    "⁷": "7",
-    "⁸": "8",
-    "⁹": "9",
-    "ᴬ": "A",
-    "ᴮ": "B",
-    "ᴰ": "D",
-    "ᴱ": "E",
-    "ᴳ": "G",
-    "ᴴ": "H",
-    "ᴵ": "I",
-    "ᴶ": "J",
-    "ᴷ": "K",
-    "ᴸ": "L",
-    "ᴹ": "M",
-    "ᴺ": "N",
-    "ᴼ": "O",
-    "ᴾ": "P",
-    "ᴿ": "R",
-    "ᵀ": "T",
-    "ᵁ": "U",
-    "ⱽ": "V",
-    "ᵂ": "W",
-    "ᵃ": "a",
-    "ᵇ": "b",
-    "ᶜ": "c",
-    "ᵈ": "d",
-    "ᵉ": "e",
-    "ᶠ": "f",
-    "ᵍ": "g",
-    "ʰ": "h",
-    "ⁱ": "i",
-    "ʲ": "j",
-    "ᵏ": "k",
-    "ˡ": "l",
-    "ᵐ": "m",
-    "ⁿ": "n",
-    "ᵒ": "o",
-    "ᵖ": "p",
-    "ʳ": "r",
-    "ˢ": "s",
-    "ᵗ": "t",
-    "ᵘ": "u",
-    "ᵛ": "v",
-    "ʷ": "w",
-    "ˣ": "x",
-    "ʸ": "y",
-    "ᶻ": "z",
-    "ᵝ": "β",
-    "ᵞ": "γ",
-    "ᵟ": "δ",
-    "ᵠ": "ϕ",
-    "ᵡ": "χ",
-    "ᶿ": "θ"
+    "\u208A": "+",
+    "\u208B": "-",
+    "\u208C": "=",
+    "\u208D": "(",
+    "\u208E": ")",
+    "\u2080": "0",
+    "\u2081": "1",
+    "\u2082": "2",
+    "\u2083": "3",
+    "\u2084": "4",
+    "\u2085": "5",
+    "\u2086": "6",
+    "\u2087": "7",
+    "\u2088": "8",
+    "\u2089": "9",
+    "\u2090": "a",
+    "\u2091": "e",
+    "\u2095": "h",
+    "\u1D62": "i",
+    "\u2C7C": "j",
+    "\u2096": "k",
+    "\u2097": "l",
+    "\u2098": "m",
+    "\u2099": "n",
+    "\u2092": "o",
+    "\u209A": "p",
+    "\u1D63": "r",
+    "\u209B": "s",
+    "\u209C": "t",
+    "\u1D64": "u",
+    "\u1D65": "v",
+    "\u2093": "x",
+    "\u1D66": "\u03B2",
+    "\u1D67": "\u03B3",
+    "\u1D68": "\u03C1",
+    "\u1D69": "\u03D5",
+    "\u1D6A": "\u03C7",
+    "\u207A": "+",
+    "\u207B": "-",
+    "\u207C": "=",
+    "\u207D": "(",
+    "\u207E": ")",
+    "\u2070": "0",
+    "\xB9": "1",
+    "\xB2": "2",
+    "\xB3": "3",
+    "\u2074": "4",
+    "\u2075": "5",
+    "\u2076": "6",
+    "\u2077": "7",
+    "\u2078": "8",
+    "\u2079": "9",
+    "\u1D2C": "A",
+    "\u1D2E": "B",
+    "\u1D30": "D",
+    "\u1D31": "E",
+    "\u1D33": "G",
+    "\u1D34": "H",
+    "\u1D35": "I",
+    "\u1D36": "J",
+    "\u1D37": "K",
+    "\u1D38": "L",
+    "\u1D39": "M",
+    "\u1D3A": "N",
+    "\u1D3C": "O",
+    "\u1D3E": "P",
+    "\u1D3F": "R",
+    "\u1D40": "T",
+    "\u1D41": "U",
+    "\u2C7D": "V",
+    "\u1D42": "W",
+    "\u1D43": "a",
+    "\u1D47": "b",
+    "\u1D9C": "c",
+    "\u1D48": "d",
+    "\u1D49": "e",
+    "\u1DA0": "f",
+    "\u1D4D": "g",
+    "\u02B0": "h",
+    "\u2071": "i",
+    "\u02B2": "j",
+    "\u1D4F": "k",
+    "\u02E1": "l",
+    "\u1D50": "m",
+    "\u207F": "n",
+    "\u1D52": "o",
+    "\u1D56": "p",
+    "\u02B3": "r",
+    "\u02E2": "s",
+    "\u1D57": "t",
+    "\u1D58": "u",
+    "\u1D5B": "v",
+    "\u02B7": "w",
+    "\u02E3": "x",
+    "\u02B8": "y",
+    "\u1DBB": "z",
+    "\u1D5D": "\u03B2",
+    "\u1D5E": "\u03B3",
+    "\u1D5F": "\u03B4",
+    "\u1D60": "\u03D5",
+    "\u1D61": "\u03C7",
+    "\u1DBF": "\u03B8"
   });
   var unicodeAccents = {
-    "́": {
+    "\u0301": {
       "text": "\\'",
       "math": "\\acute"
     },
-    "̀": {
+    "\u0300": {
       "text": "\\`",
       "math": "\\grave"
     },
-    "̈": {
+    "\u0308": {
       "text": '\\"',
       "math": "\\ddot"
     },
-    "̃": {
+    "\u0303": {
       "text": "\\~",
       "math": "\\tilde"
     },
-    "̄": {
+    "\u0304": {
       "text": "\\=",
       "math": "\\bar"
     },
-    "̆": {
+    "\u0306": {
       "text": "\\u",
       "math": "\\breve"
     },
-    "̌": {
+    "\u030C": {
       "text": "\\v",
       "math": "\\check"
     },
-    "̂": {
+    "\u0302": {
       "text": "\\^",
       "math": "\\hat"
     },
-    "̇": {
+    "\u0307": {
       "text": "\\.",
       "math": "\\dot"
     },
-    "̊": {
+    "\u030A": {
       "text": "\\r",
       "math": "\\mathring"
     },
-    "̋": {
+    "\u030B": {
       "text": "\\H"
     },
-    "̧": {
+    "\u0327": {
       "text": "\\c"
     }
   };
   var unicodeSymbols = {
-    "á": "á",
-    "à": "à",
-    "ä": "ä",
-    "ǟ": "ǟ",
-    "ã": "ã",
-    "ā": "ā",
-    "ă": "ă",
-    "ắ": "ắ",
-    "ằ": "ằ",
-    "ẵ": "ẵ",
-    "ǎ": "ǎ",
-    "â": "â",
-    "ấ": "ấ",
-    "ầ": "ầ",
-    "ẫ": "ẫ",
-    "ȧ": "ȧ",
-    "ǡ": "ǡ",
-    "å": "å",
-    "ǻ": "ǻ",
-    "ḃ": "ḃ",
-    "ć": "ć",
-    "ḉ": "ḉ",
-    "č": "č",
-    "ĉ": "ĉ",
-    "ċ": "ċ",
-    "ç": "ç",
-    "ď": "ď",
-    "ḋ": "ḋ",
-    "ḑ": "ḑ",
-    "é": "é",
-    "è": "è",
-    "ë": "ë",
-    "ẽ": "ẽ",
-    "ē": "ē",
-    "ḗ": "ḗ",
-    "ḕ": "ḕ",
-    "ĕ": "ĕ",
-    "ḝ": "ḝ",
-    "ě": "ě",
-    "ê": "ê",
-    "ế": "ế",
-    "ề": "ề",
-    "ễ": "ễ",
-    "ė": "ė",
-    "ȩ": "ȩ",
-    "ḟ": "ḟ",
-    "ǵ": "ǵ",
-    "ḡ": "ḡ",
-    "ğ": "ğ",
-    "ǧ": "ǧ",
-    "ĝ": "ĝ",
-    "ġ": "ġ",
-    "ģ": "ģ",
-    "ḧ": "ḧ",
-    "ȟ": "ȟ",
-    "ĥ": "ĥ",
-    "ḣ": "ḣ",
-    "ḩ": "ḩ",
-    "í": "í",
-    "ì": "ì",
-    "ï": "ï",
-    "ḯ": "ḯ",
-    "ĩ": "ĩ",
-    "ī": "ī",
-    "ĭ": "ĭ",
-    "ǐ": "ǐ",
-    "î": "î",
-    "ǰ": "ǰ",
-    "ĵ": "ĵ",
-    "ḱ": "ḱ",
-    "ǩ": "ǩ",
-    "ķ": "ķ",
-    "ĺ": "ĺ",
-    "ľ": "ľ",
-    "ļ": "ļ",
-    "ḿ": "ḿ",
-    "ṁ": "ṁ",
-    "ń": "ń",
-    "ǹ": "ǹ",
-    "ñ": "ñ",
-    "ň": "ň",
-    "ṅ": "ṅ",
-    "ņ": "ņ",
-    "ó": "ó",
-    "ò": "ò",
-    "ö": "ö",
-    "ȫ": "ȫ",
-    "õ": "õ",
-    "ṍ": "ṍ",
-    "ṏ": "ṏ",
-    "ȭ": "ȭ",
-    "ō": "ō",
-    "ṓ": "ṓ",
-    "ṑ": "ṑ",
-    "ŏ": "ŏ",
-    "ǒ": "ǒ",
-    "ô": "ô",
-    "ố": "ố",
-    "ồ": "ồ",
-    "ỗ": "ỗ",
-    "ȯ": "ȯ",
-    "ȱ": "ȱ",
-    "ő": "ő",
-    "ṕ": "ṕ",
-    "ṗ": "ṗ",
-    "ŕ": "ŕ",
-    "ř": "ř",
-    "ṙ": "ṙ",
-    "ŗ": "ŗ",
-    "ś": "ś",
-    "ṥ": "ṥ",
-    "š": "š",
-    "ṧ": "ṧ",
-    "ŝ": "ŝ",
-    "ṡ": "ṡ",
-    "ş": "ş",
-    "ẗ": "ẗ",
-    "ť": "ť",
-    "ṫ": "ṫ",
-    "ţ": "ţ",
-    "ú": "ú",
-    "ù": "ù",
-    "ü": "ü",
-    "ǘ": "ǘ",
-    "ǜ": "ǜ",
-    "ǖ": "ǖ",
-    "ǚ": "ǚ",
-    "ũ": "ũ",
-    "ṹ": "ṹ",
-    "ū": "ū",
-    "ṻ": "ṻ",
-    "ŭ": "ŭ",
-    "ǔ": "ǔ",
-    "û": "û",
-    "ů": "ů",
-    "ű": "ű",
-    "ṽ": "ṽ",
-    "ẃ": "ẃ",
-    "ẁ": "ẁ",
-    "ẅ": "ẅ",
-    "ŵ": "ŵ",
-    "ẇ": "ẇ",
-    "ẘ": "ẘ",
-    "ẍ": "ẍ",
-    "ẋ": "ẋ",
-    "ý": "ý",
-    "ỳ": "ỳ",
-    "ÿ": "ÿ",
-    "ỹ": "ỹ",
-    "ȳ": "ȳ",
-    "ŷ": "ŷ",
-    "ẏ": "ẏ",
-    "ẙ": "ẙ",
-    "ź": "ź",
-    "ž": "ž",
-    "ẑ": "ẑ",
-    "ż": "ż",
-    "Á": "Á",
-    "À": "À",
-    "Ä": "Ä",
-    "Ǟ": "Ǟ",
-    "Ã": "Ã",
-    "Ā": "Ā",
-    "Ă": "Ă",
-    "Ắ": "Ắ",
-    "Ằ": "Ằ",
-    "Ẵ": "Ẵ",
-    "Ǎ": "Ǎ",
-    "Â": "Â",
-    "Ấ": "Ấ",
-    "Ầ": "Ầ",
-    "Ẫ": "Ẫ",
-    "Ȧ": "Ȧ",
-    "Ǡ": "Ǡ",
-    "Å": "Å",
-    "Ǻ": "Ǻ",
-    "Ḃ": "Ḃ",
-    "Ć": "Ć",
-    "Ḉ": "Ḉ",
-    "Č": "Č",
-    "Ĉ": "Ĉ",
-    "Ċ": "Ċ",
-    "Ç": "Ç",
-    "Ď": "Ď",
-    "Ḋ": "Ḋ",
-    "Ḑ": "Ḑ",
-    "É": "É",
-    "È": "È",
-    "Ë": "Ë",
-    "Ẽ": "Ẽ",
-    "Ē": "Ē",
-    "Ḗ": "Ḗ",
-    "Ḕ": "Ḕ",
-    "Ĕ": "Ĕ",
-    "Ḝ": "Ḝ",
-    "Ě": "Ě",
-    "Ê": "Ê",
-    "Ế": "Ế",
-    "Ề": "Ề",
-    "Ễ": "Ễ",
-    "Ė": "Ė",
-    "Ȩ": "Ȩ",
-    "Ḟ": "Ḟ",
-    "Ǵ": "Ǵ",
-    "Ḡ": "Ḡ",
-    "Ğ": "Ğ",
-    "Ǧ": "Ǧ",
-    "Ĝ": "Ĝ",
-    "Ġ": "Ġ",
-    "Ģ": "Ģ",
-    "Ḧ": "Ḧ",
-    "Ȟ": "Ȟ",
-    "Ĥ": "Ĥ",
-    "Ḣ": "Ḣ",
-    "Ḩ": "Ḩ",
-    "Í": "Í",
-    "Ì": "Ì",
-    "Ï": "Ï",
-    "Ḯ": "Ḯ",
-    "Ĩ": "Ĩ",
-    "Ī": "Ī",
-    "Ĭ": "Ĭ",
-    "Ǐ": "Ǐ",
-    "Î": "Î",
-    "İ": "İ",
-    "Ĵ": "Ĵ",
-    "Ḱ": "Ḱ",
-    "Ǩ": "Ǩ",
-    "Ķ": "Ķ",
-    "Ĺ": "Ĺ",
-    "Ľ": "Ľ",
-    "Ļ": "Ļ",
-    "Ḿ": "Ḿ",
-    "Ṁ": "Ṁ",
-    "Ń": "Ń",
-    "Ǹ": "Ǹ",
-    "Ñ": "Ñ",
-    "Ň": "Ň",
-    "Ṅ": "Ṅ",
-    "Ņ": "Ņ",
-    "Ó": "Ó",
-    "Ò": "Ò",
-    "Ö": "Ö",
-    "Ȫ": "Ȫ",
-    "Õ": "Õ",
-    "Ṍ": "Ṍ",
-    "Ṏ": "Ṏ",
-    "Ȭ": "Ȭ",
-    "Ō": "Ō",
-    "Ṓ": "Ṓ",
-    "Ṑ": "Ṑ",
-    "Ŏ": "Ŏ",
-    "Ǒ": "Ǒ",
-    "Ô": "Ô",
-    "Ố": "Ố",
-    "Ồ": "Ồ",
-    "Ỗ": "Ỗ",
-    "Ȯ": "Ȯ",
-    "Ȱ": "Ȱ",
-    "Ő": "Ő",
-    "Ṕ": "Ṕ",
-    "Ṗ": "Ṗ",
-    "Ŕ": "Ŕ",
-    "Ř": "Ř",
-    "Ṙ": "Ṙ",
-    "Ŗ": "Ŗ",
-    "Ś": "Ś",
-    "Ṥ": "Ṥ",
-    "Š": "Š",
-    "Ṧ": "Ṧ",
-    "Ŝ": "Ŝ",
-    "Ṡ": "Ṡ",
-    "Ş": "Ş",
-    "Ť": "Ť",
-    "Ṫ": "Ṫ",
-    "Ţ": "Ţ",
-    "Ú": "Ú",
-    "Ù": "Ù",
-    "Ü": "Ü",
-    "Ǘ": "Ǘ",
-    "Ǜ": "Ǜ",
-    "Ǖ": "Ǖ",
-    "Ǚ": "Ǚ",
-    "Ũ": "Ũ",
-    "Ṹ": "Ṹ",
-    "Ū": "Ū",
-    "Ṻ": "Ṻ",
-    "Ŭ": "Ŭ",
-    "Ǔ": "Ǔ",
-    "Û": "Û",
-    "Ů": "Ů",
-    "Ű": "Ű",
-    "Ṽ": "Ṽ",
-    "Ẃ": "Ẃ",
-    "Ẁ": "Ẁ",
-    "Ẅ": "Ẅ",
-    "Ŵ": "Ŵ",
-    "Ẇ": "Ẇ",
-    "Ẍ": "Ẍ",
-    "Ẋ": "Ẋ",
-    "Ý": "Ý",
-    "Ỳ": "Ỳ",
-    "Ÿ": "Ÿ",
-    "Ỹ": "Ỹ",
-    "Ȳ": "Ȳ",
-    "Ŷ": "Ŷ",
-    "Ẏ": "Ẏ",
-    "Ź": "Ź",
-    "Ž": "Ž",
-    "Ẑ": "Ẑ",
-    "Ż": "Ż",
-    "ά": "ά",
-    "ὰ": "ὰ",
-    "ᾱ": "ᾱ",
-    "ᾰ": "ᾰ",
-    "έ": "έ",
-    "ὲ": "ὲ",
-    "ή": "ή",
-    "ὴ": "ὴ",
-    "ί": "ί",
-    "ὶ": "ὶ",
-    "ϊ": "ϊ",
-    "ΐ": "ΐ",
-    "ῒ": "ῒ",
-    "ῑ": "ῑ",
-    "ῐ": "ῐ",
-    "ό": "ό",
-    "ὸ": "ὸ",
-    "ύ": "ύ",
-    "ὺ": "ὺ",
-    "ϋ": "ϋ",
-    "ΰ": "ΰ",
-    "ῢ": "ῢ",
-    "ῡ": "ῡ",
-    "ῠ": "ῠ",
-    "ώ": "ώ",
-    "ὼ": "ὼ",
-    "Ύ": "Ύ",
-    "Ὺ": "Ὺ",
-    "Ϋ": "Ϋ",
-    "Ῡ": "Ῡ",
-    "Ῠ": "Ῠ",
-    "Ώ": "Ώ",
-    "Ὼ": "Ὼ"
+    "\xE1": "a\u0301",
+    "\xE0": "a\u0300",
+    "\xE4": "a\u0308",
+    "\u01DF": "a\u0308\u0304",
+    "\xE3": "a\u0303",
+    "\u0101": "a\u0304",
+    "\u0103": "a\u0306",
+    "\u1EAF": "a\u0306\u0301",
+    "\u1EB1": "a\u0306\u0300",
+    "\u1EB5": "a\u0306\u0303",
+    "\u01CE": "a\u030C",
+    "\xE2": "a\u0302",
+    "\u1EA5": "a\u0302\u0301",
+    "\u1EA7": "a\u0302\u0300",
+    "\u1EAB": "a\u0302\u0303",
+    "\u0227": "a\u0307",
+    "\u01E1": "a\u0307\u0304",
+    "\xE5": "a\u030A",
+    "\u01FB": "a\u030A\u0301",
+    "\u1E03": "b\u0307",
+    "\u0107": "c\u0301",
+    "\u1E09": "c\u0327\u0301",
+    "\u010D": "c\u030C",
+    "\u0109": "c\u0302",
+    "\u010B": "c\u0307",
+    "\xE7": "c\u0327",
+    "\u010F": "d\u030C",
+    "\u1E0B": "d\u0307",
+    "\u1E11": "d\u0327",
+    "\xE9": "e\u0301",
+    "\xE8": "e\u0300",
+    "\xEB": "e\u0308",
+    "\u1EBD": "e\u0303",
+    "\u0113": "e\u0304",
+    "\u1E17": "e\u0304\u0301",
+    "\u1E15": "e\u0304\u0300",
+    "\u0115": "e\u0306",
+    "\u1E1D": "e\u0327\u0306",
+    "\u011B": "e\u030C",
+    "\xEA": "e\u0302",
+    "\u1EBF": "e\u0302\u0301",
+    "\u1EC1": "e\u0302\u0300",
+    "\u1EC5": "e\u0302\u0303",
+    "\u0117": "e\u0307",
+    "\u0229": "e\u0327",
+    "\u1E1F": "f\u0307",
+    "\u01F5": "g\u0301",
+    "\u1E21": "g\u0304",
+    "\u011F": "g\u0306",
+    "\u01E7": "g\u030C",
+    "\u011D": "g\u0302",
+    "\u0121": "g\u0307",
+    "\u0123": "g\u0327",
+    "\u1E27": "h\u0308",
+    "\u021F": "h\u030C",
+    "\u0125": "h\u0302",
+    "\u1E23": "h\u0307",
+    "\u1E29": "h\u0327",
+    "\xED": "i\u0301",
+    "\xEC": "i\u0300",
+    "\xEF": "i\u0308",
+    "\u1E2F": "i\u0308\u0301",
+    "\u0129": "i\u0303",
+    "\u012B": "i\u0304",
+    "\u012D": "i\u0306",
+    "\u01D0": "i\u030C",
+    "\xEE": "i\u0302",
+    "\u01F0": "j\u030C",
+    "\u0135": "j\u0302",
+    "\u1E31": "k\u0301",
+    "\u01E9": "k\u030C",
+    "\u0137": "k\u0327",
+    "\u013A": "l\u0301",
+    "\u013E": "l\u030C",
+    "\u013C": "l\u0327",
+    "\u1E3F": "m\u0301",
+    "\u1E41": "m\u0307",
+    "\u0144": "n\u0301",
+    "\u01F9": "n\u0300",
+    "\xF1": "n\u0303",
+    "\u0148": "n\u030C",
+    "\u1E45": "n\u0307",
+    "\u0146": "n\u0327",
+    "\xF3": "o\u0301",
+    "\xF2": "o\u0300",
+    "\xF6": "o\u0308",
+    "\u022B": "o\u0308\u0304",
+    "\xF5": "o\u0303",
+    "\u1E4D": "o\u0303\u0301",
+    "\u1E4F": "o\u0303\u0308",
+    "\u022D": "o\u0303\u0304",
+    "\u014D": "o\u0304",
+    "\u1E53": "o\u0304\u0301",
+    "\u1E51": "o\u0304\u0300",
+    "\u014F": "o\u0306",
+    "\u01D2": "o\u030C",
+    "\xF4": "o\u0302",
+    "\u1ED1": "o\u0302\u0301",
+    "\u1ED3": "o\u0302\u0300",
+    "\u1ED7": "o\u0302\u0303",
+    "\u022F": "o\u0307",
+    "\u0231": "o\u0307\u0304",
+    "\u0151": "o\u030B",
+    "\u1E55": "p\u0301",
+    "\u1E57": "p\u0307",
+    "\u0155": "r\u0301",
+    "\u0159": "r\u030C",
+    "\u1E59": "r\u0307",
+    "\u0157": "r\u0327",
+    "\u015B": "s\u0301",
+    "\u1E65": "s\u0301\u0307",
+    "\u0161": "s\u030C",
+    "\u1E67": "s\u030C\u0307",
+    "\u015D": "s\u0302",
+    "\u1E61": "s\u0307",
+    "\u015F": "s\u0327",
+    "\u1E97": "t\u0308",
+    "\u0165": "t\u030C",
+    "\u1E6B": "t\u0307",
+    "\u0163": "t\u0327",
+    "\xFA": "u\u0301",
+    "\xF9": "u\u0300",
+    "\xFC": "u\u0308",
+    "\u01D8": "u\u0308\u0301",
+    "\u01DC": "u\u0308\u0300",
+    "\u01D6": "u\u0308\u0304",
+    "\u01DA": "u\u0308\u030C",
+    "\u0169": "u\u0303",
+    "\u1E79": "u\u0303\u0301",
+    "\u016B": "u\u0304",
+    "\u1E7B": "u\u0304\u0308",
+    "\u016D": "u\u0306",
+    "\u01D4": "u\u030C",
+    "\xFB": "u\u0302",
+    "\u016F": "u\u030A",
+    "\u0171": "u\u030B",
+    "\u1E7D": "v\u0303",
+    "\u1E83": "w\u0301",
+    "\u1E81": "w\u0300",
+    "\u1E85": "w\u0308",
+    "\u0175": "w\u0302",
+    "\u1E87": "w\u0307",
+    "\u1E98": "w\u030A",
+    "\u1E8D": "x\u0308",
+    "\u1E8B": "x\u0307",
+    "\xFD": "y\u0301",
+    "\u1EF3": "y\u0300",
+    "\xFF": "y\u0308",
+    "\u1EF9": "y\u0303",
+    "\u0233": "y\u0304",
+    "\u0177": "y\u0302",
+    "\u1E8F": "y\u0307",
+    "\u1E99": "y\u030A",
+    "\u017A": "z\u0301",
+    "\u017E": "z\u030C",
+    "\u1E91": "z\u0302",
+    "\u017C": "z\u0307",
+    "\xC1": "A\u0301",
+    "\xC0": "A\u0300",
+    "\xC4": "A\u0308",
+    "\u01DE": "A\u0308\u0304",
+    "\xC3": "A\u0303",
+    "\u0100": "A\u0304",
+    "\u0102": "A\u0306",
+    "\u1EAE": "A\u0306\u0301",
+    "\u1EB0": "A\u0306\u0300",
+    "\u1EB4": "A\u0306\u0303",
+    "\u01CD": "A\u030C",
+    "\xC2": "A\u0302",
+    "\u1EA4": "A\u0302\u0301",
+    "\u1EA6": "A\u0302\u0300",
+    "\u1EAA": "A\u0302\u0303",
+    "\u0226": "A\u0307",
+    "\u01E0": "A\u0307\u0304",
+    "\xC5": "A\u030A",
+    "\u01FA": "A\u030A\u0301",
+    "\u1E02": "B\u0307",
+    "\u0106": "C\u0301",
+    "\u1E08": "C\u0327\u0301",
+    "\u010C": "C\u030C",
+    "\u0108": "C\u0302",
+    "\u010A": "C\u0307",
+    "\xC7": "C\u0327",
+    "\u010E": "D\u030C",
+    "\u1E0A": "D\u0307",
+    "\u1E10": "D\u0327",
+    "\xC9": "E\u0301",
+    "\xC8": "E\u0300",
+    "\xCB": "E\u0308",
+    "\u1EBC": "E\u0303",
+    "\u0112": "E\u0304",
+    "\u1E16": "E\u0304\u0301",
+    "\u1E14": "E\u0304\u0300",
+    "\u0114": "E\u0306",
+    "\u1E1C": "E\u0327\u0306",
+    "\u011A": "E\u030C",
+    "\xCA": "E\u0302",
+    "\u1EBE": "E\u0302\u0301",
+    "\u1EC0": "E\u0302\u0300",
+    "\u1EC4": "E\u0302\u0303",
+    "\u0116": "E\u0307",
+    "\u0228": "E\u0327",
+    "\u1E1E": "F\u0307",
+    "\u01F4": "G\u0301",
+    "\u1E20": "G\u0304",
+    "\u011E": "G\u0306",
+    "\u01E6": "G\u030C",
+    "\u011C": "G\u0302",
+    "\u0120": "G\u0307",
+    "\u0122": "G\u0327",
+    "\u1E26": "H\u0308",
+    "\u021E": "H\u030C",
+    "\u0124": "H\u0302",
+    "\u1E22": "H\u0307",
+    "\u1E28": "H\u0327",
+    "\xCD": "I\u0301",
+    "\xCC": "I\u0300",
+    "\xCF": "I\u0308",
+    "\u1E2E": "I\u0308\u0301",
+    "\u0128": "I\u0303",
+    "\u012A": "I\u0304",
+    "\u012C": "I\u0306",
+    "\u01CF": "I\u030C",
+    "\xCE": "I\u0302",
+    "\u0130": "I\u0307",
+    "\u0134": "J\u0302",
+    "\u1E30": "K\u0301",
+    "\u01E8": "K\u030C",
+    "\u0136": "K\u0327",
+    "\u0139": "L\u0301",
+    "\u013D": "L\u030C",
+    "\u013B": "L\u0327",
+    "\u1E3E": "M\u0301",
+    "\u1E40": "M\u0307",
+    "\u0143": "N\u0301",
+    "\u01F8": "N\u0300",
+    "\xD1": "N\u0303",
+    "\u0147": "N\u030C",
+    "\u1E44": "N\u0307",
+    "\u0145": "N\u0327",
+    "\xD3": "O\u0301",
+    "\xD2": "O\u0300",
+    "\xD6": "O\u0308",
+    "\u022A": "O\u0308\u0304",
+    "\xD5": "O\u0303",
+    "\u1E4C": "O\u0303\u0301",
+    "\u1E4E": "O\u0303\u0308",
+    "\u022C": "O\u0303\u0304",
+    "\u014C": "O\u0304",
+    "\u1E52": "O\u0304\u0301",
+    "\u1E50": "O\u0304\u0300",
+    "\u014E": "O\u0306",
+    "\u01D1": "O\u030C",
+    "\xD4": "O\u0302",
+    "\u1ED0": "O\u0302\u0301",
+    "\u1ED2": "O\u0302\u0300",
+    "\u1ED6": "O\u0302\u0303",
+    "\u022E": "O\u0307",
+    "\u0230": "O\u0307\u0304",
+    "\u0150": "O\u030B",
+    "\u1E54": "P\u0301",
+    "\u1E56": "P\u0307",
+    "\u0154": "R\u0301",
+    "\u0158": "R\u030C",
+    "\u1E58": "R\u0307",
+    "\u0156": "R\u0327",
+    "\u015A": "S\u0301",
+    "\u1E64": "S\u0301\u0307",
+    "\u0160": "S\u030C",
+    "\u1E66": "S\u030C\u0307",
+    "\u015C": "S\u0302",
+    "\u1E60": "S\u0307",
+    "\u015E": "S\u0327",
+    "\u0164": "T\u030C",
+    "\u1E6A": "T\u0307",
+    "\u0162": "T\u0327",
+    "\xDA": "U\u0301",
+    "\xD9": "U\u0300",
+    "\xDC": "U\u0308",
+    "\u01D7": "U\u0308\u0301",
+    "\u01DB": "U\u0308\u0300",
+    "\u01D5": "U\u0308\u0304",
+    "\u01D9": "U\u0308\u030C",
+    "\u0168": "U\u0303",
+    "\u1E78": "U\u0303\u0301",
+    "\u016A": "U\u0304",
+    "\u1E7A": "U\u0304\u0308",
+    "\u016C": "U\u0306",
+    "\u01D3": "U\u030C",
+    "\xDB": "U\u0302",
+    "\u016E": "U\u030A",
+    "\u0170": "U\u030B",
+    "\u1E7C": "V\u0303",
+    "\u1E82": "W\u0301",
+    "\u1E80": "W\u0300",
+    "\u1E84": "W\u0308",
+    "\u0174": "W\u0302",
+    "\u1E86": "W\u0307",
+    "\u1E8C": "X\u0308",
+    "\u1E8A": "X\u0307",
+    "\xDD": "Y\u0301",
+    "\u1EF2": "Y\u0300",
+    "\u0178": "Y\u0308",
+    "\u1EF8": "Y\u0303",
+    "\u0232": "Y\u0304",
+    "\u0176": "Y\u0302",
+    "\u1E8E": "Y\u0307",
+    "\u0179": "Z\u0301",
+    "\u017D": "Z\u030C",
+    "\u1E90": "Z\u0302",
+    "\u017B": "Z\u0307",
+    "\u03AC": "\u03B1\u0301",
+    "\u1F70": "\u03B1\u0300",
+    "\u1FB1": "\u03B1\u0304",
+    "\u1FB0": "\u03B1\u0306",
+    "\u03AD": "\u03B5\u0301",
+    "\u1F72": "\u03B5\u0300",
+    "\u03AE": "\u03B7\u0301",
+    "\u1F74": "\u03B7\u0300",
+    "\u03AF": "\u03B9\u0301",
+    "\u1F76": "\u03B9\u0300",
+    "\u03CA": "\u03B9\u0308",
+    "\u0390": "\u03B9\u0308\u0301",
+    "\u1FD2": "\u03B9\u0308\u0300",
+    "\u1FD1": "\u03B9\u0304",
+    "\u1FD0": "\u03B9\u0306",
+    "\u03CC": "\u03BF\u0301",
+    "\u1F78": "\u03BF\u0300",
+    "\u03CD": "\u03C5\u0301",
+    "\u1F7A": "\u03C5\u0300",
+    "\u03CB": "\u03C5\u0308",
+    "\u03B0": "\u03C5\u0308\u0301",
+    "\u1FE2": "\u03C5\u0308\u0300",
+    "\u1FE1": "\u03C5\u0304",
+    "\u1FE0": "\u03C5\u0306",
+    "\u03CE": "\u03C9\u0301",
+    "\u1F7C": "\u03C9\u0300",
+    "\u038E": "\u03A5\u0301",
+    "\u1FEA": "\u03A5\u0300",
+    "\u03AB": "\u03A5\u0308",
+    "\u1FE9": "\u03A5\u0304",
+    "\u1FE8": "\u03A5\u0306",
+    "\u038F": "\u03A9\u0301",
+    "\u1FFA": "\u03A9\u0300"
   };
   var Parser = class _Parser2 {
     constructor(input, settings) {
@@ -132344,9 +131168,9 @@ ${text2}</tr>
       if (match2) {
         text2 = text2.substring(0, match2.index);
         if (text2 === "i") {
-          text2 = "ı";
+          text2 = "\u0131";
         } else if (text2 === "j") {
-          text2 = "ȷ";
+          text2 = "\u0237";
         }
       }
       var symbol;
@@ -132697,30 +131521,38 @@ ${text2}</tr>
     sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>'
   };
   var DOC_TYPE_SPECS = [
-    { id: "regulation", label: "制度法规", color: "blue", chunk: "laws" },
-    { id: "finance", label: "财报数据", color: "green", chunk: "report" },
-    { id: "contract", label: "合同协议", color: "purple", chunk: "laws" },
-    { id: "report", label: "研报方案", color: "cyan", chunk: "report" },
-    { id: "spreadsheet", label: "表格台账", color: "geekblue", chunk: "table" },
-    { id: "image", label: "图片图纸", color: "magenta", chunk: "image" },
-    { id: "general", label: "通用文档", color: "default", chunk: "report" }
+    { id: "regulation", label: "\u5236\u5EA6\u6CD5\u89C4", color: "blue", chunk: "laws" },
+    { id: "finance", label: "\u8D22\u62A5\u6570\u636E", color: "green", chunk: "report" },
+    { id: "contract", label: "\u5408\u540C\u534F\u8BAE", color: "purple", chunk: "laws" },
+    { id: "report", label: "\u7814\u62A5\u65B9\u6848", color: "cyan", chunk: "report" },
+    { id: "spreadsheet", label: "\u8868\u683C\u53F0\u8D26", color: "geekblue", chunk: "table" },
+    { id: "image", label: "\u56FE\u7247\u56FE\u7EB8", color: "magenta", chunk: "image" },
+    { id: "general", label: "\u901A\u7528\u6587\u6863", color: "default", chunk: "report" }
   ];
   var DOC_TYPE_MAP = Object.fromEntries(DOC_TYPE_SPECS.map((x2) => [x2.id, x2]));
   var CHUNK_PROFILE_LABELS = {
-    auto: "智能自动",
-    laws: "条文切分",
-    report: "章节切分",
-    table: "带表头表格",
-    image: "视觉+OCR",
-    one: "整篇索引"
+    auto: "\u667A\u80FD\u81EA\u52A8",
+    laws: "\u6761\u6587\u5207\u5206",
+    report: "\u7AE0\u8282\u5207\u5206",
+    table: "\u5E26\u8868\u5934\u8868\u683C",
+    image: "\u89C6\u89C9+OCR",
+    one: "\u6574\u7BC7\u7D22\u5F15"
   };
   var INGEST_ACCEPT = ".pdf,.doc,.docx,.pptx,.ppt,.rtf,.xlsx,.xls,.csv,.tsv,.txt,.md,.markdown,.json,.yaml,.yml,.jpg,.jpeg,.png,.webp,.tif,.tiff,.bmp,.svg,.heic,.heif";
   var EFFORTS = [
-    { id: "low", label: "低" },
-    { id: "medium", label: "中" },
-    { id: "high", label: "高" },
-    { id: "extra_high", label: "极高" }
+    { id: "low", label: "\u4F4E" },
+    { id: "medium", label: "\u4E2D" },
+    { id: "high", label: "\u9AD8" },
+    { id: "extra_high", label: "\u6781\u9AD8" }
   ];
+  var CHAT_ASCII = [
+    "   ____  ___      ___                        __ ",
+    "  / __ \\|__ \\    /   |  ____ _ ___   ____   / /_",
+    " / / / /__/ /   / /| | / __ `// _ \\ / __ \\ / __/",
+    "/ /_/ // __/   / ___ |/ /_/ //  __// / / // /_  ",
+    "\\____//____/  /_/  |_|\\__, / \\___//_/ /_/ \\__/  ",
+    "                     /____/                     "
+  ].join("\n");
   var ATTACH_EXT = [".xlsx", ".csv", ".pdf", ".doc", ".docx", ".md", ".markdown", ".json", ".txt", ".jpg", ".jpeg", ".png", ".tif", ".tiff", ".svg", ".webp", ".heif", ".heic"];
   var IMAGE_EXT = [".jpg", ".jpeg", ".png", ".tif", ".tiff", ".svg", ".webp", ".heif", ".heic"];
   var App2 = {
@@ -132732,25 +131564,25 @@ ${text2}</tr>
       <div class="hist-manage-head">
         <span class="hist-manage-title">{{ histPaneTitle }}</span>
         <span class="hist-head-actions">
-          <a-tooltip v-if="histMode === 'browse'" title="管理">
+          <a-tooltip v-if="histMode === 'browse'" title="\u7BA1\u7406">
             <button type="button" class="hist-tool" :disabled="!histGroups.length" @click="openHistManage">
               <span class="nav-ico" v-html="ICO.manage"></span>
             </button>
           </a-tooltip>
-          <button type="button" class="hist-close" aria-label="关闭" @click="closeHistManage">
+          <button type="button" class="hist-close" aria-label="\u5173\u95ED" @click="closeHistManage">
             <span v-html="ICO.close"></span>
           </button>
         </span>
       </div>
       <div class="hist-scroll">
-        <a-empty v-if="!histGroups.length" description="还没有历史对话" />
+        <a-empty v-if="!histGroups.length" description="\u8FD8\u6CA1\u6709\u5386\u53F2\u5BF9\u8BDD" />
         <div v-for="g in histGroups" :key="g.key" class="hist-group">
           <div class="hist-label">{{ g.label }}</div>
           <div v-for="c in g.items" :key="c.id" role="button" tabindex="0"
                :class="['hist-pick', histMode === 'browse' && c.id === chatId ? 'on' : '']"
                @click="onHistRow(c)" @keydown.enter.prevent="onHistRow(c)">
             <a-checkbox v-if="histMode === 'manage'" :checked="!!histPicked[c.id]" />
-            <span class="hist-pick-title">{{ c.title || '新对话' }}</span>
+            <span class="hist-pick-title">{{ c.title || '\u65B0\u5BF9\u8BDD' }}</span>
             <matrix-loader v-if="runningIds[c.id]" />
             <span v-if="c.pinned" class="hist-pin" v-html="ICO.pin"></span>
           </div>
@@ -132764,7 +131596,7 @@ ${text2}</tr>
         <span class="hist-foot-split"></span>
         <a-button type="text" :danger="histPickCount > 0" :disabled="!histPickCount" @click="deletePicked">
           <span class="icon-svg" v-html="ICO.trash"></span>
-          <span>删除</span>
+          <span>\u5220\u9664</span>
         </a-button>
       </div>
     </div>
@@ -132781,18 +131613,18 @@ ${text2}</tr>
       </div>
       <button type="button" class="nav-item nav-history" @click="openHistBrowse">
         <span class="nav-ico" v-html="ICO.history"></span>
-        <span>历史</span>
+        <span>\u5386\u53F2</span>
       </button>
       <section class="hist">
         <div class="hist-head">
-          <span class="hist-head-label">历史对话</span>
+          <span class="hist-head-label">\u5386\u53F2\u5BF9\u8BDD</span>
           <span class="hist-head-actions">
-            <a-tooltip title="新对话">
+            <a-tooltip title="\u65B0\u5BF9\u8BDD">
               <button type="button" class="hist-tool" @click="newChat">
                 <span class="nav-ico" v-html="ICO.plus"></span>
               </button>
             </a-tooltip>
-            <a-tooltip title="管理">
+            <a-tooltip title="\u7BA1\u7406">
               <button type="button" class="hist-tool" :disabled="!histGroups.length" @click="openHistManage">
                 <span class="nav-ico" v-html="ICO.manage"></span>
               </button>
@@ -132800,14 +131632,14 @@ ${text2}</tr>
           </span>
         </div>
         <div class="hist-scroll">
-          <div v-if="!histGroups.length" class="hist-empty">暂无历史对话</div>
+          <div v-if="!histGroups.length" class="hist-empty">\u6682\u65E0\u5386\u53F2\u5BF9\u8BDD</div>
           <template v-for="g in histGroups" :key="g.key">
             <div class="hist-label">{{ g.label }}</div>
             <button type="button" v-for="c in g.items" :key="c.id"
                     :class="['hist-item', c.id === chatId ? 'on' : '']"
                     :title="c.title" @click="openHistChat(c)">
               <span v-if="c.pinned" class="hist-pin" v-html="ICO.pin"></span>
-              <span class="hist-title">{{ c.title || '新对话' }}</span>
+              <span class="hist-title">{{ c.title || '\u65B0\u5BF9\u8BDD' }}</span>
               <matrix-loader v-if="runningIds[c.id]" />
             </button>
           </template>
@@ -132816,7 +131648,7 @@ ${text2}</tr>
       <button type="button" :class="['nav-item', 'nav-settings', tab === 'settings' ? 'on' : '']"
               @click="tab = 'settings'">
         <span class="nav-ico" v-html="ICO.settings"></span>
-        <span>设置</span>
+        <span>\u8BBE\u7F6E</span>
       </button>
     </nav>
   </aside>
@@ -132831,43 +131663,43 @@ ${text2}</tr>
       <div class="pane-stage">
       <template v-if="tab === 'search'">
         <div class="hero">
-          <h2>多模态智能检索</h2>
-          <p class="lead">支持跨项目检索制度条文、财报指标、合同要素、结构化表格与图纸视觉索引。</p>
+          <h2>\u591A\u6A21\u6001\u667A\u80FD\u68C0\u7D22</h2>
+          <p class="lead">\u652F\u6301\u8DE8\u9879\u76EE\u68C0\u7D22\u5236\u5EA6\u6761\u6587\u3001\u8D22\u62A5\u6307\u6807\u3001\u5408\u540C\u8981\u7D20\u3001\u7ED3\u6784\u5316\u8868\u683C\u4E0E\u56FE\u7EB8\u89C6\u89C9\u7D22\u5F15\u3002</p>
           <div class="search-row">
             <a-input
               v-model:value="q"
               size="large"
               allow-clear
-              placeholder="输入关键词、文档标题、文号、公司主体、合同方或表头字段…"
+              placeholder="\u8F93\u5165\u5173\u952E\u8BCD\u3001\u6587\u6863\u6807\u9898\u3001\u6587\u53F7\u3001\u516C\u53F8\u4E3B\u4F53\u3001\u5408\u540C\u65B9\u6216\u8868\u5934\u5B57\u6BB5\u2026"
               @pressEnter="doSearch" />
-            <a-button type="primary" size="large" :loading="loading" @click="doSearch">搜索</a-button>
+            <a-button type="primary" size="large" :loading="loading" @click="doSearch">\u641C\u7D22</a-button>
           </div>
           <div class="filters">
-            <a-select v-model:value="filters.project" placeholder="全部项目" allow-clear
+            <a-select v-model:value="filters.project" placeholder="\u5168\u90E8\u9879\u76EE" allow-clear
                       size="large" class="w-dept" @change="doSearch">
               <a-select-option v-for="p in facets.projects" :key="p" :value="p">{{ p }}</a-select-option>
             </a-select>
-            <a-select v-model:value="filters.doc_type" placeholder="全部文件性质" allow-clear
+            <a-select v-model:value="filters.doc_type" placeholder="\u5168\u90E8\u6587\u4EF6\u6027\u8D28" allow-clear
                       size="large" class="w-type" @change="doSearch">
               <a-select-option v-for="t in DOC_TYPE_SPECS" :key="t.id" :value="t.id">{{ t.label }}</a-select-option>
             </a-select>
-            <a-select v-model:value="filters.chunk_type" placeholder="全部内容块" allow-clear
+            <a-select v-model:value="filters.chunk_type" placeholder="\u5168\u90E8\u5185\u5BB9\u5757" allow-clear
                       size="large" class="w-type" @change="doSearch">
-              <a-select-option value="text">正文与条文</a-select-option>
-              <a-select-option value="table">数据表格切片</a-select-option>
-              <a-select-option value="image">图片与图表索引</a-select-option>
+              <a-select-option value="text">\u6B63\u6587\u4E0E\u6761\u6587</a-select-option>
+              <a-select-option value="table">\u6570\u636E\u8868\u683C\u5207\u7247</a-select-option>
+              <a-select-option value="image">\u56FE\u7247\u4E0E\u56FE\u8868\u7D22\u5F15</a-select-option>
             </a-select>
-            <a-select v-model:value="filters.dept" placeholder="全部目录/部门" allow-clear
+            <a-select v-model:value="filters.dept" placeholder="\u5168\u90E8\u76EE\u5F55/\u90E8\u95E8" allow-clear
                       size="large" class="w-dept" @change="doSearch">
               <a-select-option v-for="d in facets.depts" :key="d" :value="d">{{ d }}</a-select-option>
             </a-select>
-            <a-select v-model:value="filters.status" placeholder="效力状态" allow-clear
+            <a-select v-model:value="filters.status" placeholder="\u6548\u529B\u72B6\u6001" allow-clear
                       size="large" class="w-status" @change="doSearch">
               <a-select-option v-for="s in facets.statuses" :key="s" :value="s">{{ s }}</a-select-option>
             </a-select>
             <span class="spacer"></span>
-            <span class="hint" v-if="results.length">{{ results.length }} 条匹配片段</span>
-            <span class="hint" v-else-if="searched && !loading">无匹配结果</span>
+            <span class="hint" v-if="results.length">{{ results.length }} \u6761\u5339\u914D\u7247\u6BB5</span>
+            <span class="hint" v-else-if="searched && !loading">\u65E0\u5339\u914D\u7ED3\u679C</span>
           </div>
           <div class="chips" v-if="recent.length && !(q || '').trim()">
             <button class="chip" v-for="ex in recent" :key="ex" @click="pickExample(ex)">{{ ex }}</button>
@@ -132881,14 +131713,14 @@ ${text2}</tr>
                 <div class="hit-tags">
                   <a-tag :color="docTypeColor(r.doc_type)">{{ docTypeLabel(r.doc_type) }}</a-tag>
                   <a-tag>{{ r.project }}{{ r.folder ? ' / ' + r.folder : (r.dept ? ' / ' + r.dept : '') }}</a-tag>
-                  <span v-if="r.chunk_type === 'table'" class="chunk-type-badge table">表格切片</span>
-                  <span v-else-if="r.chunk_type === 'image'" class="chunk-type-badge image">视觉索引</span>
+                  <span v-if="r.chunk_type === 'table'" class="chunk-type-badge table">\u8868\u683C\u5207\u7247</span>
+                  <span v-else-if="r.chunk_type === 'image'" class="chunk-type-badge image">\u89C6\u89C9\u7D22\u5F15</span>
                   <span class="docno" v-if="r.doc_no">{{ r.doc_no }}</span>
-                  <a-tag v-if="r.status && r.status !== '现行'" color="orange">{{ r.status }}</a-tag>
+                  <a-tag v-if="r.status && r.status !== '\u73B0\u884C'" color="orange">{{ r.status }}</a-tag>
                 </div>
                 <span class="loc">
                   <span v-if="r.article">{{ r.article }}</span>
-                  <span v-if="r.page_start"> · 第 {{ r.page_start }} 页</span>
+                  <span v-if="r.page_start"> \xB7 \u7B2C {{ r.page_start }} \u9875</span>
                 </span>
               </div>
               <div class="hit-title">{{ r.title }}</div>
@@ -132899,9 +131731,9 @@ ${text2}</tr>
                 </span>
               </div>
               <div class="hit-body" v-html="r.snippet"></div>
-              <div class="hit-open">打开原文定位</div>
+              <div class="hit-open">\u6253\u5F00\u539F\u6587\u5B9A\u4F4D</div>
             </div>
-            <a-empty v-if="!loading && searched && !results.length" description="没有找到匹配内容" />
+            <a-empty v-if="!loading && searched && !results.length" description="\u6CA1\u6709\u627E\u5230\u5339\u914D\u5185\u5BB9" />
           </div>
         </a-spin>
       </template>
@@ -132920,19 +131752,19 @@ ${text2}</tr>
                    :style="askBrowserWindowStyle">
                 <div v-for="dir in ['n','s','w','e','nw','ne','sw','se']" :key="dir"
                      :class="['ask-bw-resizer', dir]"
-                     title="拖动边框中心等比例缩放"
+                     title="\u62D6\u52A8\u8FB9\u6846\u4E2D\u5FC3\u7B49\u6BD4\u4F8B\u7F29\u653E"
                      @pointerdown.stop.prevent="onAskBwResizeStart(dir, $event)"></div>
                 <div class="ask-bw-clip">
                   <div class="ask-bw-top">
                     <div class="ask-bw-navs">
-                      <button type="button" class="bw-btn" title="后退"
+                      <button type="button" class="bw-btn" title="\u540E\u9000"
                               :disabled="!activeBrowserTab || !activeBrowserTab.canGoBack"
                               @click="browserBack" v-html="ICO.left"></button>
-                      <button type="button" class="bw-btn" title="前进"
+                      <button type="button" class="bw-btn" title="\u524D\u8FDB"
                               :disabled="!activeBrowserTab || !activeBrowserTab.canGoForward"
                               @click="browserForward" v-html="ICO.send"></button>
                       <button type="button" class="bw-btn"
-                              :title="activeBrowserTab && activeBrowserTab.loading ? '停止加载' : '刷新'"
+                              :title="activeBrowserTab && activeBrowserTab.loading ? '\u505C\u6B62\u52A0\u8F7D' : '\u5237\u65B0'"
                               @click="browserReloadOrStop"
                               v-html="activeBrowserTab && activeBrowserTab.loading ? ICO.close : ICO.reload"></button>
                     </div>
@@ -132944,39 +131776,33 @@ ${text2}</tr>
                         <span v-if="bt.loading" class="bw-spin"></span>
                         <img v-else-if="bt.favicon" :src="bt.favicon" class="bw-fav" @error="bt.favicon = ''" alt="" />
                         <span v-else class="bw-tab-ico" v-html="ICO.globe"></span>
-                        <span class="ask-bw-tabpill-title">{{ bt.title || '新标签页' }}</span>
+                        <span class="ask-bw-tabpill-title">{{ bt.title || '\u65B0\u6807\u7B7E\u9875' }}</span>
                         <button v-if="browserState.tabs.length > 1" type="button" class="ask-bw-tabpill-x"
-                                title="关闭标签页" @click.stop="closeBrowserTab(bt.id)" v-html="ICO.close"></button>
+                                title="\u5173\u95ED\u6807\u7B7E\u9875" @click.stop="closeBrowserTab(bt.id)" v-html="ICO.close"></button>
                       </div>
-                      <button type="button" class="bw-btn" title="新建标签页"
+                      <button type="button" class="bw-btn" title="\u65B0\u5EFA\u6807\u7B7E\u9875"
                               @click="newBrowserTab()" v-html="ICO.plus"></button>
                     </div>
                     <input class="ask-bw-url"
                            v-model="browserUrlInput"
-                           placeholder="输入网址或搜索词，按 Enter 访问"
+                           placeholder="\u8F93\u5165\u7F51\u5740\u6216\u641C\u7D22\u8BCD\uFF0C\u6309 Enter \u8BBF\u95EE"
                            @focus="onBrowserUrlFocus($event)"
                            @blur="onBrowserUrlBlur"
                            @keydown.enter.prevent="submitBrowserUrl" />
-                    <div v-if="browserState.coPanel.waitingHuman || browserState.coPanel.aiActive"
-                         :class="['ask-bw-badge', browserState.coPanel.waitingHuman ? 'human' : '']"
-                         :title="browserState.coPanel.waitingHuman ? (browserState.coPanel.humanReason || '等待人工操作') : (browserState.coPanel.aiActionLabel || 'O2 正在操作浏览器')">
-                      <span class="ask-bw-badge-dot"></span>
-                      <span class="ask-bw-badge-txt">{{ browserState.coPanel.waitingHuman ? '等待您操作' : (browserState.coPanel.aiActionLabel || 'O2 操作中') }}</span>
-                    </div>
-                    <div class="ask-bw-zoom" title="固定 16:9 比例中心缩放（也可直接拖动四周边框或按住 Ctrl 滚轮缩放）">
-                      <button type="button" class="ask-bw-zoom-btn" :disabled="askBwScale <= 0.65" @click="stepAskBwScale(-0.1)">−</button>
+                    <div class="ask-bw-zoom" title="\u56FA\u5B9A 16:9 \u6BD4\u4F8B\u4E2D\u5FC3\u7F29\u653E\uFF08\u4E5F\u53EF\u76F4\u63A5\u62D6\u52A8\u56DB\u5468\u8FB9\u6846\u6216\u6309\u4F4F Ctrl \u6EDA\u8F6E\u7F29\u653E\uFF09">
+                      <button type="button" class="ask-bw-zoom-btn" :disabled="askBwScale <= 0.65" @click="stepAskBwScale(-0.1)">\u2212</button>
                       <button type="button" class="ask-bw-zoom-val" @click="resetAskBwScale">{{ Math.round(askBwScale * 100) }}%</button>
                       <button type="button" class="ask-bw-zoom-btn" :disabled="askBwScale >= 1.35" @click="stepAskBwScale(0.1)">+</button>
                     </div>
-                    <button type="button" class="bw-btn" title="收起浏览器窗口"
+                    <button type="button" class="bw-btn" title="\u6536\u8D77\u6D4F\u89C8\u5668\u7A97\u53E3"
                             @click="closeAskBrowserByUser" v-html="ICO.close"></button>
                   </div>
                   <div v-if="browserState.coPanel.waitingHuman" class="ask-bw-human-bar">
                     <div class="ask-bw-human-info">
                       <span class="ask-bw-human-pulse"></span>
-                      <span class="ask-bw-human-text">{{ browserState.coPanel.humanReason || '需要您完成页面人机验证或登录，完成后将自动继续下一步' }}</span>
+                      <span class="ask-bw-human-text">{{ browserState.coPanel.humanReason || '\u9700\u8981\u60A8\u5B8C\u6210\u9875\u9762\u4EBA\u673A\u9A8C\u8BC1\u6216\u767B\u5F55\uFF0C\u5B8C\u6210\u540E\u5C06\u81EA\u52A8\u7EE7\u7EED\u4E0B\u4E00\u6B65' }}</span>
                     </div>
-                    <button type="button" class="ask-bw-human-btn" @click="confirmHumanBrowserDone">我已完成，继续</button>
+                    <button type="button" class="ask-bw-human-btn" @click="confirmHumanBrowserDone">\u6211\u5DF2\u5B8C\u6210\uFF0C\u7EE7\u7EED</button>
                   </div>
                   <div class="ask-bw-frame">
                     <div class="ask-bw-stage" ref="askBrowserStage">
@@ -132984,8 +131810,8 @@ ${text2}</tr>
                            :src="browserPreviewUrl" class="bw-freeze" alt="" />
                       <div v-else-if="!hasNativeBrowser" class="bw-fallback">
                         <div class="bw-fallback-card">
-                          <h3>在 O2 桌面窗口中使用协同浏览器</h3>
-                          <p>通过 O2 桌面端启动后，此窗口将挂载固定 16:9 比例居中缩放的原生 Chromium 视图，支持 AI 模拟鼠标与人机同屏协同操作。</p>
+                          <h3>\u5728 O2 \u684C\u9762\u7A97\u53E3\u4E2D\u4F7F\u7528\u534F\u540C\u6D4F\u89C8\u5668</h3>
+                          <p>\u901A\u8FC7 O2 \u684C\u9762\u7AEF\u542F\u52A8\u540E\uFF0C\u6B64\u7A97\u53E3\u5C06\u6302\u8F7D\u56FA\u5B9A 16:9 \u6BD4\u4F8B\u5C45\u4E2D\u7F29\u653E\u7684\u539F\u751F Chromium \u89C6\u56FE\uFF0C\u652F\u6301 AI \u6A21\u62DF\u9F20\u6807\u4E0E\u4EBA\u673A\u540C\u5C4F\u534F\u540C\u64CD\u4F5C\u3002</p>
                         </div>
                       </div>
                     </div>
@@ -132995,15 +131821,11 @@ ${text2}</tr>
             </div>
           </div>
 
-          <div class="chatlog" ref="chatlog" @scroll.passive="onChatlogScroll">
-            <div v-if="!messages.length" class="chat-empty">
-              <h2>有什么可以帮你？</h2>
-              <p>支持对话问答、本机命令执行、附件与图片解析及本地文档检索。</p>
-              <div class="ask-chips">
-                <button class="ask-chip" v-for="ex in askExamples" :key="ex" @click="askExample(ex)">{{ ex }}</button>
-              </div>
-            </div>
-
+          <div class="chat-stage">
+            <transition name="ascii-fade">
+              <pre v-if="!messages.length" class="chat-ascii" aria-hidden="true">{{ chatAscii }}</pre>
+            </transition>
+            <div class="chatlog" ref="chatlog" @scroll.passive="onChatlogScroll">
             <div v-for="(m, i) in messages" :key="m.id || ('i' + i)" :class="['msg', m.role]" :style="msgDelay(i, messages.length)">
               <div class="bubble">
                 <div v-if="m.files && m.files.length" class="msg-files">
@@ -133027,10 +131849,10 @@ ${text2}</tr>
                      @click="onAnswerClick($event, m)"></div>
                 <div v-else-if="m.content" class="answer-text" v-html="renderAnswer(m.content, m)"
                      @click="onAnswerClick($event, m)"></div>
-                <div v-else-if="m.stopped && !m.streaming && !m.ask" class="hint">已停止</div>
+                <div v-else-if="m.stopped && !m.streaming && !m.ask" class="hint">\u5DF2\u505C\u6B62</div>
                 <div v-if="m.ask && m.ask.questions && m.ask.questions.length" class="ask-card">
                   <div class="ask-card-head">
-                    <span>{{ m.ask.intent === 'recommend' ? '推荐' : '请补充关键条件' }}</span>
+                    <span>{{ m.ask.intent === 'recommend' ? '\u63A8\u8350' : '\u8BF7\u8865\u5145\u5173\u952E\u6761\u4EF6' }}</span>
                     <span v-if="m.ask.questions.length > 1" class="ask-step">{{ (m.ask.step || 0) + 1 }} / {{ m.ask.questions.length }}</span>
                   </div>
                   <div v-for="q in askCurrentQs(m)" :key="q.id" class="ask-q">
@@ -133041,39 +131863,39 @@ ${text2}</tr>
                               :disabled="m.ask.submitted"
                               @click="toggleAskOpt(m, q, o)">
                         <span>{{ o.label }}</span>
-                        <span v-if="o.recommended" class="ask-rec">建议</span>
+                        <span v-if="o.recommended" class="ask-rec">\u5EFA\u8BAE</span>
                       </button>
                       <button type="button" v-if="q.allow_other !== false"
                               :class="['ask-opt', askOtherOn(m, q) ? 'on' : '']"
                               :disabled="m.ask.submitted"
-                              @click="pickAskOther(m, q)">其他</button>
+                              @click="pickAskOther(m, q)">\u5176\u4ED6</button>
                     </div>
                     <a-input v-if="askOtherOn(m, q)"
                              v-model:value="m.ask.otherText[q.id]"
                              size="large"
-                             placeholder="请输入具体情况"
+                             placeholder="\u8BF7\u8F93\u5165\u5177\u4F53\u60C5\u51B5"
                              :disabled="m.ask.submitted"
                              @pressEnter="nextAsk(m)" />
                   </div>
                   <div v-if="!m.ask.submitted" class="ask-nav">
-                    <a-button v-if="m.ask.questions.length > 1" :disabled="!(m.ask.step > 0)" @click="prevAsk(m)">上一题</a-button>
-                    <a-button type="primary" :disabled="!askStepDone(m) || asking" @click="nextAsk(m)">{{ askLastStep(m) ? '提交' : '下一题' }}</a-button>
+                    <a-button v-if="m.ask.questions.length > 1" :disabled="!(m.ask.step > 0)" @click="prevAsk(m)">\u4E0A\u4E00\u9898</a-button>
+                    <a-button type="primary" :disabled="!askStepDone(m) || asking" @click="nextAsk(m)">{{ askLastStep(m) ? '\u63D0\u4EA4' : '\u4E0B\u4E00\u9898' }}</a-button>
                   </div>
-                  <div v-else class="hint ask-done">已提交</div>
+                  <div v-else class="hint ask-done">\u5DF2\u63D0\u4EA4</div>
                 </div>
                 <div v-if="displaySources(m).length" class="srcs">
                   <div class="srcs-head" @click="toggleSrc(m)">
-                    依据 {{ displaySources(m).length }} 条
-                    <span class="hint">{{ m.showSrc ? '收起' : '展开' }}</span>
+                    \u4F9D\u636E {{ displaySources(m).length }} \u6761
+                    <span class="hint">{{ m.showSrc ? '\u6536\u8D77' : '\u5C55\u5F00' }}</span>
                   </div>
                   <div v-if="m.showSrc">
                     <div v-for="s in displaySources(m)" :key="s.n" class="src" @click="openDoc(s.doc_id, s.chunk_id)">
-                      <span class="src-n">〔{{ s.n }}〕</span>
+                      <span class="src-n">\u3014{{ s.n }}\u3015</span>
                       <span class="src-head">
                         <b>{{ s.title }}</b>
                         <span v-if="s.doc_no" class="docno"> {{ s.doc_no }}</span>
                         <span v-if="s.article" class="loc"> {{ s.article }}</span>
-                        <span v-if="s.page" class="loc"> · 第 {{ s.page }} 页</span>
+                        <span v-if="s.page" class="loc"> \xB7 \u7B2C {{ s.page }} \u9875</span>
                       </span>
                       <div class="src-text">{{ s.text }}</div>
                     </div>
@@ -133082,25 +131904,27 @@ ${text2}</tr>
               </div>
             </div>
           </div>
+          </div>
 
           <div class="composer">
             <div class="composer-box" :class="{ over: attachOver }"
                  @dragenter.prevent="onAttachEnter"
                  @dragover.prevent="onAttachEnter"
                  @dragleave.prevent="onAttachLeave"
-                 @drop.prevent="onAttachDrop">
+                 @drop.prevent="onAttachDrop"
+                 @paste="onAttachPaste">
               <div v-if="attachments.length" class="attach-row">
                 <div v-for="a in attachments" :key="a.id" :class="['attach-chip', a.state]" :title="a.error || a.name">
                   <span class="attach-name">{{ a.name }}</span>
                   <span v-if="a.state === 'parsing'" class="attach-pct">{{ a.percent || 0 }}%</span>
-                  <button type="button" class="attach-x" @click="removeAttach(a.id)">×</button>
+                  <button type="button" class="attach-x" @click="removeAttach(a.id)">\xD7</button>
                 </div>
               </div>
               <a-textarea v-model:value="question" :auto-size="{ minRows: 3, maxRows: 6 }"
-                placeholder="输入问题，Enter 发送，Shift+Enter 换行"
+                placeholder="\u8F93\u5165\u95EE\u9898\uFF0CEnter \u53D1\u9001\uFF0C\u53EF\u76F4\u63A5\u7C98\u8D34\u6587\u4EF6"
                 @pressEnter="onEnter" />
               <div class="composer-bar">
-                <a-tooltip title="上传附件或图片">
+                <a-tooltip title="\u4E0A\u4F20\u9644\u4EF6\u6216\u56FE\u7247">
                   <button type="button" class="attach-btn" :disabled="asking" @click="pickAttach">
                     <span class="icon-svg" v-html="ICO.plus"></span>
                   </button>
@@ -133115,7 +131939,6 @@ ${text2}</tr>
                           ]"
                           @click="toggleAskBrowserByUser">
                     <span class="icon-svg" v-html="ICO.globe"></span>
-                    <span v-if="browserState.coPanel.waitingHuman || browserState.coPanel.aiActive" class="bw-toggle-dot"></span>
                   </button>
                 </a-tooltip>
                 <input ref="attachInput" class="attach-input" type="file" multiple
@@ -133132,7 +131955,7 @@ ${text2}</tr>
                     <button v-if="effortOptions.length" type="button"
                             :class="['mp-row', menuPanel === 'effort' ? 'on' : '']"
                             @click="openPanel('effort')">
-                      <span>思考程度</span>
+                      <span>\u601D\u8003\u7A0B\u5EA6</span>
                       <span class="mp-val">{{ effortLabel }}<span class="mp-chev" v-html="ICO.chevron"></span></span>
                     </button>
                     <button v-if="contextLabel" type="button"
@@ -133147,7 +131970,7 @@ ${text2}</tr>
                     <div class="mp-hr" v-if="effortOptions.length || contextLabel"></div>
                     <button type="button" :class="['mp-row', menuPanel === 'model' ? 'on' : '']"
                             @click="openPanel('model')">
-                      <span>模型</span>
+                      <span>\u6A21\u578B</span>
                       <span class="mp-val">
                         <span class="mp-val-text">{{ modelLabel }}</span>
                         <span class="mp-chev" v-html="ICO.chevron"></span>
@@ -133172,7 +131995,7 @@ ${text2}</tr>
                     <div v-if="menuPanel === 'model'" class="model-sub model-sub-wide">
                       <div class="mp-search">
                         <span class="mp-search-ico" v-html="ICO.search"></span>
-                        <input v-model="modelQuery" placeholder="搜索模型" />
+                        <input v-model="modelQuery" placeholder="\u641C\u7D22\u6A21\u578B" />
                       </div>
                       <div class="model-sub-scroll">
                         <template v-for="g in groupedModels" :key="g.id">
@@ -133188,12 +132011,12 @@ ${text2}</tr>
                     </div>
                   </div>
                 </div>
-                <a-tooltip title="清空">
+                <a-tooltip title="\u6E05\u7A7A">
                   <a-button type="text" class="icon-btn" :disabled="asking" @click="clearChat">
                     <template #icon><span class="icon-svg" v-html="ICO.trash"></span></template>
                   </a-button>
                 </a-tooltip>
-                <a-tooltip :title="asking ? '停止' : '发送'">
+                <a-tooltip :title="asking ? '\u505C\u6B62' : '\u53D1\u9001'">
                   <a-button type="primary" class="icon-btn send-btn" @click="asking ? stopAsk() : send()">
                     <template #icon>
                       <span class="icon-svg" v-html="asking ? ICO.stop : ICO.send"></span>
@@ -133215,31 +132038,31 @@ ${text2}</tr>
               <span v-if="bt.loading" class="bw-spin"></span>
               <img v-else-if="bt.favicon" :src="bt.favicon" class="bw-fav" @error="bt.favicon = ''" alt="" />
               <span v-else class="bw-tab-ico" v-html="ICO.globe"></span>
-              <span class="bw-tab-title">{{ bt.title || '新标签页' }}</span>
-              <button type="button" class="bw-tab-x" title="关闭标签页"
+              <span class="bw-tab-title">{{ bt.title || '\u65B0\u6807\u7B7E\u9875' }}</span>
+              <button type="button" class="bw-tab-x" title="\u5173\u95ED\u6807\u7B7E\u9875"
                       @click.stop="closeBrowserTab(bt.id)" v-html="ICO.close"></button>
             </div>
-            <button type="button" class="bw-new" title="新建标签页"
+            <button type="button" class="bw-new" title="\u65B0\u5EFA\u6807\u7B7E\u9875"
                     @click="newBrowserTab()" v-html="ICO.plus"></button>
           </div>
           <div class="bw-bar">
-            <button type="button" class="bw-btn" title="后退"
+            <button type="button" class="bw-btn" title="\u540E\u9000"
                     :disabled="!activeBrowserTab || !activeBrowserTab.canGoBack"
                     @click="browserBack" v-html="ICO.left"></button>
-            <button type="button" class="bw-btn" title="前进"
+            <button type="button" class="bw-btn" title="\u524D\u8FDB"
                     :disabled="!activeBrowserTab || !activeBrowserTab.canGoForward"
                     @click="browserForward" v-html="ICO.send"></button>
             <button type="button" class="bw-btn"
-                    :title="activeBrowserTab && activeBrowserTab.loading ? '停止加载' : '刷新'"
+                    :title="activeBrowserTab && activeBrowserTab.loading ? '\u505C\u6B62\u52A0\u8F7D' : '\u5237\u65B0'"
                     @click="browserReloadOrStop"
                     v-html="activeBrowserTab && activeBrowserTab.loading ? ICO.close : ICO.reload"></button>
             <input class="bw-url"
                    v-model="browserUrlInput"
-                   placeholder="输入网址或搜索词，按 Enter 访问"
+                   placeholder="\u8F93\u5165\u7F51\u5740\u6216\u641C\u7D22\u8BCD\uFF0C\u6309 Enter \u8BBF\u95EE"
                    @focus="onBrowserUrlFocus($event)"
                    @blur="onBrowserUrlBlur"
                    @keydown.enter.prevent="submitBrowserUrl" />
-            <button v-if="hasNativeBrowser" type="button" class="bw-btn" title="开发者工具"
+            <button v-if="hasNativeBrowser" type="button" class="bw-btn" title="\u5F00\u53D1\u8005\u5DE5\u5177"
                     @click="browserDevTools" v-html="ICO.code"></button>
           </div>
           <div class="bw-stage" ref="browserStage">
@@ -133247,8 +132070,8 @@ ${text2}</tr>
                  :src="browserPreviewUrl" class="bw-freeze" alt="" />
             <div v-else-if="!hasNativeBrowser" class="bw-fallback">
               <div class="bw-fallback-card">
-                <h3>在 O2 桌面窗口中使用内置浏览器</h3>
-                <p>当前页面正运行在外部普通网页中。通过 O2 桌面端启动窗口后，此区域将挂载原生 Chromium 视图（持久化登录态、全权限开放、支持你与 O2 同屏同步操作）。</p>
+                <h3>\u5728 O2 \u684C\u9762\u7A97\u53E3\u4E2D\u4F7F\u7528\u5185\u7F6E\u6D4F\u89C8\u5668</h3>
+                <p>\u5F53\u524D\u9875\u9762\u6B63\u8FD0\u884C\u5728\u5916\u90E8\u666E\u901A\u7F51\u9875\u4E2D\u3002\u901A\u8FC7 O2 \u684C\u9762\u7AEF\u542F\u52A8\u7A97\u53E3\u540E\uFF0C\u6B64\u533A\u57DF\u5C06\u6302\u8F7D\u539F\u751F Chromium \u89C6\u56FE\uFF08\u6301\u4E45\u5316\u767B\u5F55\u6001\u3001\u5168\u6743\u9650\u5F00\u653E\u3001\u652F\u6301\u4F60\u4E0E O2 \u540C\u5C4F\u540C\u6B65\u64CD\u4F5C\uFF09\u3002</p>
               </div>
             </div>
           </div>
@@ -133256,24 +132079,24 @@ ${text2}</tr>
       </template>
 
       <div v-if="catalogAlive" v-show="tab === 'catalog'" class="cat-workspace">
-          <!-- 左侧：Cursor 风格项目与多级文件树（支持下钻到文件与拖拽移动） -->
+          <!-- \u5DE6\u4FA7\uFF1ACursor \u98CE\u683C\u9879\u76EE\u4E0E\u591A\u7EA7\u6587\u4EF6\u6811\uFF08\u652F\u6301\u4E0B\u94BB\u5230\u6587\u4EF6\u4E0E\u62D6\u62FD\u79FB\u52A8\uFF09 -->
           <aside class="cat-tree-pane">
             <div class="cat-tree-head">
-              <div class="cat-tree-head-left" @click="selectTreeScope('', '')" title="点击回到全部项目">
+              <div class="cat-tree-head-left" @click="selectTreeScope('', '')" title="\u70B9\u51FB\u56DE\u5230\u5168\u90E8\u9879\u76EE">
                 <span class="tree-chev open" v-html="ICO.chevron"></span>
-                <span class="cat-tree-head-title">{{ catProject || '知识库资源管理器' }}</span>
+                <span class="cat-tree-head-title">{{ catProject || '\u7BA1\u7406\u5668' }}</span>
               </div>
               <div class="cat-tree-tools">
-                <button type="button" class="tree-tool-btn" title="在当前目录新增/导入文件"
+                <button type="button" class="tree-tool-btn" title="\u5728\u5F53\u524D\u76EE\u5F55\u65B0\u589E/\u5BFC\u5165\u6587\u4EF6"
                         @click="openIngestInScope(catProject, catFolder)" v-html="ICO.filePlus"></button>
-                <button type="button" class="tree-tool-btn" title="在当前位置新建项目或子文件夹"
+                <button type="button" class="tree-tool-btn" title="\u5728\u5F53\u524D\u4F4D\u7F6E\u65B0\u5EFA\u9879\u76EE\u6216\u5B50\u6587\u4EF6\u5939"
                         @click="openFolderModal(catProject, catFolder)" v-html="ICO.folderPlus"></button>
-                <button type="button" class="tree-tool-btn" title="向上钻取一级目录"
+                <button type="button" class="tree-tool-btn" title="\u5411\u4E0A\u94BB\u53D6\u4E00\u7EA7\u76EE\u5F55"
                         :disabled="!catProject && !catFolder"
                         @click="drillUpTree" v-html="ICO.upLevel"></button>
-                <button type="button" class="tree-tool-btn" title="刷新目录树"
+                <button type="button" class="tree-tool-btn" title="\u5237\u65B0\u76EE\u5F55\u6811"
                         @click="refreshCatalogTree" v-html="ICO.reload"></button>
-                <button type="button" class="tree-tool-btn" title="全部展开 / 全部收起"
+                <button type="button" class="tree-tool-btn" title="\u5168\u90E8\u5C55\u5F00 / \u5168\u90E8\u6536\u8D77"
                         @click="toggleExpandCollapseAll" v-html="ICO.collapseAll"></button>
               </div>
             </div>
@@ -133283,7 +132106,7 @@ ${text2}</tr>
                       @click="selectTreeScope('', '')">
                 <span class="tree-chev empty" v-html="ICO.chevron"></span>
                 <span class="tree-node-ico" v-html="ICO.library"></span>
-                <span class="tree-node-name">全部项目资料</span>
+                <span class="tree-node-name">\u5168\u90E8\u9879\u76EE\u8D44\u6599</span>
                 <span class="tree-node-cnt">{{ stats.docs }}</span>
               </button>
 
@@ -133306,7 +132129,7 @@ ${text2}</tr>
                 </span>
                 <span v-if="row.kind !== 'file'"
                       :class="['tree-chev', row.open ? 'open' : '', !row.hasChildren ? 'empty' : '']"
-                      title="展开 / 收起下级"
+                      title="\u5C55\u5F00 / \u6536\u8D77\u4E0B\u7EA7"
                       @click.stop="toggleTreeNodeExpand(row)"
                       v-html="ICO.chevron"></span>
                 <span v-else class="tree-chev empty" v-html="ICO.chevron"></span>
@@ -133321,19 +132144,19 @@ ${text2}</tr>
 
                 <span class="tree-node-acts" @click.stop>
                   <template v-if="row.kind === 'project' || row.kind === 'folder'">
-                    <button type="button" class="tree-act-btn" title="在此目录新增文件"
+                    <button type="button" class="tree-act-btn" title="\u5728\u6B64\u76EE\u5F55\u65B0\u589E\u6587\u4EF6"
                             @click="openIngestInScope(row.project, row.folder)" v-html="ICO.filePlus"></button>
-                    <button type="button" class="tree-act-btn" title="新建下级文件夹"
+                    <button type="button" class="tree-act-btn" title="\u65B0\u5EFA\u4E0B\u7EA7\u6587\u4EF6\u5939"
                             @click="openFolderModal(row.project, row.folder)" v-html="ICO.folderPlus"></button>
-                    <button type="button" class="tree-act-btn" title="重命名"
+                    <button type="button" class="tree-act-btn" title="\u91CD\u547D\u540D"
                             @click="openRenameFolderModal(row.project, row.folder)" v-html="ICO.edit"></button>
-                    <button type="button" class="tree-act-btn del" title="删除目录"
+                    <button type="button" class="tree-act-btn del" title="\u5220\u9664\u76EE\u5F55"
                             @click="removeFolderNode(row.project, row.folder, row.count)" v-html="ICO.trash"></button>
                   </template>
                   <template v-else-if="row.kind === 'file'">
-                    <button type="button" class="tree-act-btn" title="编辑文件属性与目录"
+                    <button type="button" class="tree-act-btn" title="\u7F16\u8F91\u6587\u4EF6\u5C5E\u6027\u4E0E\u76EE\u5F55"
                             @click="openEditMeta(row.doc)" v-html="ICO.edit"></button>
-                    <button type="button" class="tree-act-btn del" title="删除文件"
+                    <button type="button" class="tree-act-btn del" title="\u5220\u9664\u6587\u4EF6"
                             @click="deleteDocRecord(row.doc)" v-html="ICO.trash"></button>
                   </template>
                 </span>
@@ -133341,11 +132164,11 @@ ${text2}</tr>
             </div>
           </aside>
 
-          <!-- 右侧：主视图（顶部路径工具栏 + 文件性质透视胶囊 + 多态/动态分列表格） -->
+          <!-- \u53F3\u4FA7\uFF1A\u4E3B\u89C6\u56FE\uFF08\u9876\u90E8\u8DEF\u5F84\u5DE5\u5177\u680F + \u6587\u4EF6\u6027\u8D28\u900F\u89C6\u80F6\u56CA + \u591A\u6001/\u52A8\u6001\u5206\u5217\u8868\u683C\uFF09 -->
           <div class="cat-main-pane">
             <div class="cat-toolbar">
               <div class="cat-breadcrumb">
-                <span :class="catProject ? 'cat-bc-crumb' : 'cat-bc-cur'" @click="selectTreeScope('', '')">全部项目</span>
+                <span :class="catProject ? 'cat-bc-crumb' : 'cat-bc-cur'" @click="selectTreeScope('', '')">\u5168\u90E8\u9879\u76EE</span>
                 <template v-if="catProject">
                   <span>/</span>
                   <span :class="catFolder ? 'cat-bc-crumb' : 'cat-bc-cur'" @click="selectTreeScope(catProject, '')">{{ catProject }}</span>
@@ -133355,26 +132178,26 @@ ${text2}</tr>
                   <span class="cat-bc-cur">{{ catFolder }}</span>
                 </template>
               </div>
-              <span class="hint">{{ filteredDocs.length }} 份文件</span>
+              <span class="hint">{{ filteredDocs.length }} \u4EFD\u6587\u4EF6</span>
               <span class="spacer"></span>
-              <a-input v-model:value="catQuery" allow-clear placeholder="筛选标题、文号、属性或摘要…"
+              <a-input v-model:value="catQuery" allow-clear placeholder="\u7B5B\u9009\u6807\u9898\u3001\u6587\u53F7\u3001\u5C5E\u6027\u6216\u6458\u8981\u2026"
                        class="cat-search-input" />
-              <a-tooltip v-if="catProject" title="由 AI 自动分析当前项目下的杂项文件，按主题与性质归入子文件夹">
+              <a-tooltip v-if="catProject" title="\u7531 AI \u81EA\u52A8\u5206\u6790\u5F53\u524D\u9879\u76EE\u4E0B\u7684\u6742\u9879\u6587\u4EF6\uFF0C\u6309\u4E3B\u9898\u4E0E\u6027\u8D28\u5F52\u5165\u5B50\u6587\u4EF6\u5939">
                 <a-button :loading="organizing" @click="organizeCurrentProject">
-                  AI 智能归档
+                  AI \u667A\u80FD\u5F52\u6863
                 </a-button>
               </a-tooltip>
               <input ref="folderUploadInput" type="file" webkitdirectory directory multiple
                      style="display:none" @change="onFolderInputPicked" />
-              <a-button class="cat-action-btn" @click="triggerFolderUpload">导入整个文件夹</a-button>
-              <a-button class="cat-action-btn" type="primary" @click="openIngest()">+ 新增 / 批量导入</a-button>
+              <a-button class="cat-action-btn" @click="triggerFolderUpload">\u5BFC\u5165\u6574\u4E2A\u6587\u4EF6\u5939</a-button>
+              <a-button class="cat-action-btn" type="primary" @click="openIngest()">+ \u65B0\u589E / \u6279\u91CF\u5BFC\u5165</a-button>
             </div>
 
-            <!-- 文件性质透视胶囊：混合视图使用多态属性列，选中单一性质时展开专属分列 -->
+            <!-- \u6587\u4EF6\u6027\u8D28\u900F\u89C6\u80F6\u56CA\uFF1A\u6DF7\u5408\u89C6\u56FE\u4F7F\u7528\u591A\u6001\u5C5E\u6027\u5217\uFF0C\u9009\u4E2D\u5355\u4E00\u6027\u8D28\u65F6\u5C55\u5F00\u4E13\u5C5E\u5206\u5217 -->
             <div class="type-capsules">
               <button type="button" :class="['type-cap', !catDocType ? 'on' : '']"
                       @click="setCatDocType('')">
-                <span>全部性质 (混合多态视图)</span>
+                <span>\u6DF7\u5408\u89C6\u56FE</span>
                 <span class="type-cap-cnt">{{ scopeTotalCount }}</span>
               </button>
               <button type="button" v-for="dt in scopeDocTypeCapsules" :key="dt.id"
@@ -133419,15 +132242,15 @@ ${text2}</tr>
                   <template v-else-if="column.key === 'chunk_info'">
                     <div class="chunk-stat-cell">
                       <span>
-                        {{ record.n_chunks }} 块
-                        <span v-if="record.n_table_chunks" class="chunk-type-badge table">表 {{ record.n_table_chunks }}</span>
-                        <span v-if="record.n_image_chunks" class="chunk-type-badge image">图 {{ record.n_image_chunks }}</span>
+                        {{ record.n_chunks }} \u5757
+                        <span v-if="record.n_table_chunks" class="chunk-type-badge table">\u8868 {{ record.n_table_chunks }}</span>
+                        <span v-if="record.n_image_chunks" class="chunk-type-badge image">\u56FE {{ record.n_image_chunks }}</span>
                       </span>
                       <span class="chunk-prof-tag">{{ chunkProfileLabel(record.chunk_profile) }}</span>
                     </div>
                   </template>
                   <template v-else-if="column.key === 'status'">
-                    <a-tag v-if="record.status !== '现行'" color="orange">{{ record.status }}</a-tag>
+                    <a-tag v-if="record.status !== '\u73B0\u884C'" color="orange">{{ record.status }}</a-tag>
                     <a-tag v-else color="blue">{{ record.status }}</a-tag>
                   </template>
                   <template v-else-if="column.key.startsWith('meta.')">
@@ -133435,22 +132258,22 @@ ${text2}</tr>
                   </template>
                   <template v-else-if="column.key === 'n_chunks'">
                     <span>{{ record.n_chunks }}</span>
-                    <span v-if="record.n_table_chunks" class="chunk-type-badge table">表{{ record.n_table_chunks }}</span>
+                    <span v-if="record.n_table_chunks" class="chunk-type-badge table">\u8868{{ record.n_table_chunks }}</span>
                   </template>
                   <template v-else-if="column.key === 'op'">
                     <div class="doc-op" @click.stop>
                       <a-dropdown :trigger="['click']">
-                        <a class="op-link" @click.prevent>操作</a>
+                        <a class="op-link" @click.prevent>\u64CD\u4F5C</a>
                         <template #overlay>
                           <a-menu @click="(e) => onDocOp(e, record)">
-                            <a-menu-item key="edit_meta">编辑属性 / 归类</a-menu-item>
-                            <a-menu-item key="update">重新上传文件</a-menu-item>
+                            <a-menu-item key="edit_meta">\u7F16\u8F91\u5C5E\u6027 / \u5F52\u7C7B</a-menu-item>
+                            <a-menu-item key="update">\u91CD\u65B0\u4E0A\u4F20\u6587\u4EF6</a-menu-item>
                             <a-menu-divider v-if="record.doc_type === 'regulation'" />
-                            <a-menu-item v-if="record.doc_type === 'regulation' && record.status !== '现行'" key="现行">标为现行</a-menu-item>
-                            <a-menu-item v-if="record.doc_type === 'regulation' && record.status !== '试行'" key="试行">标为试行</a-menu-item>
-                            <a-menu-item v-if="record.doc_type === 'regulation' && record.status !== '已废止'" key="已废止">标为废止</a-menu-item>
+                            <a-menu-item v-if="record.doc_type === 'regulation' && record.status !== '\u73B0\u884C'" key="\u73B0\u884C">\u6807\u4E3A\u73B0\u884C</a-menu-item>
+                            <a-menu-item v-if="record.doc_type === 'regulation' && record.status !== '\u8BD5\u884C'" key="\u8BD5\u884C">\u6807\u4E3A\u8BD5\u884C</a-menu-item>
+                            <a-menu-item v-if="record.doc_type === 'regulation' && record.status !== '\u5DF2\u5E9F\u6B62'" key="\u5DF2\u5E9F\u6B62">\u6807\u4E3A\u5E9F\u6B62</a-menu-item>
                             <a-menu-divider />
-                            <a-menu-item key="delete" style="color:#dc2626">删除</a-menu-item>
+                            <a-menu-item key="delete" style="color:#dc2626">\u5220\u9664</a-menu-item>
                           </a-menu>
                         </template>
                       </a-dropdown>
@@ -133475,8 +132298,8 @@ ${text2}</tr>
           </nav>
           <section v-if="settingsSection === 'llm'" class="settings-card settings-llm">
             <div class="settings-card-head">
-              <h3>智能问答</h3>
-              <p>配置渠道与模型后即可提问。</p>
+              <h3>\u667A\u80FD\u95EE\u7B54</h3>
+              <p>\u914D\u7F6E\u6E20\u9053\u4E0E\u6A21\u578B\u540E\u5373\u53EF\u63D0\u95EE\u3002</p>
             </div>
             <div class="provider-layout">
               <div class="provider-nav">
@@ -133487,9 +132310,9 @@ ${text2}</tr>
                           :class="['provider-item', settingsPid === p.id ? 'on' : '']"
                           @click="settingsPid = p.id">
                     <span class="provider-item-name">{{ p.name }}</span>
-                    <span class="provider-item-state">{{ p.api_key_set ? '已启用' : '未配置' }}</span>
+                    <span class="provider-item-state">{{ p.api_key_set ? '\u5DF2\u542F\u7528' : '\u672A\u914D\u7F6E' }}</span>
                   </button>
-                  <a-button class="provider-add" block @click="openAddProvider">添加渠道</a-button>
+                  <a-button class="provider-add" block @click="openAddProvider">\u6DFB\u52A0\u6E20\u9053</a-button>
                 </div>
               </div>
               <div class="provider-form" v-if="currentProvider">
@@ -133498,7 +132321,7 @@ ${text2}</tr>
                     <a-input v-model:value="currentProvider.base_url" size="large"
                              :placeholder="urlPlaceholder(currentProvider)" />
                   </a-form-item>
-                  <a-form-item label="API 格式">
+                  <a-form-item label="API \u683C\u5F0F">
                     <a-select v-model:value="currentProvider.protocol" size="large">
                       <a-select-option v-for="o in protocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
                     </a-select>
@@ -133506,22 +132329,22 @@ ${text2}</tr>
                   <a-form-item label="API Key">
                     <div class="field-with-action">
                       <a-input-password v-model:value="currentProvider.api_key" size="large"
-                        :placeholder="currentProvider.api_key_set ? '已保存，留空则不修改' : '输入 API Key'"
+                        :placeholder="currentProvider.api_key_set ? '\u5DF2\u4FDD\u5B58\uFF0C\u7559\u7A7A\u5219\u4E0D\u4FEE\u6539' : '\u8F93\u5165 API Key'"
                         @blur="saveProviderKey(currentProvider)" @pressEnter="saveProviderKey(currentProvider)" />
-                      <a-button v-if="currentProvider.api_key_set" danger @click="clearProviderKey(currentProvider)">清除</a-button>
+                      <a-button v-if="currentProvider.api_key_set" danger @click="clearProviderKey(currentProvider)">\u6E05\u9664</a-button>
                     </div>
                   </a-form-item>
                   <a-form-item>
                     <div class="model-list-head">
-                      <span>模型列表</span>
+                      <span>\u6A21\u578B\u5217\u8868</span>
                       <div class="model-list-actions">
-                        <a-button v-if="currentProvider.api_key_set" @click="syncProviderModels(currentProvider)">从接口同步</a-button>
-                        <a-button type="primary" @click="openAddModel">+ 添加模型</a-button>
+                        <a-button v-if="currentProvider.api_key_set" @click="syncProviderModels(currentProvider)">\u4ECE\u63A5\u53E3\u540C\u6B65</a-button>
+                        <a-button type="primary" @click="openAddModel">+ \u6DFB\u52A0\u6A21\u578B</a-button>
                       </div>
                     </div>
                     <div v-if="!(currentProvider.models && currentProvider.models.length)" class="model-empty">
                       <span class="model-empty-ico" v-html="ICO.info"></span>
-                      <span>当前没有配置模型，添加模型后可在聊天中使用。</span>
+                      <span>\u5F53\u524D\u6CA1\u6709\u914D\u7F6E\u6A21\u578B\uFF0C\u6DFB\u52A0\u6A21\u578B\u540E\u53EF\u5728\u804A\u5929\u4E2D\u4F7F\u7528\u3002</span>
                     </div>
                     <div v-else class="model-rows">
                       <div v-for="m in currentProvider.models" :key="m.id" class="model-row">
@@ -133529,20 +132352,20 @@ ${text2}</tr>
                           <b>{{ m.label || m.id }}</b>
                           <span v-if="m.label && m.label !== m.id" class="hint">{{ m.id }}</span>
                         </div>
-                        <button type="button" class="model-row-del" @click="removeProviderModel(currentProvider, m.id)">删除</button>
+                        <button type="button" class="model-row-del" @click="removeProviderModel(currentProvider, m.id)">\u5220\u9664</button>
                       </div>
                     </div>
                   </a-form-item>
                 </a-form>
-                <a-button class="provider-del" danger @click="removeProvider(currentProvider)">删除渠道</a-button>
+                <a-button class="provider-del" danger @click="removeProvider(currentProvider)">\u5220\u9664\u6E20\u9053</a-button>
               </div>
             </div>
           </section>
 
           <section v-else-if="settingsSection === 'api'" class="settings-card settings-llm">
             <div class="settings-card-head">
-              <h3>外部 API 连接库</h3>
-              <p>添加连接后，对话中可按说明调用；密钥运行时注入。</p>
+              <h3>\u5916\u90E8 API \u8FDE\u63A5\u5E93</h3>
+              <p>\u6DFB\u52A0\u8FDE\u63A5\u540E\uFF0C\u5BF9\u8BDD\u4E2D\u53EF\u6309\u8BF4\u660E\u8C03\u7528\uFF1B\u5BC6\u94A5\u8FD0\u884C\u65F6\u6CE8\u5165\u3002</p>
             </div>
             <div class="provider-layout">
               <div class="provider-nav">
@@ -133555,16 +132378,16 @@ ${text2}</tr>
                     <span class="provider-item-name">{{ c.name }}</span>
                     <span class="provider-item-state">{{ apiConnectorStateText(c) }}</span>
                   </button>
-                  <a-button class="provider-add" block @click="openAddApiConnector">添加连接</a-button>
+                  <a-button class="provider-add" block @click="openAddApiConnector">\u6DFB\u52A0\u8FDE\u63A5</a-button>
                 </div>
               </div>
               <div class="provider-form" v-if="currentApiConnector">
                 <a-form layout="vertical">
                   <div class="form-grid-2">
-                    <a-form-item label="连接名称">
-                      <a-input v-model:value="currentApiConnector.name" size="large" placeholder="如 FRED、高德天气、企业ERP" />
+                    <a-form-item label="\u8FDE\u63A5\u540D\u79F0">
+                      <a-input v-model:value="currentApiConnector.name" size="large" placeholder="\u5982 FRED\u3001\u9AD8\u5FB7\u5929\u6C14\u3001\u4F01\u4E1AERP" />
                     </a-form-item>
-                    <a-form-item label="API 协议">
+                    <a-form-item label="API \u534F\u8BAE">
                       <a-select v-model:value="currentApiConnector.protocol" size="large">
                         <a-select-option v-for="o in apiProtocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
                       </a-select>
@@ -133574,22 +132397,22 @@ ${text2}</tr>
                     <div class="field-with-action">
                       <a-input v-model:value="currentApiConnector.base_url" size="large"
                                placeholder="https://api.example.com" />
-                      <a-button :loading="apiDiscovering" @click="discoverIntoConnector(currentApiConnector)">解析 OpenAPI</a-button>
+                      <a-button :loading="apiDiscovering" @click="discoverIntoConnector(currentApiConnector)">\u89E3\u6790 OpenAPI</a-button>
                     </div>
                   </a-form-item>
                   <div class="form-grid-2">
-                    <a-form-item label="鉴权方式">
+                    <a-form-item label="\u9274\u6743\u65B9\u5F0F">
                       <a-select v-model:value="currentApiConnector.auth_type" size="large">
                         <a-select-option v-for="o in apiAuthTypes" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
                       </a-select>
                     </a-form-item>
-                    <a-form-item v-if="currentApiConnector.auth_type === 'bearer'" label="Authorization 前缀">
+                    <a-form-item v-if="currentApiConnector.auth_type === 'bearer'" label="Authorization \u524D\u7F00">
                       <a-input v-model:value="currentApiConnector.auth_prefix" size="large" placeholder="Bearer" />
                     </a-form-item>
-                    <a-form-item v-else-if="currentApiConnector.auth_type === 'header' || currentApiConnector.auth_type === 'hmac_sha256'" label="密钥 Header 名">
+                    <a-form-item v-else-if="currentApiConnector.auth_type === 'header' || currentApiConnector.auth_type === 'hmac_sha256'" label="\u5BC6\u94A5 Header \u540D">
                       <a-input v-model:value="currentApiConnector.header_name" size="large" placeholder="X-Api-Key" />
                     </a-form-item>
-                    <a-form-item v-else-if="currentApiConnector.auth_type === 'query'" label="密钥 Query 参数名">
+                    <a-form-item v-else-if="currentApiConnector.auth_type === 'query'" label="\u5BC6\u94A5 Query \u53C2\u6570\u540D">
                       <a-input v-model:value="currentApiConnector.query_name" size="large" placeholder="api_key" />
                     </a-form-item>
                     <a-form-item v-else-if="currentApiConnector.auth_type === 'oauth2_client_credentials'" label="OAuth2 Token URL">
@@ -133599,27 +132422,27 @@ ${text2}</tr>
                   <a-form-item v-if="currentApiConnector.auth_type !== 'none'" :label="apiKeyLabel(currentApiConnector.auth_type)">
                     <div class="field-with-action">
                       <a-input-password v-model:value="currentApiConnector.api_key" size="large"
-                        :placeholder="currentApiConnector.api_key_set ? '已保存，留空保持不变' : '填入密钥（运行时自动注入，不回显给模型）'"
+                        :placeholder="currentApiConnector.api_key_set ? '\u5DF2\u4FDD\u5B58\uFF0C\u7559\u7A7A\u4FDD\u6301\u4E0D\u53D8' : '\u586B\u5165\u5BC6\u94A5\uFF08\u8FD0\u884C\u65F6\u81EA\u52A8\u6CE8\u5165\uFF0C\u4E0D\u56DE\u663E\u7ED9\u6A21\u578B\uFF09'"
                         @blur="saveApiConnectorKey(currentApiConnector)" @pressEnter="saveApiConnectorKey(currentApiConnector)" />
-                      <a-button v-if="currentApiConnector.api_key_set" danger @click="clearApiConnectorKey(currentApiConnector)">清除</a-button>
+                      <a-button v-if="currentApiConnector.api_key_set" danger @click="clearApiConnectorKey(currentApiConnector)">\u6E05\u9664</a-button>
                     </div>
                   </a-form-item>
                   <a-form-item v-if="needsApiSecret(currentApiConnector.auth_type)" :label="apiSecretLabel(currentApiConnector.auth_type)">
                     <div class="field-with-action">
                       <a-input-password v-model:value="currentApiConnector.api_secret" size="large"
-                        :placeholder="currentApiConnector.api_secret_set ? '已保存，留空保持不变' : '填入 Secret / 密码'"
+                        :placeholder="currentApiConnector.api_secret_set ? '\u5DF2\u4FDD\u5B58\uFF0C\u7559\u7A7A\u4FDD\u6301\u4E0D\u53D8' : '\u586B\u5165 Secret / \u5BC6\u7801'"
                         @blur="saveApiConnectorSecret(currentApiConnector)" @pressEnter="saveApiConnectorSecret(currentApiConnector)" />
-                      <a-button v-if="currentApiConnector.api_secret_set" danger @click="clearApiConnectorSecret(currentApiConnector)">清除</a-button>
+                      <a-button v-if="currentApiConnector.api_secret_set" danger @click="clearApiConnectorSecret(currentApiConnector)">\u6E05\u9664</a-button>
                     </div>
                   </a-form-item>
                   <div v-if="currentApiConnector.auth_type === 'hmac_sha256'" class="form-grid-2">
-                    <a-form-item label="签名参数 / 头名称">
+                    <a-form-item label="\u7B7E\u540D\u53C2\u6570 / \u5934\u540D\u79F0">
                       <a-input v-model:value="currentApiConnector.signature_param" size="large" placeholder="signature" />
                     </a-form-item>
-                    <a-form-item label="签名位置与编码">
+                    <a-form-item label="\u7B7E\u540D\u4F4D\u7F6E\u4E0E\u7F16\u7801">
                       <a-input-group compact>
                         <a-select v-model:value="currentApiConnector.signature_in" size="large" style="width: 50%">
-                          <a-select-option value="query">Query 参数</a-select-option>
+                          <a-select-option value="query">Query \u53C2\u6570</a-select-option>
                           <a-select-option value="header">HTTP Header</a-select-option>
                         </a-select>
                         <a-select v-model:value="currentApiConnector.signature_encoding" size="large" style="width: 50%">
@@ -133631,38 +132454,38 @@ ${text2}</tr>
                   </div>
                   <a-form-item>
                     <label class="embed-switch">
-                      <span>允许写入操作（POST / PUT / PATCH / DELETE / GraphQL mutation）</span>
+                      <span>\u5141\u8BB8\u5199\u5165\u64CD\u4F5C\uFF08POST / PUT / PATCH / DELETE / GraphQL mutation\uFF09</span>
                       <a-switch v-model:checked="currentApiConnector.allow_write" />
                     </label>
                   </a-form-item>
-                  <a-form-item label="给 AI 的使用说明（常用路径、参数、返回结构与调用示例）">
+                  <a-form-item label="\u7ED9 AI \u7684\u4F7F\u7528\u8BF4\u660E\uFF08\u5E38\u7528\u8DEF\u5F84\u3001\u53C2\u6570\u3001\u8FD4\u56DE\u7ED3\u6784\u4E0E\u8C03\u7528\u793A\u4F8B\uFF09">
                     <a-textarea v-model:value="currentApiConnector.notes" :auto-size="{ minRows: 4, maxRows: 10 }"
-                      placeholder="写明接口用途、路径、必填/选填参数及示例。免费公开接口也请写清，方便 AI 在对话中自动识别并调用。" />
+                      placeholder="\u5199\u660E\u63A5\u53E3\u7528\u9014\u3001\u8DEF\u5F84\u3001\u5FC5\u586B/\u9009\u586B\u53C2\u6570\u53CA\u793A\u4F8B\u3002\u514D\u8D39\u516C\u5F00\u63A5\u53E3\u4E5F\u8BF7\u5199\u6E05\uFF0C\u65B9\u4FBF AI \u5728\u5BF9\u8BDD\u4E2D\u81EA\u52A8\u8BC6\u522B\u5E76\u8C03\u7528\u3002" />
                   </a-form-item>
-                  <a-form-item v-if="currentApiConnector.endpoints && currentApiConnector.endpoints.length" label="已登记端点">
+                  <a-form-item v-if="currentApiConnector.endpoints && currentApiConnector.endpoints.length" label="\u5DF2\u767B\u8BB0\u7AEF\u70B9">
                     <div class="model-rows">
                       <div v-for="(ep, ei) in currentApiConnector.endpoints" :key="ei" class="model-row">
                         <div class="model-row-main">
                           <b>{{ ep.method }} {{ ep.path }}</b>
-                          <span v-if="ep.summary || ep.params" class="hint">{{ [ep.summary, ep.params ? ('参数: ' + ep.params) : ''].filter(Boolean).join(' · ') }}</span>
+                          <span v-if="ep.summary || ep.params" class="hint">{{ [ep.summary, ep.params ? ('\u53C2\u6570: ' + ep.params) : ''].filter(Boolean).join(' \xB7 ') }}</span>
                         </div>
-                        <button type="button" class="model-row-del" @click="removeApiEndpoint(currentApiConnector, ei)">移除</button>
+                        <button type="button" class="model-row-del" @click="removeApiEndpoint(currentApiConnector, ei)">\u79FB\u9664</button>
                       </div>
                     </div>
                   </a-form-item>
                 </a-form>
                 <div class="provider-form-foot">
                   <div class="model-list-actions">
-                    <a-button :loading="apiTesting" @click="testApiConnector(currentApiConnector)">测试连接</a-button>
+                    <a-button :loading="apiTesting" @click="testApiConnector(currentApiConnector)">\u6D4B\u8BD5\u8FDE\u63A5</a-button>
                     <span v-if="apiTestHint" class="hint">{{ apiTestHint }}</span>
                   </div>
-                  <a-button danger @click="removeApiConnector(currentApiConnector)">删除连接</a-button>
+                  <a-button danger @click="removeApiConnector(currentApiConnector)">\u5220\u9664\u8FDE\u63A5</a-button>
                 </div>
               </div>
               <div class="provider-form" v-else>
                 <div class="model-empty">
                   <span class="model-empty-ico" v-html="ICO.info"></span>
-                  <span>暂无连接，点击左侧「添加连接」开始。</span>
+                  <span>\u6682\u65E0\u8FDE\u63A5\uFF0C\u70B9\u51FB\u5DE6\u4FA7\u300C\u6DFB\u52A0\u8FDE\u63A5\u300D\u5F00\u59CB\u3002</span>
                 </div>
               </div>
             </div>
@@ -133670,16 +132493,16 @@ ${text2}</tr>
 
           <section v-else-if="settingsSection === 'embed'" class="settings-card settings-llm">
             <div class="settings-card-head">
-              <h3>Embedding 向量化</h3>
-              <p>按语义找得更准，但更慢、更费额度。</p>
+              <h3>Embedding \u5411\u91CF\u5316</h3>
+              <p>\u6309\u8BED\u4E49\u627E\u5F97\u66F4\u51C6\uFF0C\u4F46\u66F4\u6162\u3001\u66F4\u8D39\u989D\u5EA6\u3002</p>
             </div>
             <div class="embed-actions">
               <label class="embed-switch">
-                <span>在搜索和回答中使用</span>
+                <span>\u5728\u641C\u7D22\u548C\u56DE\u7B54\u4E2D\u4F7F\u7528</span>
                 <a-switch v-model:checked="cfg.embed_use" />
               </label>
               <label class="embed-switch">
-                <span>运行向量化</span>
+                <span>\u8FD0\u884C\u5411\u91CF\u5316</span>
                 <a-switch :checked="cfg.embed_running" @change="toggleEmbedRun" />
               </label>
             </div>
@@ -133692,9 +132515,9 @@ ${text2}</tr>
                           :class="['provider-item', settingsEmbedPid === p.id ? 'on' : '']"
                           @click="selectEmbedChannel(p)">
                     <span class="provider-item-name">{{ p.name }}</span>
-                    <span class="provider-item-state">{{ p.api_key_set ? '已启用' : '未配置' }}</span>
+                    <span class="provider-item-state">{{ p.api_key_set ? '\u5DF2\u542F\u7528' : '\u672A\u914D\u7F6E' }}</span>
                   </button>
-                  <a-button class="provider-add" block @click="openAddEmbedProvider">添加渠道</a-button>
+                  <a-button class="provider-add" block @click="openAddEmbedProvider">\u6DFB\u52A0\u6E20\u9053</a-button>
                 </div>
               </div>
               <div class="provider-form" v-if="currentEmbedProvider">
@@ -133703,7 +132526,7 @@ ${text2}</tr>
                     <a-input v-model:value="currentEmbedProvider.base_url" size="large"
                              :placeholder="embedUrlPlaceholder(currentEmbedProvider)" />
                   </a-form-item>
-                  <a-form-item label="API 格式">
+                  <a-form-item label="API \u683C\u5F0F">
                     <a-select v-model:value="currentEmbedProvider.protocol" size="large">
                       <a-select-option v-for="o in embedProtocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
                     </a-select>
@@ -133711,12 +132534,12 @@ ${text2}</tr>
                   <a-form-item label="API Key">
                     <div class="field-with-action">
                       <a-input-password v-model:value="currentEmbedProvider.api_key" size="large"
-                        :placeholder="currentEmbedProvider.api_key_set ? '已保存，留空则不修改' : '输入 API Key'"
+                        :placeholder="currentEmbedProvider.api_key_set ? '\u5DF2\u4FDD\u5B58\uFF0C\u7559\u7A7A\u5219\u4E0D\u4FEE\u6539' : '\u8F93\u5165 API Key'"
                         @blur="saveEmbedKey(currentEmbedProvider)" @pressEnter="saveEmbedKey(currentEmbedProvider)" />
-                      <a-button v-if="currentEmbedProvider.api_key_set" danger @click="clearEmbedKey(currentEmbedProvider)">清除</a-button>
+                      <a-button v-if="currentEmbedProvider.api_key_set" danger @click="clearEmbedKey(currentEmbedProvider)">\u6E05\u9664</a-button>
                     </div>
                   </a-form-item>
-                  <a-form-item v-if="currentEmbedProvider.models && currentEmbedProvider.models.length" label="当前模型">
+                  <a-form-item v-if="currentEmbedProvider.models && currentEmbedProvider.models.length" label="\u5F53\u524D\u6A21\u578B">
                     <a-select v-model:value="cfg.embed_model" size="large"
                               @change="cfg.embed_provider_id = currentEmbedProvider.id">
                       <a-select-option v-for="m in currentEmbedProvider.models" :key="m.id" :value="m.id">
@@ -133726,15 +132549,15 @@ ${text2}</tr>
                   </a-form-item>
                   <a-form-item>
                     <div class="model-list-head">
-                      <span>模型列表</span>
+                      <span>\u6A21\u578B\u5217\u8868</span>
                       <div class="model-list-actions">
-                        <a-button v-if="currentEmbedProvider.api_key_set" @click="syncEmbedModels(currentEmbedProvider)">从接口同步</a-button>
-                        <a-button type="primary" @click="openAddEmbedModel">+ 添加模型</a-button>
+                        <a-button v-if="currentEmbedProvider.api_key_set" @click="syncEmbedModels(currentEmbedProvider)">\u4ECE\u63A5\u53E3\u540C\u6B65</a-button>
+                        <a-button type="primary" @click="openAddEmbedModel">+ \u6DFB\u52A0\u6A21\u578B</a-button>
                       </div>
                     </div>
                     <div v-if="!(currentEmbedProvider.models && currentEmbedProvider.models.length)" class="model-empty">
                       <span class="model-empty-ico" v-html="ICO.info"></span>
-                      <span>当前没有配置模型，添加后可用于向量化。</span>
+                      <span>\u5F53\u524D\u6CA1\u6709\u914D\u7F6E\u6A21\u578B\uFF0C\u6DFB\u52A0\u540E\u53EF\u7528\u4E8E\u5411\u91CF\u5316\u3002</span>
                     </div>
                     <div v-else class="model-rows">
                       <div v-for="m in currentEmbedProvider.models" :key="m.id"
@@ -133744,12 +132567,12 @@ ${text2}</tr>
                           <b>{{ m.label || m.id }}</b>
                           <span v-if="m.label && m.label !== m.id" class="hint">{{ m.id }}</span>
                         </div>
-                        <button type="button" class="model-row-del" @click.stop="removeEmbedModel(currentEmbedProvider, m.id)">删除</button>
+                        <button type="button" class="model-row-del" @click.stop="removeEmbedModel(currentEmbedProvider, m.id)">\u5220\u9664</button>
                       </div>
                     </div>
                   </a-form-item>
                 </a-form>
-                <a-button class="provider-del" danger @click="removeEmbedProvider(currentEmbedProvider)">删除渠道</a-button>
+                <a-button class="provider-del" danger @click="removeEmbedProvider(currentEmbedProvider)">\u5220\u9664\u6E20\u9053</a-button>
               </div>
             </div>
             <div class="embed-run">
@@ -133759,16 +132582,16 @@ ${text2}</tr>
 
           <section v-else-if="settingsSection === 'ocr'" class="settings-card">
             <div class="settings-card-head">
-              <h3>文字识别</h3>
-              <p>PaddleOCR-VL。新增或更新文件时用于识别扫描件。</p>
+              <h3>\u6587\u5B57\u8BC6\u522B</h3>
+              <p>PaddleOCR-VL\u3002\u65B0\u589E\u6216\u66F4\u65B0\u6587\u4EF6\u65F6\u7528\u4E8E\u8BC6\u522B\u626B\u63CF\u4EF6\u3002</p>
             </div>
             <a-form layout="vertical">
               <a-form-item label="PaddleOCR Token">
                 <div class="field-with-action">
                   <a-input-password v-model:value="cfg.paddle_token" size="large"
-                    :placeholder="cfg.paddle_token_set ? '已保存，留空则不修改' : '填入后用于新增和更新文件'"
+                    :placeholder="cfg.paddle_token_set ? '\u5DF2\u4FDD\u5B58\uFF0C\u7559\u7A7A\u5219\u4E0D\u4FEE\u6539' : '\u586B\u5165\u540E\u7528\u4E8E\u65B0\u589E\u548C\u66F4\u65B0\u6587\u4EF6'"
                     @blur="savePaddle" @pressEnter="savePaddle" />
-                  <a-button v-if="cfg.paddle_token_set" danger @click="clearPaddle">清除</a-button>
+                  <a-button v-if="cfg.paddle_token_set" danger @click="clearPaddle">\u6E05\u9664</a-button>
                 </div>
               </a-form-item>
             </a-form>
@@ -133776,17 +132599,17 @@ ${text2}</tr>
 
           <section v-else-if="settingsSection === 'index'" class="settings-card">
             <div class="settings-card-head">
-              <h3>文件索引</h3>
-              <p>指定源文件夹后重建索引。</p>
+              <h3>\u6587\u4EF6\u7D22\u5F15</h3>
+              <p>\u6307\u5B9A\u6E90\u6587\u4EF6\u5939\u540E\u91CD\u5EFA\u7D22\u5F15\u3002</p>
             </div>
             <a-form layout="vertical">
-              <a-form-item label="文件源文件夹">
+              <a-form-item label="\u6587\u4EF6\u6E90\u6587\u4EF6\u5939">
                 <a-input v-model:value="cfg.src_root" size="large" />
               </a-form-item>
-              <a-form-item label="当前索引">
+              <a-form-item label="\u5F53\u524D\u7D22\u5F15">
                 <div class="index-row">
-                  <span class="hint">{{ stats.docs }} 份文件 · {{ stats.chunks }} 条</span>
-                  <a-button :loading="stats.rebuilding" @click="rebuild">重建索引</a-button>
+                  <span class="hint">{{ stats.docs }} \u4EFD\u6587\u4EF6 \xB7 {{ stats.chunks }} \u6761</span>
+                  <a-button :loading="stats.rebuilding" @click="rebuild">\u91CD\u5EFA\u7D22\u5F15</a-button>
                 </div>
               </a-form-item>
             </a-form>
@@ -133799,12 +132622,12 @@ ${text2}</tr>
   </div>
 
   <a-drawer class="doc-drawer" v-model:open="drawerOpen" :width="drawerWidth" placement="right"
-            :title="doc.title || '文件全文'"
+            :title="doc.title || '\u6587\u4EF6\u5168\u6587'"
             :body-style="{ padding: '16px 16px 12px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }">
     <template #extra>
       <div style="display:flex;gap:8px">
-        <a-button @click="openEditMeta(doc)">编辑属性</a-button>
-        <a-button @click="openFile">打开原文件</a-button>
+        <a-button @click="openEditMeta(doc)">\u7F16\u8F91\u5C5E\u6027</a-button>
+        <a-button @click="openFile">\u6253\u5F00\u539F\u6587\u4EF6</a-button>
       </div>
     </template>
     <div class="docmeta" v-if="doc.title">
@@ -133812,35 +132635,35 @@ ${text2}</tr>
       <a-tag>{{ doc.project }}{{ doc.folder ? ' / ' + doc.folder : '' }}</a-tag>
       <span v-if="doc.doc_no" class="docno">{{ doc.doc_no }}</span>
       <span v-if="doc.issued_date">{{ doc.issued_date }}</span>
-      <a-tag v-if="doc.status && doc.status !== '现行'" color="orange">{{ doc.status }}</a-tag>
-      <span v-for="(p, pi) in recordPills(doc)" :key="pi" class="poly-pill">
+      <a-tag v-if="doc.status && doc.status !== '\u73B0\u884C'" color="orange">{{ doc.status }}</a-tag>
+      <span v-for="(p, pi) in docMetaPills(doc)" :key="pi" class="poly-pill">
         <span class="poly-pill-k">{{ p.k }}:</span>
         <span class="poly-pill-v">{{ p.v }}</span>
       </span>
-      <span class="loc">{{ doc.n_pages }} 页 · {{ chunkProfileLabel(doc.chunk_profile) }}</span>
+      <span class="loc">{{ doc.n_pages }} \u9875 \xB7 {{ chunkProfileLabel(doc.chunk_profile) }}</span>
     </div>
 
     <div class="docview-bar">
       <span class="seg">
-        <span :class="['seg-item', docView === 'pdf' ? 'on' : '']" @click="setDocView('pdf')">原文视图</span>
-        <span :class="['seg-item', docView === 'text' ? 'on' : '']" @click="setDocView('text')">结构化切片 ({{ (doc.chunks || []).length }})</span>
+        <span :class="['seg-item', docView === 'pdf' ? 'on' : '']" @click="setDocView('pdf')">\u539F\u6587\u89C6\u56FE</span>
+        <span :class="['seg-item', docView === 'text' ? 'on' : '']" @click="setDocView('text')">\u7ED3\u6784\u5316\u5207\u7247 ({{ (doc.chunks || []).length }})</span>
       </span>
       <template v-if="docView === 'pdf' && canPdf">
-        <span class="pager-num">第 {{ originPage || 1 }} / {{ doc.n_pages || 1 }} 页</span>
-        <a class="pager" v-if="hitPage && originPage !== hitPage" @click="jumpToHit">回到命中处</a>
-        <span class="hint" v-if="activeChunk && activeChunk.article">命中 {{ activeChunk.article }}</span>
+        <span class="pager-num">\u7B2C {{ originPage || 1 }} / {{ doc.n_pages || 1 }} \u9875</span>
+        <a class="pager" v-if="hitPage && originPage !== hitPage" @click="jumpToHit">\u56DE\u5230\u547D\u4E2D\u5904</a>
+        <span class="hint" v-if="activeChunk && activeChunk.article">\u547D\u4E2D {{ activeChunk.article }}</span>
       </template>
       <span class="spacer"></span>
-      <span class="hint" v-if="!canPdf">该格式无原页画布，已为您呈现结构化正文与表格切片</span>
-      <span v-if="docView === 'pdf' && canPdf" class="pdf-zoombar" title="Ctrl + 滚轮也可缩放">
-        <button type="button" class="pdf-zoom-btn" :disabled="pdfScale <= 0.5" @click="zoomOut">−</button>
+      <span class="hint" v-if="!canPdf">\u8BE5\u683C\u5F0F\u65E0\u539F\u9875\u753B\u5E03\uFF0C\u5DF2\u4E3A\u60A8\u5448\u73B0\u7ED3\u6784\u5316\u6B63\u6587\u4E0E\u8868\u683C\u5207\u7247</span>
+      <span v-if="docView === 'pdf' && canPdf" class="pdf-zoombar" title="Ctrl + \u6EDA\u8F6E\u4E5F\u53EF\u7F29\u653E">
+        <button type="button" class="pdf-zoom-btn" :disabled="pdfScale <= 0.5" @click="zoomOut">\u2212</button>
         <a-dropdown :trigger="['click']">
           <button type="button" class="pdf-zoom-now">{{ zoomLabel }}</button>
           <template #overlay>
             <a-menu @click="onZoomPreset">
               <a-menu-item key="0.6">60%</a-menu-item>
               <a-menu-item key="0.75">75%</a-menu-item>
-              <a-menu-item key="1">适应宽度</a-menu-item>
+              <a-menu-item key="1">\u9002\u5E94\u5BBD\u5EA6</a-menu-item>
               <a-menu-item key="1.25">125%</a-menu-item>
               <a-menu-item key="1.5">150%</a-menu-item>
               <a-menu-item key="2">200%</a-menu-item>
@@ -133860,7 +132683,7 @@ ${text2}</tr>
          @pointermove="onPdfMove"
          @pointerup="onPdfUp"
          @pointercancel="onPdfUp">
-      <div v-if="!canPdf" class="img-fail">该文件为结构化文档/表格，请切到「结构化切片」查看。</div>
+      <div v-if="!canPdf" class="img-fail">\u8BE5\u6587\u4EF6\u4E3A\u7ED3\u6784\u5316\u6587\u6863/\u8868\u683C\uFF0C\u8BF7\u5207\u5230\u300C\u7ED3\u6784\u5316\u5207\u7247\u300D\u67E5\u770B\u3002</div>
       <div class="pdf-stage" :style="{ width: (pdfScale * 100) + '%' }">
         <div v-for="p in pageList" :key="p" class="page-wrap" :data-page="p">
           <div class="page-frame" :class="{ ready: pageShown(p) }">
@@ -133872,9 +132695,9 @@ ${text2}</tr>
                  decoding="async"
                  @load="onPageLoaded(p)"
                  @vue:mounted="onImgMount($event, p)"
-                 @error="onPageImgError($event)" alt="原页预览" />
+                 @error="onPageImgError($event)" alt="\u539F\u9875\u9884\u89C8" />
           </div>
-          <div class="page-no">第 {{ p }} 页</div>
+          <div class="page-no">\u7B2C {{ p }} \u9875</div>
         </div>
       </div>
     </div>
@@ -133886,12 +132709,12 @@ ${text2}</tr>
              :style="blockDelay(i)" :data-seq="c.seq">
           <div class="chunk-head">
             <div>
-              <span class="art">{{ c.article || ('片段 #' + c.seq) }}</span>
+              <span class="art">{{ c.article || ('\u7247\u6BB5 #' + c.seq) }}</span>
               <span v-if="c.chapter && c.chapter !== c.article" class="hint" style="margin-left:8px">{{ c.chapter }}</span>
-              <span v-if="c.chunk_type === 'table'" class="chunk-type-badge table">结构化表切片</span>
-              <span v-else-if="c.chunk_type === 'image'" class="chunk-type-badge image">视觉索引</span>
+              <span v-if="c.chunk_type === 'table'" class="chunk-type-badge table">\u7ED3\u6784\u5316\u8868\u5207\u7247</span>
+              <span v-else-if="c.chunk_type === 'image'" class="chunk-type-badge image">\u89C6\u89C9\u7D22\u5F15</span>
             </div>
-            <span class="pg" v-if="c.page_start">第 {{ c.page_start }} 页</span>
+            <span class="pg" v-if="c.page_start">\u7B2C {{ c.page_start }} \u9875</span>
           </div>
           <div v-if="c.chunk_type === 'table'" class="chunk-md-table" v-html="renderChunkTable(c.text)"></div>
           <div v-else class="chunk-text">{{ c.text }}</div>
@@ -133901,19 +132724,19 @@ ${text2}</tr>
   </a-drawer>
 
   <a-modal v-model:open="ingest.open" :width="640" wrap-class-name="ingest-modal"
-           :title="ingest.doc_id ? '更新文件' : '导入文件'"
+           :title="ingest.doc_id ? '\u66F4\u65B0\u6587\u4EF6' : '\u5BFC\u5165\u6587\u4EF6'"
            :confirm-loading="ingest.saving"
-           :ok-text="ingest.batchMode ? (ingest.batchRunning ? '正在批量入库…' : '完成') : '确认入库'"
+           :ok-text="ingest.batchMode ? (ingest.batchRunning ? '\u6B63\u5728\u6279\u91CF\u5165\u5E93\u2026' : '\u5B8C\u6210') : '\u786E\u8BA4\u5165\u5E93'"
            :ok-button-props="{ disabled: ingest.parsing || ingest.batchRunning || (!ingest.batchMode && !ingest.tmp_id) }"
            @ok="onIngestOk" @cancel="resetIngest">
     <div class="ingest-dest">
-      <a-form-item label="项目">
+      <a-form-item label="\u9879\u76EE">
         <a-auto-complete v-model:value="ingest.project" :options="projectOptions"
-                         placeholder="如：集团制度库" />
+                         placeholder="\u5982\uFF1A\u96C6\u56E2\u5236\u5EA6\u5E93" />
       </a-form-item>
-      <a-form-item label="文件夹">
+      <a-form-item label="\u6587\u4EF6\u5939">
         <a-auto-complete v-model:value="ingest.folder" :options="folderOptions"
-                         placeholder="留空则由 AI 归类" />
+                         placeholder="\u7559\u7A7A\u5219\u7531 AI \u5F52\u7C7B" />
       </a-form-item>
     </div>
 
@@ -133927,21 +132750,21 @@ ${text2}</tr>
       <div class="ingest-drop-row">
         <span class="ingest-drop-ico" v-html="ICO.filePlus"></span>
         <div class="ingest-drop-copy">
-          <p class="ingest-title">{{ ingest.filename || (ingest.doc_id ? '拖入新文件，或点击选择' : '拖入文件，或点击选择') }}</p>
-          <p class="ingest-hint">{{ ingest.doc_id ? '替换当前文件，入库前可以改字段。' : '可多选。单个文件会先核对，再入库。' }}</p>
+          <p class="ingest-title">{{ ingest.filename || (ingest.doc_id ? '\u62D6\u5165\u65B0\u6587\u4EF6\uFF0C\u6216\u70B9\u51FB\u9009\u62E9' : '\u62D6\u5165\u6587\u4EF6\uFF0C\u6216\u70B9\u51FB\u9009\u62E9') }}</p>
+          <p class="ingest-hint">{{ ingest.doc_id ? '\u66FF\u6362\u5F53\u524D\u6587\u4EF6\uFF0C\u5165\u5E93\u524D\u53EF\u4EE5\u6539\u5B57\u6BB5\u3002' : '\u53EF\u591A\u9009\u3002\u5355\u4E2A\u6587\u4EF6\u4F1A\u5148\u6838\u5BF9\uFF0C\u518D\u5165\u5E93\u3002' }}</p>
         </div>
       </div>
       <div v-if="!ingest.filename" class="ingest-chips">
-        <span>PDF</span><span>Word</span><span>Excel</span><span>PPT</span><span>图片</span><span>文本</span>
+        <span>PDF</span><span>Word</span><span>Excel</span><span>PPT</span><span>\u56FE\u7247</span><span>\u6587\u672C</span>
       </div>
     </a-upload-dragger>
 
     <div v-if="ingest.parsing || ingest.batchRunning" class="ingest-progress">
       <a-progress :percent="ingest.percent" status="active" :show-info="true" />
-      <div class="ingest-status">{{ ingest.progressText || '正在识别…' }}</div>
+      <div class="ingest-status">{{ ingest.progressText || '\u6B63\u5728\u8BC6\u522B\u2026' }}</div>
     </div>
 
-    <!-- 批量队列展示 -->
+    <!-- \u6279\u91CF\u961F\u5217\u5C55\u793A -->
     <div v-if="ingest.batchMode && ingest.batchItems.length" class="batch-queue">
       <div v-for="(bi, idx) in ingest.batchItems" :key="idx" class="batch-row">
         <span class="batch-row-name" :title="bi.name">{{ bi.name }}</span>
@@ -133953,236 +132776,236 @@ ${text2}</tr>
       </div>
     </div>
 
-    <!-- 单文件精修表单 -->
+    <!-- \u5355\u6587\u4EF6\u7CBE\u4FEE\u8868\u5355 -->
     <a-form v-if="!ingest.batchMode && ingest.tmp_id" layout="vertical" class="ingest-form">
       <div class="form-grid-3">
-        <a-form-item label="文件性质（AI 智能判定）">
+        <a-form-item label="\u6587\u4EF6\u6027\u8D28\uFF08AI \u667A\u80FD\u5224\u5B9A\uFF09">
           <a-select v-model:value="ingest.doc_type" @change="onIngestTypeChange">
             <a-select-option v-for="t in DOC_TYPE_SPECS" :key="t.id" :value="t.id">{{ t.label }}</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="切分与索引策略">
+        <a-form-item label="\u5207\u5206\u4E0E\u7D22\u5F15\u7B56\u7565">
           <a-select v-model:value="ingest.chunk_profile">
-            <a-select-option value="auto">智能自动路由</a-select-option>
-            <a-select-option value="laws">条文切分 (章/节/条)</a-select-option>
-            <a-select-option value="report">层级章节切分 (标题树)</a-select-option>
-            <a-select-option value="table">表格结构化切分 (带表头)</a-select-option>
-            <a-select-option value="image">视觉与OCR双轨索引</a-select-option>
-            <a-select-option value="one">整篇不切分</a-select-option>
+            <a-select-option value="auto">\u667A\u80FD\u81EA\u52A8\u8DEF\u7531</a-select-option>
+            <a-select-option value="laws">\u6761\u6587\u5207\u5206 (\u7AE0/\u8282/\u6761)</a-select-option>
+            <a-select-option value="report">\u5C42\u7EA7\u7AE0\u8282\u5207\u5206 (\u6807\u9898\u6811)</a-select-option>
+            <a-select-option value="table">\u8868\u683C\u7ED3\u6784\u5316\u5207\u5206 (\u5E26\u8868\u5934)</a-select-option>
+            <a-select-option value="image">\u89C6\u89C9\u4E0EOCR\u53CC\u8F68\u7D22\u5F15</a-select-option>
+            <a-select-option value="one">\u6574\u7BC7\u4E0D\u5207\u5206</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="发布/归档日期">
+        <a-form-item label="\u53D1\u5E03/\u5F52\u6863\u65E5\u671F">
           <a-input v-model:value="ingest.issued_date" placeholder="YYYY-MM-DD" />
         </a-form-item>
       </div>
 
-      <a-form-item label="规范化文件名称">
+      <a-form-item label="\u89C4\u8303\u5316\u6587\u4EF6\u540D\u79F0">
         <a-input v-model:value="ingest.title" />
       </a-form-item>
 
-      <!-- 根据文件性质动态切换专属字段表单 -->
+      <!-- \u6839\u636E\u6587\u4EF6\u6027\u8D28\u52A8\u6001\u5207\u6362\u4E13\u5C5E\u5B57\u6BB5\u8868\u5355 -->
       <div v-if="ingest.doc_type === 'regulation'" class="form-grid-3">
-        <a-form-item label="主管部门 / 发文机关">
+        <a-form-item label="\u4E3B\u7BA1\u90E8\u95E8 / \u53D1\u6587\u673A\u5173">
           <a-auto-complete v-model:value="ingest.dept" :options="deptOptions" />
         </a-form-item>
-        <a-form-item label="发文字号 / 编号">
-          <a-input v-model:value="ingest.doc_no" placeholder="如：南物流发〔2025〕142号" />
+        <a-form-item label="\u53D1\u6587\u5B57\u53F7 / \u7F16\u53F7">
+          <a-input v-model:value="ingest.doc_no" placeholder="\u5982\uFF1A\u5357\u7269\u6D41\u53D1\u30142025\u3015142\u53F7" />
         </a-form-item>
-        <a-form-item label="效力状态">
+        <a-form-item label="\u6548\u529B\u72B6\u6001">
           <a-select v-model:value="ingest.status">
-            <a-select-option value="现行">现行</a-select-option>
-            <a-select-option value="试行">试行</a-select-option>
-            <a-select-option value="已废止">已废止</a-select-option>
+            <a-select-option value="\u73B0\u884C">\u73B0\u884C</a-select-option>
+            <a-select-option value="\u8BD5\u884C">\u8BD5\u884C</a-select-option>
+            <a-select-option value="\u5DF2\u5E9F\u6B62">\u5DF2\u5E9F\u6B62</a-select-option>
           </a-select>
         </a-form-item>
       </div>
 
       <div v-else-if="ingest.doc_type === 'finance'" class="form-grid-3">
-        <a-form-item label="公司主体">
-          <a-input v-model:value="ingest.meta.entity" placeholder="如：物流集团本部" />
+        <a-form-item label="\u516C\u53F8\u4E3B\u4F53">
+          <a-input v-model:value="ingest.meta.entity" placeholder="\u5982\uFF1A\u7269\u6D41\u96C6\u56E2\u672C\u90E8" />
         </a-form-item>
-        <a-form-item label="报告期">
-          <a-input v-model:value="ingest.meta.period" placeholder="如：2025年报 / 2025Q3" />
+        <a-form-item label="\u62A5\u544A\u671F">
+          <a-input v-model:value="ingest.meta.period" placeholder="\u5982\uFF1A2025\u5E74\u62A5 / 2025Q3" />
         </a-form-item>
-        <a-form-item label="审计/报表口径">
-          <a-input v-model:value="ingest.meta.audit_status" placeholder="已审计 / 合并口径 / 预算" />
+        <a-form-item label="\u5BA1\u8BA1/\u62A5\u8868\u53E3\u5F84">
+          <a-input v-model:value="ingest.meta.audit_status" placeholder="\u5DF2\u5BA1\u8BA1 / \u5408\u5E76\u53E3\u5F84 / \u9884\u7B97" />
         </a-form-item>
       </div>
 
       <div v-else-if="ingest.doc_type === 'contract'" class="form-grid-3">
-        <a-form-item label="甲方">
+        <a-form-item label="\u7532\u65B9">
           <a-input v-model:value="ingest.meta.party_a" />
         </a-form-item>
-        <a-form-item label="乙方 / 相对方">
+        <a-form-item label="\u4E59\u65B9 / \u76F8\u5BF9\u65B9">
           <a-input v-model:value="ingest.meta.party_b" />
         </a-form-item>
-        <a-form-item label="合同金额">
-          <a-input v-model:value="ingest.meta.amount" placeholder="如：480.00万元" />
+        <a-form-item label="\u5408\u540C\u91D1\u989D">
+          <a-input v-model:value="ingest.meta.amount" placeholder="\u5982\uFF1A480.00\u4E07\u5143" />
         </a-form-item>
       </div>
 
       <div v-else-if="ingest.doc_type === 'report'" class="form-grid-2">
-        <a-form-item label="报告类型 / 阶段">
-          <a-input v-model:value="ingest.meta.stage" placeholder="可研 / 尽调 / 方案 / 会议纪要" />
+        <a-form-item label="\u62A5\u544A\u7C7B\u578B / \u9636\u6BB5">
+          <a-input v-model:value="ingest.meta.stage" placeholder="\u53EF\u7814 / \u5C3D\u8C03 / \u65B9\u6848 / \u4F1A\u8BAE\u7EAA\u8981" />
         </a-form-item>
-        <a-form-item label="编制单位 / 作者">
+        <a-form-item label="\u7F16\u5236\u5355\u4F4D / \u4F5C\u8005">
           <a-input v-model:value="ingest.meta.author" />
         </a-form-item>
       </div>
 
       <div v-else-if="ingest.doc_type === 'spreadsheet'" class="form-grid-2">
-        <a-form-item label="工作表清单">
+        <a-form-item label="\u5DE5\u4F5C\u8868\u6E05\u5355">
           <a-input v-model:value="ingest.meta.sheets" />
         </a-form-item>
-        <a-form-item label="核心表头字段">
+        <a-form-item label="\u6838\u5FC3\u8868\u5934\u5B57\u6BB5">
           <a-input v-model:value="ingest.meta.columns" />
         </a-form-item>
       </div>
 
       <div v-else-if="ingest.doc_type === 'image'" class="form-grid-2">
-        <a-form-item label="图像类别">
-          <a-input v-model:value="ingest.meta.image_type" placeholder="流程图 / 规划图 / 架构图 / 扫描件" />
+        <a-form-item label="\u56FE\u50CF\u7C7B\u522B">
+          <a-input v-model:value="ingest.meta.image_type" placeholder="\u6D41\u7A0B\u56FE / \u89C4\u5212\u56FE / \u67B6\u6784\u56FE / \u626B\u63CF\u4EF6" />
         </a-form-item>
-        <a-form-item label="分辨率 / 格式">
+        <a-form-item label="\u5206\u8FA8\u7387 / \u683C\u5F0F">
           <a-input v-model:value="ingest.meta.dimensions" />
         </a-form-item>
       </div>
 
-      <a-form-item label="AI 一句话摘要 / 核心提要">
-        <a-input v-model:value="ingest.summary" placeholder="核心内容摘要，支持全文检索" />
+      <a-form-item label="AI \u4E00\u53E5\u8BDD\u6458\u8981 / \u6838\u5FC3\u63D0\u8981">
+        <a-input v-model:value="ingest.summary" placeholder="\u6838\u5FC3\u5185\u5BB9\u6458\u8981\uFF0C\u652F\u6301\u5168\u6587\u68C0\u7D22" />
       </a-form-item>
     </a-form>
   </a-modal>
 
-  <!-- 新建 / 重命名项目、文件夹弹窗 -->
+  <!-- \u65B0\u5EFA / \u91CD\u547D\u540D\u9879\u76EE\u3001\u6587\u4EF6\u5939\u5F39\u7A97 -->
   <a-modal v-model:open="folderModal.open"
-           :title="folderModal.mode === 'rename' ? '重命名 / 移动文件夹' : '新建项目或子文件夹'"
-           :ok-text="folderModal.mode === 'rename' ? '保存' : '创建'"
+           :title="folderModal.mode === 'rename' ? '\u91CD\u547D\u540D / \u79FB\u52A8\u6587\u4EF6\u5939' : '\u65B0\u5EFA\u9879\u76EE\u6216\u5B50\u6587\u4EF6\u5939'"
+           :ok-text="folderModal.mode === 'rename' ? '\u4FDD\u5B58' : '\u521B\u5EFA'"
            @ok="confirmCreateFolder">
     <a-form layout="vertical">
-      <a-form-item label="项目名称">
+      <a-form-item label="\u9879\u76EE\u540D\u79F0">
         <a-auto-complete v-model:value="folderModal.project" :options="projectOptions" size="large"
-                         placeholder="选择已有项目或输入新项目名（如：南宁冷链物流园项目）" />
+                         placeholder="\u9009\u62E9\u5DF2\u6709\u9879\u76EE\u6216\u8F93\u5165\u65B0\u9879\u76EE\u540D\uFF08\u5982\uFF1A\u5357\u5B81\u51B7\u94FE\u7269\u6D41\u56ED\u9879\u76EE\uFF09" />
       </a-form-item>
-      <a-form-item :label="folderModal.mode === 'rename' ? '新的文件夹路径（多级用 / 分隔，也可修改所属项目）' : '子文件夹路径（可选，多级目录用 / 分隔）'">
+      <a-form-item :label="folderModal.mode === 'rename' ? '\u65B0\u7684\u6587\u4EF6\u5939\u8DEF\u5F84\uFF08\u591A\u7EA7\u7528 / \u5206\u9694\uFF0C\u4E5F\u53EF\u4FEE\u6539\u6240\u5C5E\u9879\u76EE\uFF09' : '\u5B50\u6587\u4EF6\u5939\u8DEF\u5F84\uFF08\u53EF\u9009\uFF0C\u591A\u7EA7\u76EE\u5F55\u7528 / \u5206\u9694\uFF09'">
         <a-input v-model:value="folderModal.path" size="large"
-                 placeholder="如：01-立项与批复 或 02-合同协议/采购合同（留空则仅创建项目）" />
+                 placeholder="\u5982\uFF1A01-\u7ACB\u9879\u4E0E\u6279\u590D \u6216 02-\u5408\u540C\u534F\u8BAE/\u91C7\u8D2D\u5408\u540C\uFF08\u7559\u7A7A\u5219\u4EC5\u521B\u5EFA\u9879\u76EE\uFF09" />
       </a-form-item>
       <p v-if="folderModal.mode === 'rename'" class="ingest-hint">
-        下级文件夹和文件会同步更新路径与归属。
+        \u4E0B\u7EA7\u6587\u4EF6\u5939\u548C\u6587\u4EF6\u4F1A\u540C\u6B65\u66F4\u65B0\u8DEF\u5F84\u4E0E\u5F52\u5C5E\u3002
       </p>
     </a-form>
   </a-modal>
 
-  <!-- 文件属性与多态元数据编辑弹窗 -->
-  <a-modal v-model:open="metaModal.open" :width="640" title="编辑文件属性与项目归属" ok-text="保存"
+  <!-- \u6587\u4EF6\u5C5E\u6027\u4E0E\u591A\u6001\u5143\u6570\u636E\u7F16\u8F91\u5F39\u7A97 -->
+  <a-modal v-model:open="metaModal.open" :width="640" title="\u7F16\u8F91\u6587\u4EF6\u5C5E\u6027\u4E0E\u9879\u76EE\u5F52\u5C5E" ok-text="\u4FDD\u5B58"
            :confirm-loading="metaModal.saving" @ok="confirmSaveMeta">
     <a-form layout="vertical">
       <div class="form-grid-2">
-        <a-form-item label="所属项目">
+        <a-form-item label="\u6240\u5C5E\u9879\u76EE">
           <a-auto-complete v-model:value="metaModal.project" :options="projectOptions" />
         </a-form-item>
-        <a-form-item label="子文件夹路径">
-          <a-auto-complete v-model:value="metaModal.folder" :options="folderOptions" placeholder="多级用 / 分隔" />
+        <a-form-item label="\u5B50\u6587\u4EF6\u5939\u8DEF\u5F84">
+          <a-auto-complete v-model:value="metaModal.folder" :options="folderOptions" placeholder="\u591A\u7EA7\u7528 / \u5206\u9694" />
         </a-form-item>
       </div>
       <div class="form-grid-3">
-        <a-form-item label="文件性质">
+        <a-form-item label="\u6587\u4EF6\u6027\u8D28">
           <a-select v-model:value="metaModal.doc_type">
             <a-select-option v-for="t in DOC_TYPE_SPECS" :key="t.id" :value="t.id">{{ t.label }}</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="日期">
+        <a-form-item label="\u65E5\u671F">
           <a-input v-model:value="metaModal.issued_date" placeholder="YYYY-MM-DD" />
         </a-form-item>
-        <a-form-item label="状态">
+        <a-form-item label="\u72B6\u6001">
           <a-select v-model:value="metaModal.status">
-            <a-select-option value="现行">现行</a-select-option>
-            <a-select-option value="试行">试行</a-select-option>
-            <a-select-option value="已废止">已废止</a-select-option>
+            <a-select-option value="\u73B0\u884C">\u73B0\u884C</a-select-option>
+            <a-select-option value="\u8BD5\u884C">\u8BD5\u884C</a-select-option>
+            <a-select-option value="\u5DF2\u5E9F\u6B62">\u5DF2\u5E9F\u6B62</a-select-option>
           </a-select>
         </a-form-item>
       </div>
-      <a-form-item label="文件名称">
+      <a-form-item label="\u6587\u4EF6\u540D\u79F0">
         <a-input v-model:value="metaModal.title" />
       </a-form-item>
       <div v-if="metaModal.doc_type === 'regulation'" class="form-grid-2">
-        <a-form-item label="主管部门">
+        <a-form-item label="\u4E3B\u7BA1\u90E8\u95E8">
           <a-input v-model:value="metaModal.dept" />
         </a-form-item>
-        <a-form-item label="文号">
+        <a-form-item label="\u6587\u53F7">
           <a-input v-model:value="metaModal.doc_no" />
         </a-form-item>
       </div>
       <div v-else-if="metaModal.doc_type === 'finance'" class="form-grid-3">
-        <a-form-item label="公司主体">
+        <a-form-item label="\u516C\u53F8\u4E3B\u4F53">
           <a-input v-model:value="metaModal.meta.entity" />
         </a-form-item>
-        <a-form-item label="报告期">
+        <a-form-item label="\u62A5\u544A\u671F">
           <a-input v-model:value="metaModal.meta.period" />
         </a-form-item>
-        <a-form-item label="审计/口径">
+        <a-form-item label="\u5BA1\u8BA1/\u53E3\u5F84">
           <a-input v-model:value="metaModal.meta.audit_status" />
         </a-form-item>
       </div>
       <div v-else-if="metaModal.doc_type === 'contract'" class="form-grid-3">
-        <a-form-item label="甲方">
+        <a-form-item label="\u7532\u65B9">
           <a-input v-model:value="metaModal.meta.party_a" />
         </a-form-item>
-        <a-form-item label="乙方">
+        <a-form-item label="\u4E59\u65B9">
           <a-input v-model:value="metaModal.meta.party_b" />
         </a-form-item>
-        <a-form-item label="合同金额">
+        <a-form-item label="\u5408\u540C\u91D1\u989D">
           <a-input v-model:value="metaModal.meta.amount" />
         </a-form-item>
       </div>
       <div v-else-if="metaModal.doc_type === 'report'" class="form-grid-2">
-        <a-form-item label="报告类型/阶段">
+        <a-form-item label="\u62A5\u544A\u7C7B\u578B/\u9636\u6BB5">
           <a-input v-model:value="metaModal.meta.stage" />
         </a-form-item>
-        <a-form-item label="编制单位/作者">
+        <a-form-item label="\u7F16\u5236\u5355\u4F4D/\u4F5C\u8005">
           <a-input v-model:value="metaModal.meta.author" />
         </a-form-item>
       </div>
       <div v-else-if="metaModal.doc_type === 'spreadsheet'" class="form-grid-2">
-        <a-form-item label="工作表清单">
+        <a-form-item label="\u5DE5\u4F5C\u8868\u6E05\u5355">
           <a-input v-model:value="metaModal.meta.sheets" />
         </a-form-item>
-        <a-form-item label="核心表头字段">
+        <a-form-item label="\u6838\u5FC3\u8868\u5934\u5B57\u6BB5">
           <a-input v-model:value="metaModal.meta.columns" />
         </a-form-item>
       </div>
       <div v-else-if="metaModal.doc_type === 'image'" class="form-grid-2">
-        <a-form-item label="图像类别">
+        <a-form-item label="\u56FE\u50CF\u7C7B\u522B">
           <a-input v-model:value="metaModal.meta.image_type" />
         </a-form-item>
-        <a-form-item label="视觉描述">
+        <a-form-item label="\u89C6\u89C9\u63CF\u8FF0">
           <a-input v-model:value="metaModal.meta.visual_summary" />
         </a-form-item>
       </div>
-      <a-form-item label="一句话摘要">
+      <a-form-item label="\u4E00\u53E5\u8BDD\u6458\u8981">
         <a-input v-model:value="metaModal.summary" />
       </a-form-item>
     </a-form>
   </a-modal>
 
-  <a-modal v-model:open="addProvider.open" title="添加渠道" ok-text="添加"
+  <a-modal v-model:open="addProvider.open" title="\u6DFB\u52A0\u6E20\u9053" ok-text="\u6DFB\u52A0"
            wrapClassName="provider-modal"
            :ok-button-props="{ disabled: addProvider.kind === 'custom' && !(addProvider.name || '').trim() }"
            @ok="confirmAddProvider">
     <a-form layout="vertical">
-      <a-form-item label="类型">
+      <a-form-item label="\u7C7B\u578B">
         <a-radio-group v-model:value="addProvider.kind">
           <a-radio-button value="deepseek">DeepSeek</a-radio-button>
           <a-radio-button value="opencode-go">OpenCode Go</a-radio-button>
-          <a-radio-button value="custom">自定义</a-radio-button>
+          <a-radio-button value="custom">\u81EA\u5B9A\u4E49</a-radio-button>
         </a-radio-group>
       </a-form-item>
       <template v-if="addProvider.kind === 'custom'">
-        <a-form-item label="名称">
-          <a-input v-model:value="addProvider.name" size="large" placeholder="公司中转" />
+        <a-form-item label="\u540D\u79F0">
+          <a-input v-model:value="addProvider.name" size="large" placeholder="\u516C\u53F8\u4E2D\u8F6C" />
         </a-form-item>
-        <a-form-item label="API 格式">
+        <a-form-item label="API \u683C\u5F0F">
           <a-select v-model:value="addProvider.protocol" size="large">
             <a-select-option v-for="o in protocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
           </a-select>
@@ -134193,29 +133016,29 @@ ${text2}</tr>
         </a-form-item>
       </template>
       <a-form-item label="API Key">
-        <a-input-password v-model:value="addProvider.api_key" size="large" placeholder="输入 API Key" />
+        <a-input-password v-model:value="addProvider.api_key" size="large" placeholder="\u8F93\u5165 API Key" />
       </a-form-item>
     </a-form>
   </a-modal>
 
-  <a-modal v-model:open="addEmbedProvider.open" title="添加 Embedding 渠道" ok-text="添加"
+  <a-modal v-model:open="addEmbedProvider.open" title="\u6DFB\u52A0 Embedding \u6E20\u9053" ok-text="\u6DFB\u52A0"
            wrapClassName="provider-modal"
            :ok-button-props="{ disabled: addEmbedProvider.kind === 'custom' && !(addEmbedProvider.name || '').trim() }"
            @ok="confirmAddEmbedProvider">
     <a-form layout="vertical">
-      <a-form-item label="类型">
+      <a-form-item label="\u7C7B\u578B">
         <a-radio-group v-model:value="addEmbedProvider.kind">
-          <a-radio-button value="qwen">千问 AI</a-radio-button>
-          <a-radio-button value="siliconflow">硅基流动</a-radio-button>
+          <a-radio-button value="qwen">\u5343\u95EE AI</a-radio-button>
+          <a-radio-button value="siliconflow">\u7845\u57FA\u6D41\u52A8</a-radio-button>
           <a-radio-button value="openrouter">OpenRouter</a-radio-button>
-          <a-radio-button value="custom">自定义</a-radio-button>
+          <a-radio-button value="custom">\u81EA\u5B9A\u4E49</a-radio-button>
         </a-radio-group>
       </a-form-item>
       <template v-if="addEmbedProvider.kind === 'custom'">
-        <a-form-item label="名称">
-          <a-input v-model:value="addEmbedProvider.name" size="large" placeholder="公司中转" />
+        <a-form-item label="\u540D\u79F0">
+          <a-input v-model:value="addEmbedProvider.name" size="large" placeholder="\u516C\u53F8\u4E2D\u8F6C" />
         </a-form-item>
-        <a-form-item label="API 格式">
+        <a-form-item label="API \u683C\u5F0F">
           <a-select v-model:value="addEmbedProvider.protocol" size="large">
             <a-select-option v-for="o in embedProtocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
           </a-select>
@@ -134226,64 +133049,64 @@ ${text2}</tr>
         </a-form-item>
       </template>
       <a-form-item label="API Key">
-        <a-input-password v-model:value="addEmbedProvider.api_key" size="large" placeholder="输入 API Key" />
+        <a-input-password v-model:value="addEmbedProvider.api_key" size="large" placeholder="\u8F93\u5165 API Key" />
       </a-form-item>
     </a-form>
   </a-modal>
 
-  <a-modal v-model:open="addModel.open" title="添加模型" ok-text="添加"
+  <a-modal v-model:open="addModel.open" title="\u6DFB\u52A0\u6A21\u578B" ok-text="\u6DFB\u52A0"
            :ok-button-props="{ disabled: !(addModel.id || '').trim() }"
            @ok="confirmAddModel">
     <a-form layout="vertical">
-      <a-form-item label="模型 ID">
+      <a-form-item label="\u6A21\u578B ID">
         <a-input v-model:value="addModel.id" size="large" placeholder="deepseek-flash" />
       </a-form-item>
-      <a-form-item label="显示名">
-        <a-input v-model:value="addModel.label" size="large" placeholder="可留空" />
+      <a-form-item label="\u663E\u793A\u540D">
+        <a-input v-model:value="addModel.label" size="large" placeholder="\u53EF\u7559\u7A7A" />
       </a-form-item>
     </a-form>
   </a-modal>
 
-  <a-modal v-model:open="addApiConnector.open" title="添加外部 API 连接" ok-text="添加"
+  <a-modal v-model:open="addApiConnector.open" title="\u6DFB\u52A0\u5916\u90E8 API \u8FDE\u63A5" ok-text="\u6DFB\u52A0"
            wrapClassName="provider-modal"
            :ok-button-props="{ disabled: !(addApiConnector.name || '').trim() || !(addApiConnector.base_url || '').trim() }"
            @ok="confirmAddApiConnector">
     <a-form layout="vertical">
-      <a-form-item label="快速预设">
+      <a-form-item label="\u5FEB\u901F\u9884\u8BBE">
         <div class="api-preset-chips">
           <button type="button" v-for="p in apiPresets" :key="p.id" class="chip" @click="applyApiPreset(p)">{{ p.name }}</button>
         </div>
       </a-form-item>
       <div class="form-grid-2">
-        <a-form-item label="连接名称">
-          <a-input v-model:value="addApiConnector.name" size="large" placeholder="如 CoinGecko、FRED、高德天气" />
+        <a-form-item label="\u8FDE\u63A5\u540D\u79F0">
+          <a-input v-model:value="addApiConnector.name" size="large" placeholder="\u5982 CoinGecko\u3001FRED\u3001\u9AD8\u5FB7\u5929\u6C14" />
         </a-form-item>
-        <a-form-item label="API 协议">
+        <a-form-item label="API \u534F\u8BAE">
           <a-select v-model:value="addApiConnector.protocol" size="large">
             <a-select-option v-for="o in apiProtocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
           </a-select>
         </a-form-item>
       </div>
-      <a-form-item label="Base URL（或 OpenAPI JSON 地址）">
+      <a-form-item label="Base URL\uFF08\u6216 OpenAPI JSON \u5730\u5740\uFF09">
         <div class="field-with-action">
           <a-input v-model:value="addApiConnector.base_url" size="large" placeholder="https://api.example.com" />
-          <a-button :loading="apiDiscovering" @click="discoverIntoModal">解析 OpenAPI</a-button>
+          <a-button :loading="apiDiscovering" @click="discoverIntoModal">\u89E3\u6790 OpenAPI</a-button>
         </div>
       </a-form-item>
-      <a-form-item label="鉴权方式">
+      <a-form-item label="\u9274\u6743\u65B9\u5F0F">
         <a-select v-model:value="addApiConnector.auth_type" size="large">
           <a-select-option v-for="o in apiAuthTypes" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
         </a-select>
       </a-form-item>
       <a-form-item v-if="addApiConnector.auth_type !== 'none'" :label="apiKeyLabel(addApiConnector.auth_type)">
-        <a-input-password v-model:value="addApiConnector.api_key" size="large" placeholder="无需密钥可留空" />
+        <a-input-password v-model:value="addApiConnector.api_key" size="large" placeholder="\u65E0\u9700\u5BC6\u94A5\u53EF\u7559\u7A7A" />
       </a-form-item>
       <a-form-item v-if="needsApiSecret(addApiConnector.auth_type)" :label="apiSecretLabel(addApiConnector.auth_type)">
-        <a-input-password v-model:value="addApiConnector.api_secret" size="large" placeholder="Secret / 密码" />
+        <a-input-password v-model:value="addApiConnector.api_secret" size="large" placeholder="Secret / \u5BC6\u7801" />
       </a-form-item>
-      <a-form-item label="给 AI 的使用说明">
+      <a-form-item label="\u7ED9 AI \u7684\u4F7F\u7528\u8BF4\u660E">
         <a-textarea v-model:value="addApiConnector.notes" :auto-size="{ minRows: 3, maxRows: 6 }"
-          placeholder="常用路径、参数说明与返回示例，帮助 AI 准确调用。" />
+          placeholder="\u5E38\u7528\u8DEF\u5F84\u3001\u53C2\u6570\u8BF4\u660E\u4E0E\u8FD4\u56DE\u793A\u4F8B\uFF0C\u5E2E\u52A9 AI \u51C6\u786E\u8C03\u7528\u3002" />
       </a-form-item>
     </a-form>
   </a-modal>
@@ -134360,10 +133183,10 @@ ${text2}</tr>
         }
       };
       const navs = [
-        { key: "ask", label: "问答", icon: ICO.ask },
-        { key: "browser", label: "浏览器", icon: ICO.globe },
-        { key: "search", label: "检索", icon: ICO.search },
-        { key: "catalog", label: "文件", icon: ICO.catalog }
+        { key: "ask", label: "\u95EE\u7B54", icon: ICO.ask },
+        { key: "browser", label: "\u6D4F\u89C8\u5668", icon: ICO.globe },
+        { key: "search", label: "\u68C0\u7D22", icon: ICO.search },
+        { key: "catalog", label: "\u6587\u4EF6", icon: ICO.catalog }
       ];
       const RECENT_KEY = "o2-recent-q";
       const recent = ref(loadRecent());
@@ -134384,11 +133207,11 @@ ${text2}</tr>
         localStorage.setItem(RECENT_KEY, JSON.stringify(recent.value));
       }
       const askExamples = [
-        "检查当前工作目录结构并列出体积最大的文件",
-        "帮我整理一份结构清晰的方案对比表",
-        "检索本地文档库中与当前主题相关的资料"
+        "\u68C0\u67E5\u5F53\u524D\u5DE5\u4F5C\u76EE\u5F55\u7ED3\u6784\u5E76\u5217\u51FA\u4F53\u79EF\u6700\u5927\u7684\u6587\u4EF6",
+        "\u5E2E\u6211\u6574\u7406\u4E00\u4EFD\u7ED3\u6784\u6E05\u6670\u7684\u65B9\u6848\u5BF9\u6BD4\u8868",
+        "\u68C0\u7D22\u672C\u5730\u6587\u6863\u5E93\u4E2D\u4E0E\u5F53\u524D\u4E3B\u9898\u76F8\u5173\u7684\u8D44\u6599"
       ];
-      const pageTitle = computed2(() => ({ search: "检索", ask: "问答", browser: "浏览器", catalog: "文件", settings: "设置" })[tab.value] || "O2");
+      const pageTitle = computed2(() => ({ search: "\u68C0\u7D22", ask: "\u95EE\u7B54", browser: "\u6D4F\u89C8\u5668", catalog: "\u6587\u4EF6", settings: "\u8BBE\u7F6E" })[tab.value] || "O2");
       function pageUrl(docId, page, chunkId, zoom) {
         const p2 = new URLSearchParams({ doc_id: docId, page: page || 1 });
         if (chunkId) p2.set("chunk_id", chunkId);
@@ -134445,12 +133268,12 @@ ${text2}</tr>
       const CHAT_KEY = "o2-chat";
       const CHAT_DRAFT_KEY = "o2-chat-draft";
       const HIST_LABELS = {
-        pin: "置顶",
-        today: "今天",
-        yesterday: "昨天",
-        week: "7天内",
-        month: "30天内",
-        older: "更早"
+        pin: "\u7F6E\u9876",
+        today: "\u4ECA\u5929",
+        yesterday: "\u6628\u5929",
+        week: "7\u5929\u5185",
+        month: "30\u5929\u5185",
+        older: "\u66F4\u65E9"
       };
       function dumpChat(list2) {
         return (list2 || []).map((m2) => ({
@@ -134497,7 +133320,7 @@ ${text2}</tr>
       function fallbackTitle(text2) {
         let s2 = String(text2 || "").replace(/\s+/g, " ").trim();
         s2 = s2.replace(/^【附件：[^】]*】/, "").trim();
-        if (!s2) return "新对话";
+        if (!s2) return "\u65B0\u5BF9\u8BDD";
         if (s2.length <= 18) return s2;
         return s2.slice(0, 18).replace(/[，。、；,.\s]+$/g, "");
       }
@@ -134506,7 +133329,7 @@ ${text2}</tr>
         if (!m2) return "";
         const t3 = (m2.content || "").trim();
         if (t3) return t3;
-        return (m2.files || []).map((f2) => f2.name).filter(Boolean).join("、");
+        return (m2.files || []).map((f2) => f2.name).filter(Boolean).join("\u3001");
       }
       function firstAnswerText(list2) {
         const m2 = (list2 || []).find((x2) => x2.role === "assistant" && (x2.content || "").trim() && !x2.streaming);
@@ -134559,7 +133382,7 @@ ${text2}</tr>
             const msgs = Array.isArray(c2.messages) ? c2.messages : [];
             return {
               id: c2.id,
-              title: c2.title || "新对话",
+              title: c2.title || "\u65B0\u5BF9\u8BDD",
               titleReady: !!c2.titleReady,
               createdAt: c2.createdAt || Date.now(),
               updatedAt: c2.updatedAt || c2.createdAt || Date.now(),
@@ -134641,7 +133464,7 @@ ${text2}</tr>
         }
         const data = conversations.value.map((c2) => ({
           id: c2.id,
-          title: c2.title || "新对话",
+          title: c2.title || "\u65B0\u5BF9\u8BDD",
           titleReady: !!c2.titleReady,
           createdAt: c2.createdAt || 0,
           updatedAt: c2.updatedAt || 0,
@@ -134784,7 +133607,7 @@ ${text2}</tr>
         if (!t3 || t3.state === "running") return "running";
         if (t3.kind === "think") return "ok";
         if (t3.kind === "shell" || t3.kind === "browser" || t3.kind === "api") {
-          if (t3.note === "失败" || t3.note === "未执行" || t3.exit != null && t3.exit !== 0) return "none";
+          if (t3.note === "\u5931\u8D25" || t3.note === "\u672A\u6267\u884C" || t3.exit != null && t3.exit !== 0) return "none";
           return "ok";
         }
         const n3 = Number(t3.count) || 0;
@@ -134794,38 +133617,38 @@ ${text2}</tr>
       }
       function toolLabel(t3) {
         if (!t3) return "";
-        if (t3.kind === "think") return t3.state === "running" ? "思考中" : "已思考";
-        if (t3.kind === "read") return "阅读「" + (t3.query || "") + "」";
+        if (t3.kind === "think") return t3.state === "running" ? "\u601D\u8003\u4E2D" : "\u5DF2\u601D\u8003";
+        if (t3.kind === "read") return "\u9605\u8BFB\u300C" + (t3.query || "") + "\u300D";
         if (t3.kind === "api") {
           const q3 = String(t3.query || "").replace(/\s+/g, " ");
-          return "API · " + (q3.length > 72 ? q3.slice(0, 72) + "…" : q3 || "请求");
+          return "API \xB7 " + (q3.length > 72 ? q3.slice(0, 72) + "\u2026" : q3 || "\u8BF7\u6C42");
         }
         if (t3.kind === "browser") {
           const q3 = String(t3.query || "").replace(/\s+/g, " ");
-          return "浏览器 · " + (q3.length > 72 ? q3.slice(0, 72) + "…" : q3 || "操作");
+          return "\u6D4F\u89C8\u5668 \xB7 " + (q3.length > 72 ? q3.slice(0, 72) + "\u2026" : q3 || "\u64CD\u4F5C");
         }
         if (t3.kind === "shell") {
           const q3 = String(t3.query || "").replace(/\s+/g, " ");
-          return "终端 " + (q3.length > 72 ? q3.slice(0, 72) + "…" : q3);
+          return "\u7EC8\u7AEF " + (q3.length > 72 ? q3.slice(0, 72) + "\u2026" : q3);
         }
-        return "检索「" + (t3.query || "") + "」";
+        return "\u68C0\u7D22\u300C" + (t3.query || "") + "\u300D";
       }
       function toolMeta(t3) {
         if (!t3 || t3.kind === "think") return "";
         if (t3.kind === "api") {
-          if (t3.state !== "done") return "调用中…";
-          return t3.note || "完成";
+          if (t3.state !== "done") return "\u8C03\u7528\u4E2D\u2026";
+          return t3.note || "\u5B8C\u6210";
         }
         if (t3.kind === "browser") {
-          if (t3.state !== "done") return "操作中…";
-          return t3.note || "完成";
+          if (t3.state !== "done") return "\u64CD\u4F5C\u4E2D\u2026";
+          return t3.note || "\u5B8C\u6210";
         }
         if (t3.kind === "shell") {
-          if (t3.state !== "done") return "执行中…";
-          return t3.note || "完成";
+          if (t3.state !== "done") return "\u6267\u884C\u4E2D\u2026";
+          return t3.note || "\u5B8C\u6210";
         }
-        if (t3.state === "done") return (Number(t3.count) || 0) + " 段";
-        return t3.kind === "read" ? "读取中…" : "检索中…";
+        if (t3.state === "done") return (Number(t3.count) || 0) + " \u6BB5";
+        return t3.kind === "read" ? "\u8BFB\u53D6\u4E2D\u2026" : "\u68C0\u7D22\u4E2D\u2026";
       }
       const SBF_LINE = 24;
       const SBF_ROWS = 3;
@@ -134864,15 +133687,15 @@ ${text2}</tr>
         }
       }
       function collectSources(list2) {
-        const map2 = /* @__PURE__ */ new Map();
+        const map = /* @__PURE__ */ new Map();
         for (const msg of list2 || []) {
           for (const s2 of msg.sources || []) {
             const n3 = Number(s2 && s2.n);
-            if (!n3 || map2.has(n3)) continue;
-            map2.set(n3, s2);
+            if (!n3 || map.has(n3)) continue;
+            map.set(n3, s2);
           }
         }
-        return [...map2.values()].sort((a2, b2) => Number(a2.n) - Number(b2.n));
+        return [...map.values()].sort((a2, b2) => Number(a2.n) - Number(b2.n));
       }
       const chatSourcesPool = computed2(() => collectSources(messages2.value));
       const chatSourcesMap = computed2(() => new Map(chatSourcesPool.value.map((s2) => [String(s2.n), s2])));
@@ -134915,13 +133738,13 @@ ${text2}</tr>
           return m2._dispSrc;
         }
         const cited = sourcesCitedIn(raw, chatSourcesPool.value, chatSourcesMap.value);
-        const map2 = /* @__PURE__ */ new Map();
+        const map = /* @__PURE__ */ new Map();
         for (const s2 of cited.concat(own)) {
           const n3 = Number(s2 && s2.n);
-          if (!n3 || map2.has(n3)) continue;
-          map2.set(n3, s2);
+          if (!n3 || map.has(n3)) continue;
+          map.set(n3, s2);
         }
-        const res = [...map2.values()].sort((a2, b2) => Number(a2.n) - Number(b2.n));
+        const res = [...map.values()].sort((a2, b2) => Number(a2.n) - Number(b2.n));
         m2._dispSrc = res;
         m2._dispSrcKey = key2;
         m2._dispSrcRaw = raw;
@@ -135642,19 +134465,19 @@ ${text2}</tr>
         const rest = rows.filter((c2) => !c2.pinned).sort((a2, b2) => (b2.activeAt || b2.createdAt || 0) - (a2.activeAt || a2.createdAt || 0));
         const buckets = { today: [], yesterday: [], week: [], month: [], older: [] };
         rest.forEach((c2) => buckets[histBucket(c2.activeAt || c2.createdAt)].push(c2));
-        const map2 = { pin: pinned, ...buckets };
-        return ["pin", "today", "yesterday", "week", "month", "older"].filter((k2) => map2[k2].length).map((k2) => ({ key: k2, label: HIST_LABELS[k2], items: map2[k2] }));
+        const map = { pin: pinned, ...buckets };
+        return ["pin", "today", "yesterday", "week", "month", "older"].filter((k2) => map[k2].length).map((k2) => ({ key: k2, label: HIST_LABELS[k2], items: map[k2] }));
       });
       const histPickCount = computed2(() => Object.keys(histPicked).length);
       const histPaneTitle = computed2(() => {
-        if (histMode.value === "browse") return "历史对话";
-        return histPickCount.value ? "已选择 " + histPickCount.value + " 个对话" : "选择对话";
+        if (histMode.value === "browse") return "\u5386\u53F2\u5BF9\u8BDD";
+        return histPickCount.value ? "\u5DF2\u9009\u62E9 " + histPickCount.value + " \u4E2A\u5BF9\u8BDD" : "\u9009\u62E9\u5BF9\u8BDD";
       });
       const histPinLabel = computed2(() => {
         const ids = Object.keys(histPicked);
-        if (!ids.length) return "置顶";
+        if (!ids.length) return "\u7F6E\u9876";
         const rows = conversations.value.filter((c2) => histPicked[c2.id]);
-        return rows.length && rows.every((c2) => c2.pinned) ? "取消置顶" : "置顶";
+        return rows.length && rows.every((c2) => c2.pinned) ? "\u53D6\u6D88\u7F6E\u9876" : "\u7F6E\u9876";
       });
       function clearPicks() {
         Object.keys(histPicked).forEach((k2) => delete histPicked[k2]);
@@ -135711,11 +134534,11 @@ ${text2}</tr>
         const ids = Object.keys(histPicked);
         if (!ids.length) return;
         modal_default.confirm({
-          title: ids.length === 1 ? "删除这个对话？" : "删除 " + ids.length + " 个对话？",
-          content: "删除后无法恢复。",
-          okText: "删除",
+          title: ids.length === 1 ? "\u5220\u9664\u8FD9\u4E2A\u5BF9\u8BDD\uFF1F" : "\u5220\u9664 " + ids.length + " \u4E2A\u5BF9\u8BDD\uFF1F",
+          content: "\u5220\u9664\u540E\u65E0\u6CD5\u6062\u590D\u3002",
+          okText: "\u5220\u9664",
           okType: "danger",
-          cancelText: "取消",
+          cancelText: "\u53D6\u6D88",
           zIndex: 2e3,
           onOk() {
             const drop = new Set(ids);
@@ -135746,7 +134569,7 @@ ${text2}</tr>
         if (!c2) {
           c2 = {
             id: newChatId(),
-            title: fallbackTitle(text2) || "新对话",
+            title: fallbackTitle(text2) || "\u65B0\u5BF9\u8BDD",
             titleReady: false,
             createdAt: Date.now(),
             updatedAt: Date.now(),
@@ -135757,7 +134580,7 @@ ${text2}</tr>
           };
           conversations.value.unshift(c2);
           chatId.value = c2.id;
-        } else if (!c2.titleReady && (!c2.title || c2.title === "新对话")) {
+        } else if (!c2.titleReady && (!c2.title || c2.title === "\u65B0\u5BF9\u8BDD")) {
           const t3 = fallbackTitle(text2);
           if (t3) c2.title = t3;
         }
@@ -135872,7 +134695,7 @@ ${text2}</tr>
         }
       }
       function formatAskReply(m2) {
-        const lines = ["【补充条件】"];
+        const lines = ["\u3010\u8865\u5145\u6761\u4EF6\u3011"];
         for (const q3 of m2.ask.questions) {
           const p2 = m2.ask.picks[q3.id] || { ids: [], other: false };
           const labels = [];
@@ -135884,7 +134707,7 @@ ${text2}</tr>
             const t3 = (m2.ask.otherText[q3.id] || "").trim();
             if (t3) labels.push(t3);
           }
-          lines.push(q3.prompt + "：" + labels.join("、"));
+          lines.push(q3.prompt + "\uFF1A" + labels.join("\u3001"));
         }
         return lines.join("\n");
       }
@@ -135898,7 +134721,7 @@ ${text2}</tr>
         for (const f2 of files || []) {
           if (f2.state && f2.state !== "ready") continue;
           if (!(f2.text || "").trim()) continue;
-          parts.push("【附件：" + f2.name + "】\n" + f2.text);
+          parts.push("\u3010\u9644\u4EF6\uFF1A" + f2.name + "\u3011\n" + f2.text);
         }
         if (text2) parts.push(text2);
         return parts.join("\n\n");
@@ -135927,7 +134750,7 @@ ${text2}</tr>
           if (chatId.value !== homeId) return;
           if (attachments.value.some((a2) => a2.state === "parsing")) return;
           if (attachments.value.some((a2) => a2.state === "error")) {
-            message_default.warning("有附件未能处理");
+            message_default.warning("\u6709\u9644\u4EF6\u672A\u80FD\u5904\u7406");
             return;
           }
           const ready = attachments.value.filter((a2) => a2.state === "ready" && ((a2.text || "").trim() || a2.kind === "image"));
@@ -135986,7 +134809,7 @@ ${text2}</tr>
           }).map((m2) => {
             const o2 = {
               role: m2.role,
-              content: (m2.packed || m2.content || "").trim() || (m2.ask ? "请补充关键条件后再作答。" : "")
+              content: (m2.packed || m2.content || "").trim() || (m2.ask ? "\u8BF7\u8865\u5145\u5173\u952E\u6761\u4EF6\u540E\u518D\u4F5C\u7B54\u3002" : "")
             };
             if (m2.role === "user" && m2.images && m2.images.length) o2.images = m2.images;
             return o2;
@@ -136013,7 +134836,7 @@ ${text2}</tr>
           const ctype = res.headers.get("content-type") || "";
           if (!res.ok || !ctype.includes("event-stream")) {
             const j2 = await res.json().catch(() => ({}));
-            cur.error = j2.error || "请求失败 " + res.status;
+            cur.error = j2.error || "\u8BF7\u6C42\u5931\u8D25 " + res.status;
             ok = false;
           } else {
             await readStream(res, cur);
@@ -136098,7 +134921,7 @@ ${text2}</tr>
           cur.tools.push({
             kind,
             action: a2.action || "",
-            query: kind === "shell" || kind === "browser" || kind === "api" ? a2.command || a2.query || "" : a2.title || a2.query || (kind === "read" ? "文件" : ""),
+            query: kind === "shell" || kind === "browser" || kind === "api" ? a2.command || a2.query || "" : a2.title || a2.query || (kind === "read" ? "\u6587\u4EF6" : ""),
             state: "running",
             count: 0
           });
@@ -136172,13 +134995,13 @@ ${text2}</tr>
         return v2 === void 0 ? !!defaultOpen : !!v2;
       }
       function docTypeLabel(dt) {
-        return DOC_TYPE_MAP[dt] && DOC_TYPE_MAP[dt].label || "通用文档";
+        return DOC_TYPE_MAP[dt] && DOC_TYPE_MAP[dt].label || "\u901A\u7528\u6587\u6863";
       }
       function docTypeColor(dt) {
         return DOC_TYPE_MAP[dt] && DOC_TYPE_MAP[dt].color || "default";
       }
       function chunkProfileLabel(cp) {
-        return CHUNK_PROFILE_LABELS[cp] || "条文切分";
+        return CHUNK_PROFILE_LABELS[cp] || "\u6761\u6587\u5207\u5206";
       }
       function extBadgeText(ext) {
         const s2 = (ext || "").replace(/^\./, "").toLowerCase();
@@ -136192,12 +135015,12 @@ ${text2}</tr>
       function recordMetaVal(r3, k2) {
         const m2 = r3 && r3.meta || {};
         if (m2[k2] != null && String(m2[k2]).trim()) return String(m2[k2]).trim();
-        if (k2 === "dept") return r3.dept || r3.folder || "—";
-        if (k2 === "sign_date" || k2 === "stat_period") return r3.issued_date || "—";
-        if (k2 === "contract_status") return r3.status || "履行中";
-        if (k2 === "metrics" || k2 === "visual_summary" || k2 === "topic") return r3.summary || "—";
+        if (k2 === "dept") return r3.dept || r3.folder || "\u2014";
+        if (k2 === "sign_date" || k2 === "stat_period") return r3.issued_date || "\u2014";
+        if (k2 === "contract_status") return r3.status || "\u5C65\u884C\u4E2D";
+        if (k2 === "metrics" || k2 === "visual_summary" || k2 === "topic") return r3.summary || "\u2014";
         if (k2 === "dimensions") return (r3.file_ext || "").toUpperCase();
-        return "—";
+        return "\u2014";
       }
       function recordPills(r3) {
         if (!r3) return [];
@@ -136209,35 +135032,49 @@ ${text2}</tr>
           if (s2) pills.push({ k: k2, v: s2 });
         };
         if (dt === "regulation") {
-          add("文号", r3.doc_no || m2.doc_no);
-          add("部门", m2.dept || r3.dept || r3.folder);
-          add("状态", r3.status);
-          if (m2.scope) add("范围", m2.scope);
+          add("\u6587\u53F7", r3.doc_no || m2.doc_no);
+          add("\u90E8\u95E8", m2.dept || r3.dept || r3.folder);
+          add("\u72B6\u6001", r3.status);
+          if (m2.scope) add("\u8303\u56F4", m2.scope);
         } else if (dt === "finance") {
-          add("主体", m2.entity || r3.dept);
-          add("报告期", m2.period || r3.issued_date);
-          add("口径", m2.audit_status);
-          add("单位", m2.currency);
+          add("\u4E3B\u4F53", m2.entity || r3.dept);
+          add("\u62A5\u544A\u671F", m2.period || r3.issued_date);
+          add("\u53E3\u5F84", m2.audit_status);
+          add("\u5355\u4F4D", m2.currency);
         } else if (dt === "contract") {
-          add("甲方", m2.party_a);
-          add("乙方", m2.party_b);
-          add("金额", m2.amount);
-          add("状态", m2.contract_status || r3.status);
+          add("\u7532\u65B9", m2.party_a);
+          add("\u4E59\u65B9", m2.party_b);
+          add("\u91D1\u989D", m2.amount);
+          add("\u72B6\u6001", m2.contract_status || r3.status);
         } else if (dt === "report") {
-          add("类型", m2.stage);
-          add("作者", m2.author || r3.dept);
+          add("\u7C7B\u578B", m2.stage);
+          add("\u4F5C\u8005", m2.author || r3.dept);
         } else if (dt === "spreadsheet") {
-          add("工作表", m2.sheets);
-          add("规模", m2.row_count);
-          add("表头", m2.columns);
+          add("\u5DE5\u4F5C\u8868", m2.sheets);
+          add("\u89C4\u6A21", m2.row_count);
+          add("\u8868\u5934", m2.columns);
         } else if (dt === "image") {
-          add("类别", m2.image_type);
-          add("规格", m2.dimensions);
+          add("\u7C7B\u522B", m2.image_type);
+          add("\u89C4\u683C", m2.dimensions);
         } else {
-          add("主题", m2.topic || r3.dept);
-          if (m2.author) add("作者", m2.author);
+          add("\u4E3B\u9898", m2.topic || r3.dept);
+          if (m2.author) add("\u4F5C\u8005", m2.author);
         }
         return pills.slice(0, 4);
+      }
+      function docMetaPills(doc3) {
+        const shown = /* @__PURE__ */ new Set();
+        const add = (v2) => {
+          const s2 = String(v2 == null ? "" : v2).replace(/\s+/g, " ").trim();
+          if (s2) shown.add(s2);
+        };
+        add(doc3.project);
+        add(doc3.folder);
+        add(doc3.dept);
+        add(doc3.doc_no);
+        add(doc3.issued_date);
+        if (doc3.status && doc3.status !== "\u73B0\u884C") add(doc3.status);
+        return recordPills(doc3).filter((p2) => !shown.has(String(p2.v || "").replace(/\s+/g, " ").trim()));
       }
       function recordSummary(r3) {
         const raw = String(r3 && r3.summary || "").replace(/\s+/g, " ").trim();
@@ -136255,7 +135092,7 @@ ${text2}</tr>
         add(r3.issued_date);
         for (const p2 of recordPills(r3)) add(p2.v);
         const parts = raw.split(/\s*·\s*/).map((s2) => s2.trim()).filter(Boolean);
-        if (parts.length > 1) return parts.filter((p2) => !dup.has(p2)).join(" · ");
+        if (parts.length > 1) return parts.filter((p2) => !dup.has(p2)).join(" \xB7 ");
         return dup.has(raw) ? "" : raw;
       }
       function renderChunkTable(text2) {
@@ -136305,13 +135142,13 @@ ${text2}</tr>
         return scopeDocs.value.filter((d2) => (d2.doc_type || "general") === dt);
       });
       const treeDocsIndex = computed2(() => {
-        const map2 = /* @__PURE__ */ new Map();
+        const map = /* @__PURE__ */ new Map();
         for (const d2 of docs.value || []) {
           const k2 = (d2.project || "") + "\0" + (d2.folder || "");
-          if (!map2.has(k2)) map2.set(k2, []);
-          map2.get(k2).push(d2);
+          if (!map.has(k2)) map.set(k2, []);
+          map.get(k2).push(d2);
         }
-        return map2;
+        return map;
       });
       function _treeSortDocs(a2, b2) {
         return String(a2.title || "").localeCompare(String(b2.title || ""), "zh");
@@ -136331,7 +135168,7 @@ ${text2}</tr>
             depth,
             project: d2.project || "",
             folder: d2.folder || "",
-            name: d2.title || d2.rel_path || "未命名文件",
+            name: d2.title || d2.rel_path || "\u672A\u547D\u540D\u6587\u4EF6",
             tooltip: [d2.project, d2.folder, d2.title || d2.rel_path].filter(Boolean).join(" / "),
             doc: d2,
             open: false,
@@ -136511,10 +135348,10 @@ ${text2}</tr>
             folder: dstFolder || ""
           });
           if (!j2.ok) {
-            message_default.error(j2.error || "移动文件失败");
+            message_default.error(j2.error || "\u79FB\u52A8\u6587\u4EF6\u5931\u8D25");
             return;
           }
-          message_default.success("已移动至 " + (dstProj + (dstFolder ? " / " + dstFolder : "")));
+          message_default.success("\u5DF2\u79FB\u52A8\u81F3 " + (dstProj + (dstFolder ? " / " + dstFolder : "")));
           if (activeTreeDocId.value === item.id) {
             catProject.value = dstProj;
             catFolder.value = dstFolder || "";
@@ -136529,10 +135366,10 @@ ${text2}</tr>
             dst_path: dstPath
           });
           if (!j2.ok) {
-            message_default.error(j2.error || "移动文件夹失败");
+            message_default.error(j2.error || "\u79FB\u52A8\u6587\u4EF6\u5939\u5931\u8D25");
             return;
           }
-          message_default.success(`文件夹已移动，共调整 ${j2.moved_docs || 0} 份文件`);
+          message_default.success(`\u6587\u4EF6\u5939\u5DF2\u79FB\u52A8\uFF0C\u5171\u8C03\u6574 ${j2.moved_docs || 0} \u4EFD\u6587\u4EF6`);
           treeExpanded[treeKeyProject(dstProj)] = true;
           if (dstFolder) treeExpanded[treeKeyFolder(dstProj, dstFolder)] = true;
         }
@@ -136551,77 +135388,77 @@ ${text2}</tr>
         const dt = catDocType.value;
         if (dt === "regulation") {
           return [
-            { title: "文件名称", key: "title", ellipsis: true, width: 280, fixed: "left" },
-            { title: "主管部门", key: "meta.dept", width: 130, ellipsis: true },
-            { title: "发文字号", dataIndex: "doc_no", key: "doc_no", width: 185, ellipsis: true },
-            { title: "发布日期", dataIndex: "issued_date", key: "issued_date", width: 115 },
-            { title: "效力状态", key: "status", width: 95 },
-            { title: "条款/分段", key: "n_chunks", width: 95 },
-            { title: "操作", key: "op", width: 76, fixed: "right" }
+            { title: "\u6587\u4EF6\u540D\u79F0", key: "title", ellipsis: true, width: 280, fixed: "left" },
+            { title: "\u4E3B\u7BA1\u90E8\u95E8", key: "meta.dept", width: 130, ellipsis: true },
+            { title: "\u53D1\u6587\u5B57\u53F7", dataIndex: "doc_no", key: "doc_no", width: 185, ellipsis: true },
+            { title: "\u53D1\u5E03\u65E5\u671F", dataIndex: "issued_date", key: "issued_date", width: 115 },
+            { title: "\u6548\u529B\u72B6\u6001", key: "status", width: 95 },
+            { title: "\u6761\u6B3E/\u5206\u6BB5", key: "n_chunks", width: 95 },
+            { title: "\u64CD\u4F5C", key: "op", width: 76, fixed: "right" }
           ];
         }
         if (dt === "finance") {
           return [
-            { title: "报表/报告名称", key: "title", ellipsis: true, width: 250, fixed: "left" },
-            { title: "公司主体", key: "meta.entity", width: 150, ellipsis: true },
-            { title: "报告期", key: "meta.period", width: 120, ellipsis: true },
-            { title: "审计/口径", key: "meta.audit_status", width: 110 },
-            { title: "币种单位", key: "meta.currency", width: 105 },
-            { title: "核心指标与表摘要", key: "meta.metrics", width: 220, ellipsis: true },
-            { title: "分段/表数", key: "n_chunks", width: 95 },
-            { title: "操作", key: "op", width: 76, fixed: "right" }
+            { title: "\u62A5\u8868/\u62A5\u544A\u540D\u79F0", key: "title", ellipsis: true, width: 250, fixed: "left" },
+            { title: "\u516C\u53F8\u4E3B\u4F53", key: "meta.entity", width: 150, ellipsis: true },
+            { title: "\u62A5\u544A\u671F", key: "meta.period", width: 120, ellipsis: true },
+            { title: "\u5BA1\u8BA1/\u53E3\u5F84", key: "meta.audit_status", width: 110 },
+            { title: "\u5E01\u79CD\u5355\u4F4D", key: "meta.currency", width: 105 },
+            { title: "\u6838\u5FC3\u6307\u6807\u4E0E\u8868\u6458\u8981", key: "meta.metrics", width: 220, ellipsis: true },
+            { title: "\u5206\u6BB5/\u8868\u6570", key: "n_chunks", width: 95 },
+            { title: "\u64CD\u4F5C", key: "op", width: 76, fixed: "right" }
           ];
         }
         if (dt === "contract") {
           return [
-            { title: "合同/协议名称", key: "title", ellipsis: true, width: 250, fixed: "left" },
-            { title: "甲方", key: "meta.party_a", width: 160, ellipsis: true },
-            { title: "乙方 / 相对方", key: "meta.party_b", width: 160, ellipsis: true },
-            { title: "合同金额", key: "meta.amount", width: 130, ellipsis: true },
-            { title: "签订日期", key: "meta.sign_date", width: 115 },
-            { title: "履行状态", key: "meta.contract_status", width: 100 },
-            { title: "操作", key: "op", width: 76, fixed: "right" }
+            { title: "\u5408\u540C/\u534F\u8BAE\u540D\u79F0", key: "title", ellipsis: true, width: 250, fixed: "left" },
+            { title: "\u7532\u65B9", key: "meta.party_a", width: 160, ellipsis: true },
+            { title: "\u4E59\u65B9 / \u76F8\u5BF9\u65B9", key: "meta.party_b", width: 160, ellipsis: true },
+            { title: "\u5408\u540C\u91D1\u989D", key: "meta.amount", width: 130, ellipsis: true },
+            { title: "\u7B7E\u8BA2\u65E5\u671F", key: "meta.sign_date", width: 115 },
+            { title: "\u5C65\u884C\u72B6\u6001", key: "meta.contract_status", width: 100 },
+            { title: "\u64CD\u4F5C", key: "op", width: 76, fixed: "right" }
           ];
         }
         if (dt === "report") {
           return [
-            { title: "报告/方案名称", key: "title", ellipsis: true, width: 260, fixed: "left" },
-            { title: "类型/阶段", key: "meta.stage", width: 120, ellipsis: true },
-            { title: "编制单位 / 作者", key: "meta.author", width: 150, ellipsis: true },
-            { title: "核心主题摘要", dataIndex: "summary", key: "summary", width: 260, ellipsis: true },
-            { title: "日期", dataIndex: "issued_date", key: "issued_date", width: 115 },
-            { title: "章节块数", key: "n_chunks", width: 90 },
-            { title: "操作", key: "op", width: 76, fixed: "right" }
+            { title: "\u62A5\u544A/\u65B9\u6848\u540D\u79F0", key: "title", ellipsis: true, width: 260, fixed: "left" },
+            { title: "\u7C7B\u578B/\u9636\u6BB5", key: "meta.stage", width: 120, ellipsis: true },
+            { title: "\u7F16\u5236\u5355\u4F4D / \u4F5C\u8005", key: "meta.author", width: 150, ellipsis: true },
+            { title: "\u6838\u5FC3\u4E3B\u9898\u6458\u8981", dataIndex: "summary", key: "summary", width: 260, ellipsis: true },
+            { title: "\u65E5\u671F", dataIndex: "issued_date", key: "issued_date", width: 115 },
+            { title: "\u7AE0\u8282\u5757\u6570", key: "n_chunks", width: 90 },
+            { title: "\u64CD\u4F5C", key: "op", width: 76, fixed: "right" }
           ];
         }
         if (dt === "spreadsheet") {
           return [
-            { title: "台账/表格名称", key: "title", ellipsis: true, width: 240, fixed: "left" },
-            { title: "工作表 (Sheets)", key: "meta.sheets", width: 160, ellipsis: true },
-            { title: "核心表头字段", key: "meta.columns", width: 260, ellipsis: true },
-            { title: "数据规模", key: "meta.row_count", width: 100 },
-            { title: "统计周期", key: "meta.stat_period", width: 115 },
-            { title: "表切片数", key: "n_chunks", width: 90 },
-            { title: "操作", key: "op", width: 76, fixed: "right" }
+            { title: "\u53F0\u8D26/\u8868\u683C\u540D\u79F0", key: "title", ellipsis: true, width: 240, fixed: "left" },
+            { title: "\u5DE5\u4F5C\u8868 (Sheets)", key: "meta.sheets", width: 160, ellipsis: true },
+            { title: "\u6838\u5FC3\u8868\u5934\u5B57\u6BB5", key: "meta.columns", width: 260, ellipsis: true },
+            { title: "\u6570\u636E\u89C4\u6A21", key: "meta.row_count", width: 100 },
+            { title: "\u7EDF\u8BA1\u5468\u671F", key: "meta.stat_period", width: 115 },
+            { title: "\u8868\u5207\u7247\u6570", key: "n_chunks", width: 90 },
+            { title: "\u64CD\u4F5C", key: "op", width: 76, fixed: "right" }
           ];
         }
         if (dt === "image") {
           return [
-            { title: "图像/图纸名称", key: "title", ellipsis: true, width: 240, fixed: "left" },
-            { title: "图像类别", key: "meta.image_type", width: 120 },
-            { title: "AI 视觉摘要与图中文字提要", key: "meta.visual_summary", width: 340, ellipsis: true },
-            { title: "尺寸/格式", key: "meta.dimensions", width: 110 },
-            { title: "日期", dataIndex: "issued_date", key: "issued_date", width: 115 },
-            { title: "操作", key: "op", width: 76, fixed: "right" }
+            { title: "\u56FE\u50CF/\u56FE\u7EB8\u540D\u79F0", key: "title", ellipsis: true, width: 240, fixed: "left" },
+            { title: "\u56FE\u50CF\u7C7B\u522B", key: "meta.image_type", width: 120 },
+            { title: "AI \u89C6\u89C9\u6458\u8981\u4E0E\u56FE\u4E2D\u6587\u5B57\u63D0\u8981", key: "meta.visual_summary", width: 340, ellipsis: true },
+            { title: "\u5C3A\u5BF8/\u683C\u5F0F", key: "meta.dimensions", width: 110 },
+            { title: "\u65E5\u671F", dataIndex: "issued_date", key: "issued_date", width: 115 },
+            { title: "\u64CD\u4F5C", key: "op", width: 76, fixed: "right" }
           ];
         }
         return [
-          { title: "文件名称与路径", key: "title", ellipsis: true, width: 260, fixed: "left" },
-          { title: "文件性质", key: "doc_type", width: 105 },
-          { title: "核心属性 / 智能提取（多态列）", key: "polymorphic", width: 380 },
-          { title: "切分与内容块", key: "chunk_info", width: 130 },
-          { title: "日期", dataIndex: "issued_date", key: "issued_date", width: 110 },
-          { title: "操作", key: "op", width: 76, fixed: "right" }
+          { title: "\u6587\u4EF6\u540D\u79F0\u4E0E\u8DEF\u5F84", key: "title", ellipsis: true, width: 260, fixed: "left" },
+          { title: "\u6587\u4EF6\u6027\u8D28", key: "doc_type", width: 105 },
+          { title: "\u6838\u5FC3\u5C5E\u6027 / \u667A\u80FD\u63D0\u53D6\uFF08\u591A\u6001\u5217\uFF09", key: "polymorphic", width: 380 },
+          { title: "\u5207\u5206\u4E0E\u5185\u5BB9\u5757", key: "chunk_info", width: 130 },
+          { title: "\u65E5\u671F", dataIndex: "issued_date", key: "issued_date", width: 110 },
+          { title: "\u64CD\u4F5C", key: "op", width: 76, fixed: "right" }
         ];
       });
       const columns = dynamicColumns;
@@ -136683,7 +135520,7 @@ ${text2}</tr>
       const pdfPanning = ref(false);
       let pdfPan = { x: 0, y: 0, sl: 0, st: 0 };
       const ZOOM_STEPS = [0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
-      const zoomLabel = computed2(() => Math.abs(pdfScale.value - 1) < 1e-3 ? "适应宽度" : `${Math.round(pdfScale.value * 100)}%`);
+      const zoomLabel = computed2(() => Math.abs(pdfScale.value - 1) < 1e-3 ? "\u9002\u5E94\u5BBD\u5EA6" : `${Math.round(pdfScale.value * 100)}%`);
       function setPdfScale(next2, origin) {
         const el = pageScroll.value;
         const old = pdfScale.value;
@@ -136906,7 +135743,7 @@ ${text2}</tr>
       }
       async function openFile() {
         const r3 = await api3.post("/api/open", { doc_id: currentDocId.value });
-        if (!r3.ok) message_default.error(r3.error || "打开失败");
+        if (!r3.ok) message_default.error(r3.error || "\u6253\u5F00\u5931\u8D25");
       }
       async function loadStats() {
         Object.assign(stats, await api3.get("/api/stats"));
@@ -136959,45 +135796,45 @@ ${text2}</tr>
         paddle_token_set: false
       });
       const protocols = ref([
-        { id: "openai", label: "OpenAI 兼容 (v1/chat/completions)" },
+        { id: "openai", label: "OpenAI \u517C\u5BB9 (v1/chat/completions)" },
         { id: "anthropic", label: "Anthropic Messages (v1/messages)" },
         { id: "gemini", label: "Google Gemini" }
       ]);
       const embedProtocols = ref([
-        { id: "openai", label: "OpenAI 兼容 (v1/embeddings)" },
-        { id: "dashscope", label: "通义千问 DashScope 原生" }
+        { id: "openai", label: "OpenAI \u517C\u5BB9 (v1/embeddings)" },
+        { id: "dashscope", label: "\u901A\u4E49\u5343\u95EE DashScope \u539F\u751F" }
       ]);
       const apiProtocols = ref([
         { id: "rest", label: "REST / HTTP JSON" },
         { id: "graphql", label: "GraphQL" },
         { id: "jsonrpc", label: "JSON-RPC 2.0" },
-        { id: "form", label: "Form 表单 (urlencoded / multipart)" },
+        { id: "form", label: "Form \u8868\u5355 (urlencoded / multipart)" },
         { id: "soap", label: "SOAP / XML" },
         { id: "sse", label: "SSE / EventStream / NDJSON" }
       ]);
       const apiAuthTypes = ref([
-        { id: "none", label: "无（免费 / 公开 API，无需密钥）" },
+        { id: "none", label: "\u65E0\uFF08\u514D\u8D39 / \u516C\u5F00 API\uFF0C\u65E0\u9700\u5BC6\u94A5\uFF09" },
         { id: "bearer", label: "Bearer / Token Header (Authorization)" },
-        { id: "header", label: "自定义 Header (X-Api-Key 等)" },
-        { id: "query", label: "Query 参数 (api_key / key 等)" },
-        { id: "basic", label: "HTTP Basic (账号 + 密码)" },
-        { id: "hmac_sha256", label: "HMAC-SHA256 签名 (交易所 / 企业网关)" },
-        { id: "oauth2_client_credentials", label: "OAuth2 / 企业令牌 (自动换取 access_token)" },
-        { id: "cookie", label: "Cookie 凭证" }
+        { id: "header", label: "\u81EA\u5B9A\u4E49 Header (X-Api-Key \u7B49)" },
+        { id: "query", label: "Query \u53C2\u6570 (api_key / key \u7B49)" },
+        { id: "basic", label: "HTTP Basic (\u8D26\u53F7 + \u5BC6\u7801)" },
+        { id: "hmac_sha256", label: "HMAC-SHA256 \u7B7E\u540D (\u4EA4\u6613\u6240 / \u4F01\u4E1A\u7F51\u5173)" },
+        { id: "oauth2_client_credentials", label: "OAuth2 / \u4F01\u4E1A\u4EE4\u724C (\u81EA\u52A8\u6362\u53D6 access_token)" },
+        { id: "cookie", label: "Cookie \u51ED\u8BC1" }
       ]);
       const apiPresets = ref([
-        { id: "public", name: "公开 REST API", protocol: "rest", base_url: "https://", auth_type: "none", allow_write: false, notes: "免费、无需 Key 的公开接口。保存后会出现在「已接入 API」目录中，提醒 AI 优先走这条渠道。" },
-        { id: "rest_bearer", name: "Bearer REST API", protocol: "rest", base_url: "https://", auth_type: "bearer", auth_prefix: "Bearer", allow_write: false, notes: "通用 Bearer 鉴权 REST / 数据库接口。" },
-        { id: "fred", name: "FRED", protocol: "rest", base_url: "https://api.stlouisfed.org", auth_type: "query", query_name: "api_key", allow_write: false, notes: "美联储圣路易斯 FRED。例：GET /fred/series/observations?series_id=FEDFUNDS&file_type=json" },
-        { id: "binance", name: "Binance", protocol: "rest", base_url: "https://api.binance.com", auth_type: "hmac_sha256", header_name: "X-MBX-APIKEY", signature_param: "signature", allow_write: false, notes: "币安接口。行情可匿名 GET /api/v3/ticker/24hr；账户自动 HMAC-SHA256 签名。" },
-        { id: "graphql", name: "GraphQL API", protocol: "graphql", base_url: "https://", auth_type: "bearer", allow_write: false, notes: "通用 GraphQL 端点。调用时传 graphql_query 与 graphql_variables。" },
-        { id: "jsonrpc", name: "JSON-RPC 2.0", protocol: "jsonrpc", base_url: "https://", auth_type: "none", allow_write: false, notes: "通用 JSON-RPC 2.0 接口。调用时传 rpc_method 与 rpc_params。" },
-        { id: "oauth2", name: "OAuth2 / 企业应用", protocol: "rest", base_url: "https://", auth_type: "oauth2_client_credentials", token_url: "https://", allow_write: false, notes: "自动向 token_url 换取并缓存 access_token，兼容标准 OAuth2、飞书、钉钉、企业微信等。" }
+        { id: "public", name: "\u516C\u5F00 REST API", protocol: "rest", base_url: "https://", auth_type: "none", allow_write: false, notes: "\u514D\u8D39\u3001\u65E0\u9700 Key \u7684\u516C\u5F00\u63A5\u53E3\u3002\u4FDD\u5B58\u540E\u4F1A\u51FA\u73B0\u5728\u300C\u5DF2\u63A5\u5165 API\u300D\u76EE\u5F55\u4E2D\uFF0C\u63D0\u9192 AI \u4F18\u5148\u8D70\u8FD9\u6761\u6E20\u9053\u3002" },
+        { id: "rest_bearer", name: "Bearer REST API", protocol: "rest", base_url: "https://", auth_type: "bearer", auth_prefix: "Bearer", allow_write: false, notes: "\u901A\u7528 Bearer \u9274\u6743 REST / \u6570\u636E\u5E93\u63A5\u53E3\u3002" },
+        { id: "fred", name: "FRED", protocol: "rest", base_url: "https://api.stlouisfed.org", auth_type: "query", query_name: "api_key", allow_write: false, notes: "\u7F8E\u8054\u50A8\u5723\u8DEF\u6613\u65AF FRED\u3002\u4F8B\uFF1AGET /fred/series/observations?series_id=FEDFUNDS&file_type=json" },
+        { id: "binance", name: "Binance", protocol: "rest", base_url: "https://api.binance.com", auth_type: "hmac_sha256", header_name: "X-MBX-APIKEY", signature_param: "signature", allow_write: false, notes: "\u5E01\u5B89\u63A5\u53E3\u3002\u884C\u60C5\u53EF\u533F\u540D GET /api/v3/ticker/24hr\uFF1B\u8D26\u6237\u81EA\u52A8 HMAC-SHA256 \u7B7E\u540D\u3002" },
+        { id: "graphql", name: "GraphQL API", protocol: "graphql", base_url: "https://", auth_type: "bearer", allow_write: false, notes: "\u901A\u7528 GraphQL \u7AEF\u70B9\u3002\u8C03\u7528\u65F6\u4F20 graphql_query \u4E0E graphql_variables\u3002" },
+        { id: "jsonrpc", name: "JSON-RPC 2.0", protocol: "jsonrpc", base_url: "https://", auth_type: "none", allow_write: false, notes: "\u901A\u7528 JSON-RPC 2.0 \u63A5\u53E3\u3002\u8C03\u7528\u65F6\u4F20 rpc_method \u4E0E rpc_params\u3002" },
+        { id: "oauth2", name: "OAuth2 / \u4F01\u4E1A\u5E94\u7528", protocol: "rest", base_url: "https://", auth_type: "oauth2_client_credentials", token_url: "https://", allow_write: false, notes: "\u81EA\u52A8\u5411 token_url \u6362\u53D6\u5E76\u7F13\u5B58 access_token\uFF0C\u517C\u5BB9\u6807\u51C6 OAuth2\u3001\u98DE\u4E66\u3001\u9489\u9489\u3001\u4F01\u4E1A\u5FAE\u4FE1\u7B49\u3002" }
       ]);
       const EMBED_PRESET_SPEC = {
         qwen: {
           id: "qwen",
-          name: "千问 AI",
+          name: "\u5343\u95EE AI",
           preset: "qwen",
           protocol: "openai",
           base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -137009,13 +135846,13 @@ ${text2}</tr>
         },
         siliconflow: {
           id: "siliconflow",
-          name: "硅基流动",
+          name: "\u7845\u57FA\u6D41\u52A8",
           preset: "siliconflow",
           protocol: "openai",
           base_url: "https://api.siliconflow.cn/v1",
           models: [
             { id: "BAAI/bge-m3", label: "BGE-M3" },
-            { id: "BAAI/bge-large-zh-v1.5", label: "BGE Large 中文" },
+            { id: "BAAI/bge-large-zh-v1.5", label: "BGE Large \u4E2D\u6587" },
             { id: "Qwen/Qwen3-Embedding-8B", label: "Qwen3 Embedding 8B" },
             { id: "Qwen/Qwen3-Embedding-4B", label: "Qwen3 Embedding 4B" }
           ]
@@ -137037,11 +135874,11 @@ ${text2}</tr>
       const settingsEmbedPid = ref("");
       const settingsApiId = ref("");
       const settingsPrimary = [
-        { key: "llm", label: "智能问答" },
-        { key: "api", label: "外部 API" },
+        { key: "llm", label: "\u667A\u80FD\u95EE\u7B54" },
+        { key: "api", label: "\u5916\u90E8 API" },
         { key: "embed", label: "Embedding" },
-        { key: "ocr", label: "文字识别" },
-        { key: "index", label: "高级" }
+        { key: "ocr", label: "\u6587\u5B57\u8BC6\u522B" },
+        { key: "index", label: "\u9AD8\u7EA7" }
       ];
       const settingsSection = ref("llm");
       watch2(settingsSection, pulseSettings);
@@ -137075,10 +135912,10 @@ ${text2}</tr>
       }));
       watch2([settingsSection, tab], scheduleSettingsPill);
       function createSlider2() {
-        const map2 = {};
+        const map = {};
         const box2 = reactive({ x: 0, y: 0, w: 0, h: 0, on: false });
         function place(key2) {
-          const el = map2[key2];
+          const el = map[key2];
           if (!el || !el.parentElement) return;
           const br2 = el.getBoundingClientRect();
           if (br2.width < 1 || br2.height < 1) return;
@@ -137093,8 +135930,8 @@ ${text2}</tr>
           nextTick(() => requestAnimationFrame(() => place(key2)));
         }
         function bind(key2, el) {
-          if (el) map2[key2] = el;
-          else delete map2[key2];
+          if (el) map[key2] = el;
+          else delete map[key2];
         }
         const style = computed2(() => ({
           width: box2.w + "px",
@@ -137200,10 +136037,10 @@ ${text2}</tr>
         if (embedStatus.error) return embedStatus.error;
         if (embedStatus.job) {
           const p2 = embedStatus.progress || {};
-          return `正在嵌入 ${p2.done || 0} / ${p2.total || tot}`;
+          return `\u6B63\u5728\u5D4C\u5165 ${p2.done || 0} / ${p2.total || tot}`;
         }
-        if (cfg.embed_running) return `已启动 · 已嵌入 ${done} / ${tot}`;
-        return `已停止 · 已嵌入 ${done} / ${tot}`;
+        if (cfg.embed_running) return `\u5DF2\u542F\u52A8 \xB7 \u5DF2\u5D4C\u5165 ${done} / ${tot}`;
+        return `\u5DF2\u505C\u6B62 \xB7 \u5DF2\u5D4C\u5165 ${done} / ${tot}`;
       });
       let embedTimer = 0;
       const cfgSaveHint = ref("");
@@ -137211,10 +136048,10 @@ ${text2}</tr>
       let saveTimer = 0;
       let hintTimer = 0;
       function flashSaved() {
-        cfgSaveHint.value = "已保存";
+        cfgSaveHint.value = "\u5DF2\u4FDD\u5B58";
         clearTimeout(hintTimer);
         hintTimer = setTimeout(() => {
-          if (cfgSaveHint.value === "已保存") cfgSaveHint.value = "";
+          if (cfgSaveHint.value === "\u5DF2\u4FDD\u5B58") cfgSaveHint.value = "";
         }, 1600);
       }
       function channelPayload(list2, extra, keyId, clearId) {
@@ -137317,7 +136154,7 @@ ${text2}</tr>
       }
       async function persistConfig(extra) {
         if (!cfgReady) return;
-        cfgSaveHint.value = "保存中";
+        cfgSaveHint.value = "\u4FDD\u5B58\u4E2D";
         const body = {
           model: cfg.model,
           provider_id: cfg.provider_id,
@@ -137440,20 +136277,20 @@ ${text2}</tr>
       function apiConnectorStateText(c2) {
         if (!c2) return "";
         const proto = String(c2.protocol || "rest").toUpperCase();
-        const auth = c2.auth_type === "none" ? "免费" : c2.api_key_set || c2.api_secret_set ? "已配密钥" : "待配密钥";
-        return `${proto} · ${auth}${c2.allow_write ? " · 可写" : ""}`;
+        const auth = c2.auth_type === "none" ? "\u514D\u8D39" : c2.api_key_set || c2.api_secret_set ? "\u5DF2\u914D\u5BC6\u94A5" : "\u5F85\u914D\u5BC6\u94A5";
+        return `${proto} \xB7 ${auth}${c2.allow_write ? " \xB7 \u53EF\u5199" : ""}`;
       }
       function apiKeyLabel(authType) {
-        if (authType === "basic") return "HTTP Basic 用户名";
+        if (authType === "basic") return "HTTP Basic \u7528\u6237\u540D";
         if (authType === "oauth2_client_credentials") return "Client ID / App ID";
-        if (authType === "cookie") return "Cookie 字符串";
+        if (authType === "cookie") return "Cookie \u5B57\u7B26\u4E32";
         return "API Key / Token";
       }
       function apiSecretLabel(authType) {
-        if (authType === "basic") return "HTTP Basic 密码";
+        if (authType === "basic") return "HTTP Basic \u5BC6\u7801";
         if (authType === "oauth2_client_credentials") return "Client Secret / App Secret";
         if (authType === "hmac_sha256") return "HMAC Secret";
-        return "辅助密钥 (Secret)";
+        return "\u8F85\u52A9\u5BC6\u94A5 (Secret)";
       }
       function needsApiSecret(authType) {
         return ["hmac_sha256", "basic", "oauth2_client_credentials"].includes(authType);
@@ -137544,10 +136381,10 @@ ${text2}</tr>
       function removeApiConnector(c2) {
         if (!c2) return;
         modal_default.confirm({
-          title: `删除外部 API 连接「${c2.name}」？`,
-          okText: "删除",
+          title: `\u5220\u9664\u5916\u90E8 API \u8FDE\u63A5\u300C${c2.name}\u300D\uFF1F`,
+          okText: "\u5220\u9664",
           okType: "danger",
-          cancelText: "取消",
+          cancelText: "\u53D6\u6D88",
           onOk() {
             cfg.api_connectors = (cfg.api_connectors || []).filter((x2) => x2.id !== c2.id);
             if (settingsApiId.value === c2.id) {
@@ -137577,7 +136414,7 @@ ${text2}</tr>
       async function testApiConnector(c2) {
         if (!c2) return;
         apiTesting.value = true;
-        apiTestHint.value = "正在测试…";
+        apiTestHint.value = "\u6B63\u5728\u6D4B\u8BD5\u2026";
         try {
           const res = await api3.post("/api/connectors/test", {
             id: c2.id,
@@ -137596,11 +136433,11 @@ ${text2}</tr>
             api_secret: c2.api_secret || ""
           });
           if (res.status) {
-            apiTestHint.value = `HTTP ${res.status} · ${res.elapsedMs || 0}ms`;
-            if (res.ok) message_default.success(`连接正常 (${apiTestHint.value})`);
-            else message_default.warning(`接口已响应 (${apiTestHint.value})`);
+            apiTestHint.value = `HTTP ${res.status} \xB7 ${res.elapsedMs || 0}ms`;
+            if (res.ok) message_default.success(`\u8FDE\u63A5\u6B63\u5E38 (${apiTestHint.value})`);
+            else message_default.warning(`\u63A5\u53E3\u5DF2\u54CD\u5E94 (${apiTestHint.value})`);
           } else {
-            apiTestHint.value = res.error || "连接失败";
+            apiTestHint.value = res.error || "\u8FDE\u63A5\u5931\u8D25";
             message_default.error(apiTestHint.value);
           }
         } catch (e3) {
@@ -137612,14 +136449,14 @@ ${text2}</tr>
       }
       async function discoverIntoConnector(c2) {
         if (!c2 || !(c2.base_url || "").trim()) {
-          message_default.warning("请先填入 Base URL 或 OpenAPI 文档地址");
+          message_default.warning("\u8BF7\u5148\u586B\u5165 Base URL \u6216 OpenAPI \u6587\u6863\u5730\u5740");
           return;
         }
         apiDiscovering.value = true;
         try {
           const res = await api3.post("/api/connectors/discover", { url: c2.base_url });
           if (!res.ok) {
-            message_default.error(res.error || "解析 OpenAPI 失败");
+            message_default.error(res.error || "\u89E3\u6790 OpenAPI \u5931\u8D25");
             return;
           }
           if (res.base_url) c2.base_url = res.base_url;
@@ -137630,7 +136467,7 @@ ${text2}</tr>
           if (res.token_url) c2.token_url = res.token_url;
           if (res.notes) c2.notes = c2.notes ? c2.notes + "\n" + res.notes : res.notes;
           if (Array.isArray(res.endpoints) && res.endpoints.length) c2.endpoints = res.endpoints;
-          message_default.success(`已解析 ${res.endpoints ? res.endpoints.length : 0} 个端点并填入使用说明`);
+          message_default.success(`\u5DF2\u89E3\u6790 ${res.endpoints ? res.endpoints.length : 0} \u4E2A\u7AEF\u70B9\u5E76\u586B\u5165\u4F7F\u7528\u8BF4\u660E`);
           scheduleSave();
         } catch (e3) {
           message_default.error(String(e3));
@@ -137641,14 +136478,14 @@ ${text2}</tr>
       async function discoverIntoModal() {
         const url2 = (addApiConnector.base_url || "").trim();
         if (!url2) {
-          message_default.warning("请先填入 OpenAPI JSON 地址或 API 根地址");
+          message_default.warning("\u8BF7\u5148\u586B\u5165 OpenAPI JSON \u5730\u5740\u6216 API \u6839\u5730\u5740");
           return;
         }
         apiDiscovering.value = true;
         try {
           const res = await api3.post("/api/connectors/discover", { url: url2 });
           if (!res.ok) {
-            message_default.error(res.error || "解析 OpenAPI 失败");
+            message_default.error(res.error || "\u89E3\u6790 OpenAPI \u5931\u8D25");
             return;
           }
           if (!addApiConnector.name && res.name) addApiConnector.name = res.name;
@@ -137659,7 +136496,7 @@ ${text2}</tr>
           if (res.token_url) addApiConnector.token_url = res.token_url;
           if (res.notes) addApiConnector.notes = res.notes;
           if (Array.isArray(res.endpoints)) addApiConnector.endpoints = res.endpoints;
-          message_default.success(`已解析 ${res.endpoints ? res.endpoints.length : 0} 个端点`);
+          message_default.success(`\u5DF2\u89E3\u6790 ${res.endpoints ? res.endpoints.length : 0} \u4E2A\u7AEF\u70B9`);
         } catch (e3) {
           message_default.error(String(e3));
         } finally {
@@ -137733,10 +136570,10 @@ ${text2}</tr>
       function removeProvider(p2) {
         if (!p2) return;
         modal_default.confirm({
-          title: `删除渠道「${p2.name}」？`,
-          okText: "删除",
+          title: `\u5220\u9664\u6E20\u9053\u300C${p2.name}\u300D\uFF1F`,
+          okText: "\u5220\u9664",
           okType: "danger",
-          cancelText: "取消",
+          cancelText: "\u53D6\u6D88",
           onOk() {
             cfg.providers = cfg.providers.filter((x2) => x2.id !== p2.id);
             if (settingsPid.value === p2.id) {
@@ -137760,7 +136597,7 @@ ${text2}</tr>
         const id = (addModel.id || "").trim();
         if (!p2 || !id) return Promise.reject();
         if ((p2.models || []).some((m2) => m2.id === id)) {
-          message_default.warning("该模型已在列表中");
+          message_default.warning("\u8BE5\u6A21\u578B\u5DF2\u5728\u5217\u8868\u4E2D");
           return Promise.reject();
         }
         if (!p2.models) p2.models = [];
@@ -137782,11 +136619,11 @@ ${text2}</tr>
         try {
           const j2 = await api3.post("/api/models/sync", { provider_id: p2.id });
           if (!j2.ok) {
-            message_default.error(j2.error || "同步失败");
+            message_default.error(j2.error || "\u540C\u6B65\u5931\u8D25");
             return;
           }
           p2.models = j2.models || p2.models;
-          message_default.success(j2.added ? `已加入 ${j2.added} 个模型` : "已是最新");
+          message_default.success(j2.added ? `\u5DF2\u52A0\u5165 ${j2.added} \u4E2A\u6A21\u578B` : "\u5DF2\u662F\u6700\u65B0");
           loadModels(true);
         } catch (e3) {
           message_default.error(String(e3));
@@ -137872,10 +136709,10 @@ ${text2}</tr>
       function removeEmbedProvider(p2) {
         if (!p2) return;
         modal_default.confirm({
-          title: `删除渠道「${p2.name}」？`,
-          okText: "删除",
+          title: `\u5220\u9664\u6E20\u9053\u300C${p2.name}\u300D\uFF1F`,
+          okText: "\u5220\u9664",
           okType: "danger",
-          cancelText: "取消",
+          cancelText: "\u53D6\u6D88",
           onOk() {
             cfg.embed_providers = (cfg.embed_providers || []).filter((x2) => x2.id !== p2.id);
             if (settingsEmbedPid.value === p2.id) {
@@ -137910,14 +136747,14 @@ ${text2}</tr>
         try {
           const j2 = await api3.post("/api/embed/models/sync", { provider_id: p2.id });
           if (!j2.ok) {
-            message_default.error(j2.error || "同步失败");
+            message_default.error(j2.error || "\u540C\u6B65\u5931\u8D25");
             return;
           }
           p2.models = j2.models || p2.models;
           if ((p2.models || []).length && !(p2.models || []).some((m2) => m2.id === cfg.embed_model)) {
             cfg.embed_model = p2.models[0].id;
           }
-          message_default.success(j2.added ? `已加入 ${j2.added} 个模型` : "已是最新");
+          message_default.success(j2.added ? `\u5DF2\u52A0\u5165 ${j2.added} \u4E2A\u6A21\u578B` : "\u5DF2\u662F\u6700\u65B0");
         } catch (e3) {
           message_default.error(String(e3));
         }
@@ -137945,7 +136782,7 @@ ${text2}</tr>
         await persistConfig();
         const j2 = await api3.post("/api/embed/start", {});
         if (!j2.ok) {
-          message_default.error(j2.error || "无法启动");
+          message_default.error(j2.error || "\u65E0\u6CD5\u542F\u52A8");
           return;
         }
         cfg.embed_running = true;
@@ -137962,7 +136799,7 @@ ${text2}</tr>
       async function stopEmbed() {
         const j2 = await api3.post("/api/embed/stop", {});
         if (!j2.ok) {
-          message_default.error(j2.error || "无法停止");
+          message_default.error(j2.error || "\u65E0\u6CD5\u505C\u6B62");
           return;
         }
         cfg.embed_running = false;
@@ -137983,14 +136820,14 @@ ${text2}</tr>
         await api3.post("/api/config", { clear_key: true });
         cfg.api_key_set = false;
         cfg.api_key = "";
-        message_default.success("密钥已清除");
+        message_default.success("\u5BC6\u94A5\u5DF2\u6E05\u9664");
         loadStats();
       }
       async function clearPaddle() {
         await api3.post("/api/config", { clear_paddle: true });
         cfg.paddle_token_set = false;
         cfg.paddle_token = "";
-        message_default.success("PaddleOCR Token 已清除");
+        message_default.success("PaddleOCR Token \u5DF2\u6E05\u9664");
       }
       async function rebuild() {
         await persistConfig();
@@ -138003,7 +136840,7 @@ ${text2}</tr>
               clearInterval(timer);
               loadFacets();
               loadDocs();
-              message_default.success("索引重建完成");
+              message_default.success("\u7D22\u5F15\u91CD\u5EFA\u5B8C\u6210");
             }
           }, 2e3);
         } else {
@@ -138058,7 +136895,7 @@ ${text2}</tr>
         saving: false,
         percent: 0,
         progressText: "",
-        project: "集团制度库",
+        project: "\u96C6\u56E2\u5236\u5EA6\u5E93",
         folder: "",
         dept: "",
         doc_type: "regulation",
@@ -138066,7 +136903,7 @@ ${text2}</tr>
         title: "",
         doc_no: "",
         issued_date: "",
-        status: "现行",
+        status: "\u73B0\u884C",
         summary: "",
         tags: [],
         meta: {},
@@ -138104,7 +136941,7 @@ ${text2}</tr>
         title: "",
         doc_no: "",
         issued_date: "",
-        status: "现行",
+        status: "\u73B0\u884C",
         summary: "",
         meta: {}
       });
@@ -138112,7 +136949,7 @@ ${text2}</tr>
         folderModal.mode = "create";
         folderModal.origProject = "";
         folderModal.origPath = "";
-        folderModal.project = proj || catProject.value || "集团制度库";
+        folderModal.project = proj || catProject.value || "\u96C6\u56E2\u5236\u5EA6\u5E93";
         folderModal.path = parentPath ? parentPath + "/" : "";
         folderModal.open = true;
       }
@@ -138128,7 +136965,7 @@ ${text2}</tr>
         const proj = (folderModal.project || "").trim();
         const path3 = (folderModal.path || "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "").trim();
         if (!proj) {
-          message_default.warning("请输入项目名称");
+          message_default.warning("\u8BF7\u8F93\u5165\u9879\u76EE\u540D\u79F0");
           return Promise.reject();
         }
         if (folderModal.mode === "rename") {
@@ -138143,7 +136980,7 @@ ${text2}</tr>
             dst_path: path3
           });
           if (!j3.ok) {
-            message_default.error(j3.error || "重命名失败");
+            message_default.error(j3.error || "\u91CD\u547D\u540D\u5931\u8D25");
             return Promise.reject();
           }
           folderModal.open = false;
@@ -138152,12 +136989,12 @@ ${text2}</tr>
           await loadFacets();
           await loadDocs();
           selectTreeScope(proj, path3);
-          message_default.success(`已重命名，共调整 ${j3.moved_docs || 0} 份文件`);
+          message_default.success(`\u5DF2\u91CD\u547D\u540D\uFF0C\u5171\u8C03\u6574 ${j3.moved_docs || 0} \u4EFD\u6587\u4EF6`);
           return;
         }
         const j2 = await api3.post("/api/folders/create", { project: proj, path: path3 });
         if (!j2.ok) {
-          message_default.error(j2.error || "创建失败");
+          message_default.error(j2.error || "\u521B\u5EFA\u5931\u8D25");
           return Promise.reject();
         }
         folderModal.open = false;
@@ -138166,17 +137003,17 @@ ${text2}</tr>
         if (path3) treeExpanded[treeKeyFolder(proj, path3)] = true;
         await loadFacets();
         selectTreeScope(proj, path3);
-        message_default.success(path3 ? `已创建文件夹「${proj} / ${path3}」` : `已创建项目「${proj}」`);
+        message_default.success(path3 ? `\u5DF2\u521B\u5EFA\u6587\u4EF6\u5939\u300C${proj} / ${path3}\u300D` : `\u5DF2\u521B\u5EFA\u9879\u76EE\u300C${proj}\u300D`);
       }
       function removeFolderNode(proj, path3, count) {
-        const label = path3 ? `文件夹「${proj} / ${path3}」` : `项目「${proj}」`;
+        const label = path3 ? `\u6587\u4EF6\u5939\u300C${proj} / ${path3}\u300D` : `\u9879\u76EE\u300C${proj}\u300D`;
         const n3 = Number(count) || 0;
         modal_default.confirm({
-          title: n3 > 0 ? `删除${label}及其下 ${n3} 份文件？` : `删除空${label}？`,
-          content: n3 > 0 ? "该目录（含所有子目录）下的文件记录与索引都将被一并删除，此操作不可撤销。" : "",
-          okText: "删除",
+          title: n3 > 0 ? `\u5220\u9664${label}\u53CA\u5176\u4E0B ${n3} \u4EFD\u6587\u4EF6\uFF1F` : `\u5220\u9664\u7A7A${label}\uFF1F`,
+          content: n3 > 0 ? "\u8BE5\u76EE\u5F55\uFF08\u542B\u6240\u6709\u5B50\u76EE\u5F55\uFF09\u4E0B\u7684\u6587\u4EF6\u8BB0\u5F55\u4E0E\u7D22\u5F15\u90FD\u5C06\u88AB\u4E00\u5E76\u5220\u9664\uFF0C\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002" : "",
+          okText: "\u5220\u9664",
           okType: "danger",
-          cancelText: "取消",
+          cancelText: "\u53D6\u6D88",
           async onOk() {
             const j2 = await api3.post("/api/folders/delete", {
               project: proj,
@@ -138184,7 +137021,7 @@ ${text2}</tr>
               force: n3 > 0
             });
             if (!j2.ok) {
-              message_default.error(j2.error || "删除失败");
+              message_default.error(j2.error || "\u5220\u9664\u5931\u8D25");
               return Promise.reject();
             }
             const inScope = catProject.value === proj && (!path3 || catFolder.value === path3 || (catFolder.value || "").startsWith(path3 + "/"));
@@ -138193,46 +137030,46 @@ ${text2}</tr>
               selectTreeScope(path3 ? proj : "", "");
             }
             await refreshCatalogTree();
-            message_default.success(n3 > 0 ? `已删除目录及 ${j2.removed_docs || n3} 份文件` : "已删除");
+            message_default.success(n3 > 0 ? `\u5DF2\u5220\u9664\u76EE\u5F55\u53CA ${j2.removed_docs || n3} \u4EFD\u6587\u4EF6` : "\u5DF2\u5220\u9664");
           }
         });
       }
       function deleteDocRecord(record) {
         if (!record || !record.id) return;
         modal_default.confirm({
-          title: `确认从知识库中删除「${record.title || "该文件"}」？`,
-          okText: "删除",
+          title: `\u786E\u8BA4\u4ECE\u77E5\u8BC6\u5E93\u4E2D\u5220\u9664\u300C${record.title || "\u8BE5\u6587\u4EF6"}\u300D\uFF1F`,
+          okText: "\u5220\u9664",
           okType: "danger",
-          cancelText: "取消",
+          cancelText: "\u53D6\u6D88",
           async onOk() {
             const j2 = await api3.post("/api/docs/delete", { doc_ids: [record.id] });
             if (!j2.ok) {
-              message_default.error(j2.error || "删除失败");
+              message_default.error(j2.error || "\u5220\u9664\u5931\u8D25");
               return Promise.reject();
             }
             if (activeTreeDocId.value === record.id) activeTreeDocId.value = null;
             if (currentDocId.value === record.id) drawerOpen.value = false;
             await refreshCatalogTree();
-            message_default.success("已删除");
+            message_default.success("\u5DF2\u5220\u9664");
           }
         });
       }
       async function organizeCurrentProject() {
         const proj = catProject.value;
         if (!proj) {
-          message_default.info("请先在左侧选择一个项目");
+          message_default.info("\u8BF7\u5148\u5728\u5DE6\u4FA7\u9009\u62E9\u4E00\u4E2A\u9879\u76EE");
           return;
         }
         organizing.value = true;
         try {
           const j2 = await api3.post("/api/docs/organize", { project: proj });
           if (!j2.ok) {
-            message_default.error(j2.error || "智能归档失败");
+            message_default.error(j2.error || "\u667A\u80FD\u5F52\u6863\u5931\u8D25");
             return;
           }
           await loadFacets();
           await loadDocs();
-          message_default.success(`AI 智能归档完成，已整理 ${j2.updated || 0} 份文件的目录与性质`);
+          message_default.success(`AI \u667A\u80FD\u5F52\u6863\u5B8C\u6210\uFF0C\u5DF2\u6574\u7406 ${j2.updated || 0} \u4EFD\u6587\u4EF6\u7684\u76EE\u5F55\u4E0E\u6027\u8D28`);
         } finally {
           organizing.value = false;
         }
@@ -138240,14 +137077,14 @@ ${text2}</tr>
       function openEditMeta(record) {
         if (!record || !record.id) return;
         metaModal.doc_id = record.id;
-        metaModal.project = record.project || "集团制度库";
+        metaModal.project = record.project || "\u96C6\u56E2\u5236\u5EA6\u5E93";
         metaModal.folder = record.folder || "";
         metaModal.dept = record.dept || "";
         metaModal.doc_type = record.doc_type || "regulation";
         metaModal.title = record.title || "";
         metaModal.doc_no = record.doc_no || "";
         metaModal.issued_date = record.issued_date || "";
-        metaModal.status = record.status || "现行";
+        metaModal.status = record.status || "\u73B0\u884C";
         metaModal.summary = record.summary || "";
         metaModal.meta = { ...record.meta || {} };
         metaModal.open = true;
@@ -138270,7 +137107,7 @@ ${text2}</tr>
             meta: metaModal.meta
           });
           if (!j2.ok) {
-            message_default.error(j2.error || "保存失败");
+            message_default.error(j2.error || "\u4FDD\u5B58\u5931\u8D25");
             return Promise.reject();
           }
           metaModal.open = false;
@@ -138280,7 +137117,7 @@ ${text2}</tr>
             const d2 = await api3.get("/api/doc/" + metaModal.doc_id);
             Object.assign(doc2, d2);
           }
-          message_default.success("属性已更新");
+          message_default.success("\u5C5E\u6027\u5DF2\u66F4\u65B0");
         } finally {
           metaModal.saving = false;
         }
@@ -138309,7 +137146,7 @@ ${text2}</tr>
         ingest.saving = false;
         ingest.percent = 0;
         ingest.progressText = "";
-        ingest.project = catProject.value || "集团制度库";
+        ingest.project = catProject.value || "\u96C6\u56E2\u5236\u5EA6\u5E93";
         ingest.folder = catFolder.value || "";
         ingest.dept = "";
         ingest.doc_type = catDocType.value || "regulation";
@@ -138317,7 +137154,7 @@ ${text2}</tr>
         ingest.title = "";
         ingest.doc_no = "";
         ingest.issued_date = "";
-        ingest.status = "现行";
+        ingest.status = "\u73B0\u884C";
         ingest.summary = "";
         ingest.tags = [];
         ingest.meta = {};
@@ -138347,13 +137184,13 @@ ${text2}</tr>
           return validExts.has(ext);
         });
         if (!filtered.length) {
-          message_default.warning("所选文件夹中没有受支持的文件格式");
+          message_default.warning("\u6240\u9009\u6587\u4EF6\u5939\u4E2D\u6CA1\u6709\u53D7\u652F\u6301\u7684\u6587\u4EF6\u683C\u5F0F");
           return;
         }
         resetIngest();
         const firstRel = (filtered[0].webkitRelativePath || "").replace(/\\/g, "/");
         const rootFolder = firstRel.includes("/") ? firstRel.split("/")[0] : "";
-        ingest.project = catProject.value || rootFolder || "集团制度库";
+        ingest.project = catProject.value || rootFolder || "\u96C6\u56E2\u5236\u5EA6\u5E93";
         ingest.folder = catFolder.value || "";
         ingest.open = true;
         runBatchIngest(filtered);
@@ -138385,7 +137222,7 @@ ${text2}</tr>
       }
       function applyIngestMeta(j2, file) {
         ingest.tmp_id = j2.tmp_id;
-        ingest.project = j2.project || ingest.project || "集团制度库";
+        ingest.project = j2.project || ingest.project || "\u96C6\u56E2\u5236\u5EA6\u5E93";
         ingest.folder = j2.folder || ingest.folder || "";
         ingest.dept = j2.dept || "";
         ingest.doc_type = j2.doc_type || "general";
@@ -138393,7 +137230,7 @@ ${text2}</tr>
         ingest.title = j2.title || "";
         ingest.doc_no = j2.doc_no || "";
         ingest.issued_date = j2.issued_date || "";
-        ingest.status = j2.status || "现行";
+        ingest.status = j2.status || "\u73B0\u884C";
         ingest.summary = j2.summary || "";
         ingest.tags = j2.tags || [];
         ingest.meta = { ...j2.meta || {} };
@@ -138413,7 +137250,7 @@ ${text2}</tr>
         const ctype = r3.headers.get("content-type") || "";
         if (!ctype.includes("event-stream")) {
           const j2 = await r3.json().catch(() => ({}));
-          if (!j2.ok) throw new Error(j2.error || "识别失败");
+          if (!j2.ok) throw new Error(j2.error || "\u8BC6\u522B\u5931\u8D25");
           return j2;
         }
         let result = null;
@@ -138424,11 +137261,11 @@ ${text2}</tr>
           } else if (ev.type === "done") {
             result = ev;
           } else if (ev.type === "error") {
-            errMsg = ev.error || "识别失败";
+            errMsg = ev.error || "\u8BC6\u522B\u5931\u8D25";
           }
         });
         if (errMsg) throw new Error(errMsg);
-        if (!result || !result.tmp_id) throw new Error("识别中断");
+        if (!result || !result.tmp_id) throw new Error("\u8BC6\u522B\u4E2D\u65AD");
         return result;
       }
       async function parseIngest(file) {
@@ -138437,7 +137274,7 @@ ${text2}</tr>
         ingest.parsing = true;
         ingest.tmp_id = "";
         ingest.percent = 2;
-        ingest.progressText = "正在上传并分析文件结构…";
+        ingest.progressText = "\u6B63\u5728\u4E0A\u4F20\u5E76\u5206\u6790\u6587\u4EF6\u7ED3\u6784\u2026";
         try {
           const rel2 = file.webkitRelativePath || "";
           const j2 = await parseSingleFileUpload(file, rel2, (ev) => {
@@ -138446,8 +137283,8 @@ ${text2}</tr>
           });
           applyIngestMeta(j2, file);
           ingest.percent = 100;
-          ingest.progressText = "识别完成";
-          message_default.success(`已自动判定为「${docTypeLabel(ingest.doc_type)}」，请核对后入库`);
+          ingest.progressText = "\u8BC6\u522B\u5B8C\u6210";
+          message_default.success(`\u5DF2\u81EA\u52A8\u5224\u5B9A\u4E3A\u300C${docTypeLabel(ingest.doc_type)}\u300D\uFF0C\u8BF7\u6838\u5BF9\u540E\u5165\u5E93`);
         } catch (e3) {
           if (e3 && e3.name === "AbortError") return;
           message_default.error(e3.message || String(e3));
@@ -138461,32 +137298,32 @@ ${text2}</tr>
         ingestAbort = new AbortController();
         ingest.batchMode = true;
         ingest.batchRunning = true;
-        ingest.filename = `已选择 ${files.length} 个文件批量入库`;
+        ingest.filename = `\u5DF2\u9009\u62E9 ${files.length} \u4E2A\u6587\u4EF6\u6279\u91CF\u5165\u5E93`;
         ingest.batchItems = files.map((f2) => ({
           file: f2,
           name: f2.webkitRelativePath || f2.name,
           doc_type: "",
           folder: "",
           state: "pending",
-          statusText: "等待中"
+          statusText: "\u7B49\u5F85\u4E2D"
         }));
         let okCount = 0;
         for (let i3 = 0; i3 < ingest.batchItems.length; i3++) {
           const item = ingest.batchItems[i3];
           item.state = "running";
-          item.statusText = "解析中…";
+          item.statusText = "\u89E3\u6790\u4E2D\u2026";
           ingest.percent = Math.round(i3 / ingest.batchItems.length * 100);
-          ingest.progressText = `正在处理 (${i3 + 1}/${ingest.batchItems.length})：${item.file.name}`;
+          ingest.progressText = `\u6B63\u5728\u5904\u7406 (${i3 + 1}/${ingest.batchItems.length})\uFF1A${item.file.name}`;
           try {
             const parsed = await parseSingleFileUpload(item.file, item.file.webkitRelativePath || "", (ev) => {
-              item.statusText = ev.message || "识别中…";
+              item.statusText = ev.message || "\u8BC6\u522B\u4E2D\u2026";
             });
             item.doc_type = parsed.doc_type || "general";
             item.folder = parsed.folder || ingest.folder || "";
-            item.statusText = "正在入库…";
+            item.statusText = "\u6B63\u5728\u5165\u5E93\u2026";
             const committed = await api3.post("/api/docs/commit", {
               tmp_id: parsed.tmp_id,
-              project: parsed.project || ingest.project || "集团制度库",
+              project: parsed.project || ingest.project || "\u96C6\u56E2\u5236\u5EA6\u5E93",
               folder: parsed.folder || ingest.folder || "",
               dept: parsed.dept || "",
               doc_type: parsed.doc_type || "general",
@@ -138494,29 +137331,29 @@ ${text2}</tr>
               title: parsed.title || item.file.name,
               doc_no: parsed.doc_no || "",
               issued_date: parsed.issued_date || "",
-              status: parsed.status || "现行",
+              status: parsed.status || "\u73B0\u884C",
               summary: parsed.summary || "",
               tags: parsed.tags || [],
               meta: parsed.meta || {}
             });
-            if (!committed.ok) throw new Error(committed.error || "入库失败");
+            if (!committed.ok) throw new Error(committed.error || "\u5165\u5E93\u5931\u8D25");
             item.state = "done";
-            item.statusText = "已入库";
+            item.statusText = "\u5DF2\u5165\u5E93";
             okCount++;
           } catch (e3) {
             if (e3 && e3.name === "AbortError") break;
             item.state = "error";
-            item.statusText = e3 && e3.message ? e3.message.slice(0, 26) : "失败";
+            item.statusText = e3 && e3.message ? e3.message.slice(0, 26) : "\u5931\u8D25";
           }
         }
         ingest.percent = 100;
-        ingest.progressText = `批量处理完成：成功 ${okCount} / ${ingest.batchItems.length} 份`;
+        ingest.progressText = `\u6279\u91CF\u5904\u7406\u5B8C\u6210\uFF1A\u6210\u529F ${okCount} / ${ingest.batchItems.length} \u4EFD`;
         ingest.batchRunning = false;
         ingestAbort = null;
         await loadFacets();
         await loadDocs();
         await loadStats();
-        if (okCount > 0) message_default.success(`成功导入 ${okCount} 份文件`);
+        if (okCount > 0) message_default.success(`\u6210\u529F\u5BFC\u5165 ${okCount} \u4EFD\u6587\u4EF6`);
       }
       async function readSse(res, onEvent) {
         const reader = res.body.getReader();
@@ -138547,14 +137384,14 @@ ${text2}</tr>
         }
         if (ingest.parsing) return Promise.reject();
         if (!ingest.tmp_id) {
-          message_default.warning("请先上传文件");
+          message_default.warning("\u8BF7\u5148\u4E0A\u4F20\u6587\u4EF6");
           return Promise.reject();
         }
         ingest.saving = true;
         try {
           const body = {
             tmp_id: ingest.tmp_id,
-            project: ingest.project || "集团制度库",
+            project: ingest.project || "\u96C6\u56E2\u5236\u5EA6\u5E93",
             folder: ingest.folder || "",
             dept: ingest.dept || ingest.folder || "",
             doc_type: ingest.doc_type || "general",
@@ -138570,10 +137407,10 @@ ${text2}</tr>
           if (ingest.doc_id) body.doc_id = ingest.doc_id;
           const j2 = await api3.post("/api/docs/commit", body);
           if (!j2.ok) {
-            message_default.error(j2.error || "入库失败");
+            message_default.error(j2.error || "\u5165\u5E93\u5931\u8D25");
             return Promise.reject();
           }
-          message_default.success(ingest.doc_id ? "已更新" : "已入库");
+          message_default.success(ingest.doc_id ? "\u5DF2\u66F4\u65B0" : "\u5DF2\u5165\u5E93");
           const targetProj = j2.project || body.project;
           resetIngest();
           if (targetProj) expandedProjs[targetProj] = true;
@@ -138600,17 +137437,17 @@ ${text2}</tr>
         }
         if (key2 === "delete") {
           modal_default.confirm({
-            title: `确认从知识库中删除「${record.title || "该文件"}」？`,
-            okText: "删除",
+            title: `\u786E\u8BA4\u4ECE\u77E5\u8BC6\u5E93\u4E2D\u5220\u9664\u300C${record.title || "\u8BE5\u6587\u4EF6"}\u300D\uFF1F`,
+            okText: "\u5220\u9664",
             okType: "danger",
-            cancelText: "取消",
+            cancelText: "\u53D6\u6D88",
             async onOk() {
               const j2 = await api3.post("/api/docs/delete", { doc_ids: [record.id] });
               if (!j2.ok) {
-                message_default.error(j2.error || "删除失败");
+                message_default.error(j2.error || "\u5220\u9664\u5931\u8D25");
                 return Promise.reject();
               }
-              message_default.success("已删除");
+              message_default.success("\u5DF2\u5220\u9664");
               await loadDocs();
               await loadFacets();
               await loadStats();
@@ -138618,19 +137455,19 @@ ${text2}</tr>
           });
           return;
         }
-        if (key2 !== "已废止" && key2 !== "现行" && key2 !== "试行") return;
-        const label = key2 === "已废止" ? "废止" : key2;
+        if (key2 !== "\u5DF2\u5E9F\u6B62" && key2 !== "\u73B0\u884C" && key2 !== "\u8BD5\u884C") return;
+        const label = key2 === "\u5DF2\u5E9F\u6B62" ? "\u5E9F\u6B62" : key2;
         modal_default.confirm({
-          title: `将「${record.title || "该文件"}」标记为${label}？`,
-          okText: "确定",
-          cancelText: "取消",
+          title: `\u5C06\u300C${record.title || "\u8BE5\u6587\u4EF6"}\u300D\u6807\u8BB0\u4E3A${label}\uFF1F`,
+          okText: "\u786E\u5B9A",
+          cancelText: "\u53D6\u6D88",
           async onOk() {
             const j2 = await api3.post("/api/docs/status", { doc_id: record.id, status: key2 });
             if (!j2.ok) {
-              message_default.error(j2.error || "更新失败");
+              message_default.error(j2.error || "\u66F4\u65B0\u5931\u8D25");
               return Promise.reject();
             }
-            message_default.success("已标记为" + key2);
+            message_default.success("\u5DF2\u6807\u8BB0\u4E3A" + key2);
             await loadDocs();
             await loadFacets();
           }
@@ -138672,7 +137509,7 @@ ${text2}</tr>
       });
       const modelLabel = computed2(() => {
         const hit = currentChatModel.value;
-        return hit && hit.label || cfg.model || "模型";
+        return hit && hit.label || cfg.model || "\u6A21\u578B";
       });
       const modelHasVision = computed2(() => {
         const hit = currentChatModel.value;
@@ -138694,18 +137531,18 @@ ${text2}</tr>
       const groupedModels = computed2(() => {
         const q3 = (modelQuery.value || "").trim().toLowerCase();
         const groups = [];
-        const map2 = /* @__PURE__ */ new Map();
+        const map = /* @__PURE__ */ new Map();
         for (const m2 of modelList.value) {
           if (q3 && !((m2.id || "").toLowerCase().includes(q3) || (m2.label || "").toLowerCase().includes(q3) || (m2.provider || "").toLowerCase().includes(q3))) {
             continue;
           }
           const pid = m2.provider_id || "default";
-          if (!map2.has(pid)) {
-            const g2 = { id: pid, name: m2.provider || "模型", models: [] };
-            map2.set(pid, g2);
+          if (!map.has(pid)) {
+            const g2 = { id: pid, name: m2.provider || "\u6A21\u578B", models: [] };
+            map.set(pid, g2);
             groups.push(g2);
           }
-          map2.get(pid).models.push(m2);
+          map.get(pid).models.push(m2);
         }
         return groups;
       });
@@ -138793,6 +137630,71 @@ ${text2}</tr>
         attachOver.value = false;
         addAttachFiles(e3.dataTransfer && e3.dataTransfer.files);
       }
+      function clipboardFileName(file, index3) {
+        const name = file && file.name || "";
+        const generic = !name || name === "image.png" || name === "blob" || /^clipboard/i.test(name);
+        if (!generic && /\.[a-z0-9]{1,8}$/i.test(name)) return name;
+        const mime = (file && file.type || "").toLowerCase();
+        const map = {
+          "image/png": ".png",
+          "image/jpeg": ".jpg",
+          "image/jpg": ".jpg",
+          "image/webp": ".webp",
+          "image/svg+xml": ".svg",
+          "image/tiff": ".tiff",
+          "image/heic": ".heic",
+          "image/heif": ".heif",
+          "application/pdf": ".pdf",
+          "text/plain": ".txt",
+          "text/markdown": ".md",
+          "application/json": ".json",
+          "text/csv": ".csv"
+        };
+        const ext = map[mime];
+        if (!ext) return name;
+        const d2 = /* @__PURE__ */ new Date();
+        const pad3 = (n3) => String(n3).padStart(2, "0");
+        const stamp = "" + d2.getFullYear() + pad3(d2.getMonth() + 1) + pad3(d2.getDate()) + "-" + pad3(d2.getHours()) + pad3(d2.getMinutes()) + pad3(d2.getSeconds());
+        return "\u7C98\u8D34-" + stamp + (index3 ? "-" + index3 : "") + ext;
+      }
+      function onAttachPaste(e3) {
+        if (asking.value) return;
+        const cd = e3 && e3.clipboardData;
+        if (!cd) return;
+        const raw = [];
+        const seen2 = /* @__PURE__ */ new Set();
+        const push = (file) => {
+          if (!file) return;
+          const key2 = [file.name, file.size, file.type, file.lastModified].join("|");
+          if (seen2.has(key2)) return;
+          seen2.add(key2);
+          raw.push(file);
+        };
+        if (cd.files && cd.files.length) {
+          for (const file of cd.files) push(file);
+        }
+        if (cd.items && cd.items.length) {
+          for (const item of cd.items) {
+            if (item.kind !== "file") continue;
+            try {
+              push(item.getAsFile());
+            } catch (_err) {
+            }
+          }
+        }
+        if (!raw.length) return;
+        e3.preventDefault();
+        const named = raw.map((file, i3) => {
+          const name = clipboardFileName(file, i3);
+          if (!name || name === file.name) return file;
+          try {
+            return new File([file], name, { type: file.type || "", lastModified: file.lastModified || Date.now() });
+          } catch (_err) {
+            return file;
+          }
+        });
+        addAttachFiles(named);
+      }
       function removeAttach(id) {
         attachments.value = attachments.value.filter((a2) => a2.id !== id);
       }
@@ -138801,7 +137703,7 @@ ${text2}</tr>
         for (const file of files) {
           if (attachments.value.length >= 8) break;
           if (!isAttachFile(file)) {
-            message_default.warning("不支持 " + file.name);
+            message_default.warning("\u4E0D\u652F\u6301 " + file.name);
             continue;
           }
           const item = reactive({
@@ -138832,7 +137734,7 @@ ${text2}</tr>
           if (!ctype.includes("event-stream")) {
             const j2 = await r3.json().catch(() => ({}));
             item.state = "error";
-            item.error = j2.error || "识别失败";
+            item.error = j2.error || "\u8BC6\u522B\u5931\u8D25";
             return;
           }
           await readSse(r3, (ev) => {
@@ -138849,12 +137751,12 @@ ${text2}</tr>
               if (ev.name) item.name = ev.name;
             } else if (ev.type === "error") {
               item.state = "error";
-              item.error = ev.error || "识别失败";
+              item.error = ev.error || "\u8BC6\u522B\u5931\u8D25";
             }
           });
           if (item.state === "parsing") {
             item.state = "error";
-            item.error = "识别中断";
+            item.error = "\u8BC6\u522B\u4E2D\u65AD";
           }
         } catch (e3) {
           item.state = "error";
@@ -138904,12 +137806,12 @@ ${text2}</tr>
       }));
       const askBrowserBtnTooltip = computed2(() => {
         if (browserState.coPanel.waitingHuman) {
-          return "需要您操作浏览器（" + (browserState.coPanel.humanReason || "完成验证或登录") + "）";
+          return "\u9700\u8981\u60A8\u64CD\u4F5C\u6D4F\u89C8\u5668\uFF08" + (browserState.coPanel.humanReason || "\u5B8C\u6210\u9A8C\u8BC1\u6216\u767B\u5F55") + "\uFF09";
         }
         if (browserState.coPanel.aiActive) {
-          return "O2 正在操作浏览器" + (browserState.coPanel.aiActionLabel ? "：" + browserState.coPanel.aiActionLabel : "");
+          return "O2 \u6B63\u5728\u64CD\u4F5C\u6D4F\u89C8\u5668" + (browserState.coPanel.aiActionLabel ? "\uFF1A" + browserState.coPanel.aiActionLabel : "");
         }
-        return askBrowserOpen.value ? "收起上方协同浏览器" : "展开上方协同浏览器";
+        return askBrowserOpen.value ? "\u6536\u8D77\u4E0A\u65B9\u534F\u540C\u6D4F\u89C8\u5668" : "\u5C55\u5F00\u4E0A\u65B9\u534F\u540C\u6D4F\u89C8\u5668";
       });
       const activeBrowserTab = computed2(() => browserState.tabs.find((t3) => t3.id === browserState.activeTabId) || browserState.tabs[0] || null);
       const browserOccluded = computed2(() => !!(drawerOpen.value || ingest.open || addProvider.open || addEmbedProvider.open || addModel.open || histMode.value || menuOpen.value));
@@ -138946,6 +137848,12 @@ ${text2}</tr>
             requestAnimationFrame(() => {
               syncBrowserViewport(false);
               refreshBrowserPreview();
+              setTimeout(() => {
+                if (!askBwTransitioning.value) syncBrowserViewport(false);
+              }, 90);
+              setTimeout(() => {
+                if (!askBwTransitioning.value) syncBrowserViewport(false);
+              }, 240);
             });
           });
         }, durationMs);
@@ -139024,14 +137932,14 @@ ${text2}</tr>
           const wasOpen = browserState.coPanel.open;
           browserState.coPanel.waitingHuman = true;
           browserState.coPanel.aiActive = true;
-          browserState.coPanel.humanReason = ev.reason || ev.label || "需要您完成页面验证或登录";
+          browserState.coPanel.humanReason = ev.reason || ev.label || "\u9700\u8981\u60A8\u5B8C\u6210\u9875\u9762\u9A8C\u8BC1\u6216\u767B\u5F55";
           browserState.coPanel.open = true;
           if (!browserState.coPanel.openSource) browserState.coPanel.openSource = "ai";
           if (!wasOpen) runAskBwTransition(350);
         } else if (ev.state === "active") {
           const wasOpen = browserState.coPanel.open;
           browserState.coPanel.aiActive = true;
-          browserState.coPanel.aiActionLabel = ev.label || "正在操作浏览器";
+          browserState.coPanel.aiActionLabel = ev.label || "\u6B63\u5728\u64CD\u4F5C\u6D4F\u89C8\u5668";
           if (!nativeBw && !browserState.coPanel.open) {
             browserState.coPanel.open = true;
             if (!browserState.coPanel.openSource) browserState.coPanel.openSource = "ai";
@@ -139437,6 +138345,7 @@ ${text2}</tr>
         question,
         asking,
         chatlog,
+        chatAscii: CHAT_ASCII,
         turns,
         send,
         stopAsk,
@@ -139481,6 +138390,7 @@ ${text2}</tr>
         onAttachEnter,
         onAttachLeave,
         onAttachDrop,
+        onAttachPaste,
         removeAttach,
         menuOpen,
         menuPanel,
@@ -139603,6 +138513,7 @@ ${text2}</tr>
         extBadgeClass,
         recordMetaVal,
         recordPills,
+        docMetaPills,
         recordSummary,
         renderChunkTable,
         catalogAlive,
@@ -139760,7 +138671,7 @@ ${text2}</tr>
     }
   }
   var MatrixLoader = {
-    template: '<canvas class="matrix-loader" aria-hidden="true" title="生成中"></canvas>',
+    template: '<canvas class="matrix-loader" aria-hidden="true" title="\u751F\u6210\u4E2D"></canvas>',
     mounted() {
       matrixBind(this.$el);
     },
@@ -139796,6 +138707,14 @@ ${text2}</tr>
   * (c) 2018-present Yuxi (Evan) You and Vue contributors
   * @license MIT
   **)
+
+@vue/runtime-core/dist/runtime-core.esm-bundler.js:
+  (*! #__NO_SIDE_EFFECTS__ *)
+
+@vue/runtime-core/dist/runtime-core.esm-bundler.js:
+  (*! #__NO_SIDE_EFFECTS__ *)
+
+@vue/runtime-core/dist/runtime-core.esm-bundler.js:
   (*! #__NO_SIDE_EFFECTS__ *)
 
 @vue/runtime-dom/dist/runtime-dom.esm-bundler.js:
@@ -139804,6 +138723,8 @@ ${text2}</tr>
   * (c) 2018-present Yuxi (Evan) You and Vue contributors
   * @license MIT
   **)
+
+@vue/runtime-dom/dist/runtime-dom.esm-bundler.js:
   (*! #__NO_SIDE_EFFECTS__ *)
 
 @vue/compiler-core/dist/compiler-core.esm-bundler.js:

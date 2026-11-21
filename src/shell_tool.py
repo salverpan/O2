@@ -171,11 +171,13 @@ def render_result(stdout: str, stderr: str, exit_code: int | None,
 
 def _kill(proc: subprocess.Popen) -> None:
     if os.name == "nt":
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         subprocess.run(
             ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
+            creationflags=flags,
         )
         return
     proc.kill()

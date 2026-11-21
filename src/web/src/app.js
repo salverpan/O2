@@ -79,6 +79,14 @@ const EFFORTS = [
   { id: 'high', label: '高' },
   { id: 'extra_high', label: '极高' },
 ]
+const CHAT_ASCII = [
+  '   ____  ___      ___                        __ ',
+  '  / __ \\|__ \\    /   |  ____ _ ___   ____   / /_',
+  ' / / / /__/ /   / /| | / __ `// _ \\ / __ \\ / __/',
+  '/ /_/ // __/   / ___ |/ /_/ //  __// / / // /_  ',
+  '\\____//____/  /_/  |_|\\__, / \\___//_/ /_/ \\__/  ',
+  '                     /____/                     ',
+].join('\n')
 const ATTACH_EXT = ['.xlsx', '.csv', '.pdf', '.doc', '.docx', '.md', '.markdown', '.json', '.txt', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.svg', '.webp', '.heif', '.heic']
 const IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.svg', '.webp', '.heif', '.heic']
 
@@ -316,12 +324,6 @@ const App = {
                            @focus="onBrowserUrlFocus($event)"
                            @blur="onBrowserUrlBlur"
                            @keydown.enter.prevent="submitBrowserUrl" />
-                    <div v-if="browserState.coPanel.waitingHuman || browserState.coPanel.aiActive"
-                         :class="['ask-bw-badge', browserState.coPanel.waitingHuman ? 'human' : '']"
-                         :title="browserState.coPanel.waitingHuman ? (browserState.coPanel.humanReason || '等待人工操作') : (browserState.coPanel.aiActionLabel || 'O2 正在操作浏览器')">
-                      <span class="ask-bw-badge-dot"></span>
-                      <span class="ask-bw-badge-txt">{{ browserState.coPanel.waitingHuman ? '等待您操作' : (browserState.coPanel.aiActionLabel || 'O2 操作中') }}</span>
-                    </div>
                     <div class="ask-bw-zoom" title="固定 16:9 比例中心缩放（也可直接拖动四周边框或按住 Ctrl 滚轮缩放）">
                       <button type="button" class="ask-bw-zoom-btn" :disabled="askBwScale <= 0.65" @click="stepAskBwScale(-0.1)">−</button>
                       <button type="button" class="ask-bw-zoom-val" @click="resetAskBwScale">{{ Math.round(askBwScale * 100) }}%</button>
@@ -354,15 +356,11 @@ const App = {
             </div>
           </div>
 
-          <div class="chatlog" ref="chatlog" @scroll.passive="onChatlogScroll">
-            <div v-if="!messages.length" class="chat-empty">
-              <h2>有什么可以帮你？</h2>
-              <p>支持对话问答、本机命令执行、附件与图片解析及本地文档检索。</p>
-              <div class="ask-chips">
-                <button class="ask-chip" v-for="ex in askExamples" :key="ex" @click="askExample(ex)">{{ ex }}</button>
-              </div>
-            </div>
-
+          <div class="chat-stage">
+            <transition name="ascii-fade">
+              <pre v-if="!messages.length" class="chat-ascii" aria-hidden="true">{{ chatAscii }}</pre>
+            </transition>
+            <div class="chatlog" ref="chatlog" @scroll.passive="onChatlogScroll">
             <div v-for="(m, i) in messages" :key="m.id || ('i' + i)" :class="['msg', m.role]" :style="msgDelay(i, messages.length)">
               <div class="bubble">
                 <div v-if="m.files && m.files.length" class="msg-files">
@@ -441,13 +439,15 @@ const App = {
               </div>
             </div>
           </div>
+          </div>
 
           <div class="composer">
             <div class="composer-box" :class="{ over: attachOver }"
                  @dragenter.prevent="onAttachEnter"
                  @dragover.prevent="onAttachEnter"
                  @dragleave.prevent="onAttachLeave"
-                 @drop.prevent="onAttachDrop">
+                 @drop.prevent="onAttachDrop"
+                 @paste="onAttachPaste">
               <div v-if="attachments.length" class="attach-row">
                 <div v-for="a in attachments" :key="a.id" :class="['attach-chip', a.state]" :title="a.error || a.name">
                   <span class="attach-name">{{ a.name }}</span>
@@ -456,7 +456,7 @@ const App = {
                 </div>
               </div>
               <a-textarea v-model:value="question" :auto-size="{ minRows: 3, maxRows: 6 }"
-                placeholder="输入问题，Enter 发送，Shift+Enter 换行"
+                placeholder="输入问题，Enter 发送，可直接粘贴文件"
                 @pressEnter="onEnter" />
               <div class="composer-bar">
                 <a-tooltip title="上传附件或图片">
@@ -474,7 +474,6 @@ const App = {
                           ]"
                           @click="toggleAskBrowserByUser">
                     <span class="icon-svg" v-html="ICO.globe"></span>
-                    <span v-if="browserState.coPanel.waitingHuman || browserState.coPanel.aiActive" class="bw-toggle-dot"></span>
                   </button>
                 </a-tooltip>
                 <input ref="attachInput" class="attach-input" type="file" multiple
@@ -620,7 +619,7 @@ const App = {
             <div class="cat-tree-head">
               <div class="cat-tree-head-left" @click="selectTreeScope('', '')" title="点击回到全部项目">
                 <span class="tree-chev open" v-html="ICO.chevron"></span>
-                <span class="cat-tree-head-title">{{ catProject || '知识库资源管理器' }}</span>
+                <span class="cat-tree-head-title">{{ catProject || '管理器' }}</span>
               </div>
               <div class="cat-tree-tools">
                 <button type="button" class="tree-tool-btn" title="在当前目录新增/导入文件"
@@ -733,7 +732,7 @@ const App = {
             <div class="type-capsules">
               <button type="button" :class="['type-cap', !catDocType ? 'on' : '']"
                       @click="setCatDocType('')">
-                <span>全部性质 (混合多态视图)</span>
+                <span>混合视图</span>
                 <span class="type-cap-cnt">{{ scopeTotalCount }}</span>
               </button>
               <button type="button" v-for="dt in scopeDocTypeCapsules" :key="dt.id"
@@ -1172,7 +1171,7 @@ const App = {
       <span v-if="doc.doc_no" class="docno">{{ doc.doc_no }}</span>
       <span v-if="doc.issued_date">{{ doc.issued_date }}</span>
       <a-tag v-if="doc.status && doc.status !== '现行'" color="orange">{{ doc.status }}</a-tag>
-      <span v-for="(p, pi) in recordPills(doc)" :key="pi" class="poly-pill">
+      <span v-for="(p, pi) in docMetaPills(doc)" :key="pi" class="poly-pill">
         <span class="poly-pill-k">{{ p.k }}:</span>
         <span class="poly-pill-v">{{ p.v }}</span>
       </span>
@@ -3680,6 +3679,20 @@ const App = {
         if (m.author) add('作者', m.author)
       }
       return pills.slice(0, 4)
+    }
+    function docMetaPills(doc) {
+      const shown = new Set()
+      const add = (v) => {
+        const s = String(v == null ? '' : v).replace(/\s+/g, ' ').trim()
+        if (s) shown.add(s)
+      }
+      add(doc.project)
+      add(doc.folder)
+      add(doc.dept)
+      add(doc.doc_no)
+      add(doc.issued_date)
+      if (doc.status && doc.status !== '现行') add(doc.status)
+      return recordPills(doc).filter((p) => !shown.has(String(p.v || '').replace(/\s+/g, ' ').trim()))
     }
 
     function recordSummary(r) {
@@ -6231,6 +6244,69 @@ const App = {
       attachOver.value = false
       addAttachFiles(e.dataTransfer && e.dataTransfer.files)
     }
+    function clipboardFileName(file, index) {
+      const name = (file && file.name) || ''
+      const generic = !name || name === 'image.png' || name === 'blob' || /^clipboard/i.test(name)
+      if (!generic && /\.[a-z0-9]{1,8}$/i.test(name)) return name
+      const mime = ((file && file.type) || '').toLowerCase()
+      const map = {
+        'image/png': '.png',
+        'image/jpeg': '.jpg',
+        'image/jpg': '.jpg',
+        'image/webp': '.webp',
+        'image/svg+xml': '.svg',
+        'image/tiff': '.tiff',
+        'image/heic': '.heic',
+        'image/heif': '.heif',
+        'application/pdf': '.pdf',
+        'text/plain': '.txt',
+        'text/markdown': '.md',
+        'application/json': '.json',
+        'text/csv': '.csv',
+      }
+      const ext = map[mime]
+      if (!ext) return name
+      const d = new Date()
+      const pad = (n) => String(n).padStart(2, '0')
+      const stamp = '' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate())
+        + '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds())
+      return '粘贴-' + stamp + (index ? '-' + index : '') + ext
+    }
+    function onAttachPaste(e) {
+      if (asking.value) return
+      const cd = e && e.clipboardData
+      if (!cd) return
+      const raw = []
+      const seen = new Set()
+      const push = (file) => {
+        if (!file) return
+        const key = [file.name, file.size, file.type, file.lastModified].join('|')
+        if (seen.has(key)) return
+        seen.add(key)
+        raw.push(file)
+      }
+      if (cd.files && cd.files.length) {
+        for (const file of cd.files) push(file)
+      }
+      if (cd.items && cd.items.length) {
+        for (const item of cd.items) {
+          if (item.kind !== 'file') continue
+          try { push(item.getAsFile()) } catch (_err) {}
+        }
+      }
+      if (!raw.length) return
+      e.preventDefault()
+      const named = raw.map((file, i) => {
+        const name = clipboardFileName(file, i)
+        if (!name || name === file.name) return file
+        try {
+          return new File([file], name, { type: file.type || '', lastModified: file.lastModified || Date.now() })
+        } catch (_err) {
+          return file
+        }
+      })
+      addAttachFiles(named)
+    }
     function removeAttach(id) {
       attachments.value = attachments.value.filter((a) => a.id !== id)
     }
@@ -6397,6 +6473,12 @@ const App = {
           requestAnimationFrame(() => {
             syncBrowserViewport(false)
             refreshBrowserPreview()
+            setTimeout(() => {
+              if (!askBwTransitioning.value) syncBrowserViewport(false)
+            }, 90)
+            setTimeout(() => {
+              if (!askBwTransitioning.value) syncBrowserViewport(false)
+            }, 240)
           })
         })
       }, durationMs)
@@ -6872,13 +6954,13 @@ const App = {
       activeBrowserTab, browserOccluded, onBrowserUrlFocus, onBrowserUrlBlur, submitBrowserUrl,
       newBrowserTab, switchBrowserTab, closeBrowserTab, browserBack, browserForward, browserReloadOrStop, browserDevTools,
       doSearch, pageUrl,
-      messages, question, asking, chatlog, turns, send, stopAsk, newChat, clearChat, onEnter,
+      messages, question, asking, chatlog, chatAscii: CHAT_ASCII, turns, send, stopAsk, newChat, clearChat, onEnter,
       chatId, histMode, histPicked, histGroups, histPickCount, histPaneTitle, histPinLabel, runningIds,
       openHistManage, openHistBrowse, closeHistManage, openHistChat, onHistRow, togglePick, pinPicked, deletePicked,
       renderAnswer, onAnswerClick, displaySources, toggleSrc, bindAnswer, scheduleAnswer, blockDelay, msgDelay,
       toolDotClass, toolLabel, toolMeta, sbfWindowH, sbfOffset, sbfItemClass,
       attachments, attachInput, attachOver, pickAttach, onAttachPicked,
-      onAttachEnter, onAttachLeave, onAttachDrop, removeAttach,
+      onAttachEnter, onAttachLeave, onAttachDrop, onAttachPaste, removeAttach,
       menuOpen, menuPanel, modelWrap, modelQuery, modelPill, modelLabel, channelLabel, modelHasVision, effortLabel,
       effortOptions, contextLabel, contextOptions, groupedModels, filteredModels,
       toggleModelMenu, openPanel, setEffort, setContext, setChatModel,
@@ -6903,7 +6985,7 @@ const App = {
       DOC_TYPE_SPECS, INGEST_ACCEPT,
       scopeTotalCount, scopeDocTypeCapsules, filteredDocs, dynamicColumns, columns,
       docTypeLabel, docTypeColor, chunkProfileLabel, extBadgeText, extBadgeClass,
-      recordMetaVal, recordPills, recordSummary, renderChunkTable,
+      recordMetaVal, recordPills, docMetaPills, recordSummary, renderChunkTable,
       catalogAlive,
       isProjExpanded, selectTreeScope, setCatDocType,
       cursorTreeRows, dropTargetKey, activeTreeDocId,

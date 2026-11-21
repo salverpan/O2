@@ -13,6 +13,10 @@ const TABS_FILE = path.join(PROFILE_DIR, 'tabs-session.json')
 const ERR_LOG = path.join(DATA_ROOT, 'electron-err.log')
 const PARTITION = 'persist:o2-browser'
 const DEFAULT_HOME = 'https://www.bing.com'
+let ARIA_INJECT_SCRIPT = ''
+try {
+  ARIA_INJECT_SCRIPT = fs.readFileSync(path.join(__dirname, 'aria-inject.js'), 'utf8')
+} catch (_e) {}
 
 fs.mkdirSync(PROFILE_DIR, { recursive: true })
 process.on('uncaughtException', (err) => {
@@ -54,7 +58,30 @@ const viewport = {
   y: 0,
   width: 0,
   height: 0,
+  inline: false,
+  animating: false,
 }
+let zoomSettleTimer = null
+let zoomResyncTimer = null
+let zoomResyncTimer2 = null
+
+const BASE_INLINE_W = 1280
+const BASE_INLINE_H = 720
+const INLINE_PAGE_ZOOM = 0.5
+
+const coPanel = {
+  open: false,
+  openSource: '', // 'user' | 'ai' | ''
+  userDismissedAt: 0,
+  sessionStartAt: 0,
+  aiActive: false,
+  aiActionLabel: '',
+  waitingHuman: false,
+  humanReason: '',
+  humanSignal: '', // '' | 'manual_done' | 'user_closed'
+  lastHumanInputAt: 0,
+}
+let autoCloseTimer = null
 
 function buildCleanUA(raw) {
   return String(raw || '')
@@ -105,7 +132,103 @@ function getPublicState() {
     activeTabId,
     tabs: list,
     downloads: downloads.slice(-30).reverse(),
+    coPanel: {
+      open: !!coPanel.open,
+      openSource: coPanel.openSource || '',
+      aiActive: !!(coPanel.aiActive || aiBusyCount > 0),
+      aiActionLabel: coPanel.aiActionLabel || '',
+      waitingHuman: !!coPanel.waitingHuman,
+      humanReason: coPanel.humanReason || '',
+      lastHumanInputAt: coPanel.lastHumanInputAt || 0,
+    },
   }
+}
+
+function updateCoPanel(patch = {}) {
+  if (!patch || typeof patch !== 'object') return getPublicState()
+  clearTimeout(autoCloseTimer)
+  if (patch.sessionStart) {
+    coPanel.sessionStartAt = Date.now()
+    coPanel.userDismissedAt = 0
+  }
+  if (typeof patch.open === 'boolean') {
+    const prevOpen = coPanel.open
+    coPanel.open = patch.open
+    if (patch.open) {
+      if (patch.openSource) coPanel.openSource = patch.openSource
+      else if (!coPanel.openSource) coPanel.openSource = 'user'
+      if (coPanel.openSource === 'user') {
+        coPanel.userDismissedAt = 0
+      }
+    } else {
+      if (patch.byUser) {
+        coPanel.userDismissedAt = Date.now()
+        if (coPanel.waitingHuman) {
+          coPanel.humanSignal = 'user_closed'
+          coPanel.waitingHuman = false
+          coPanel.humanReason = ''
+        }
+      }
+      if (!prevOpen || patch.byUser || patch.resetSource) {
+        coPanel.openSource = ''
+      }
+    }
+  } else if (patch.openSource) {
+    coPanel.openSource = patch.openSource
+  }
+  if (typeof patch.aiActive === 'boolean') {
+    coPanel.aiActive = patch.aiActive
+    if (!patch.aiActive && !coPanel.waitingHuman) {
+      coPanel.aiActionLabel = ''
+    }
+  }
+  if (typeof patch.aiActionLabel === 'string') {
+    coPanel.aiActionLabel = patch.aiActionLabel
+  }
+  if (typeof patch.waitingHuman === 'boolean') {
+    coPanel.waitingHuman = patch.waitingHuman
+    if (!patch.waitingHuman) {
+      coPanel.humanReason = ''
+    }
+  }
+  if (typeof patch.humanReason === 'string') {
+    coPanel.humanReason = patch.humanReason
+  }
+  if (typeof patch.humanSignal === 'string' && patch.humanSignal) {
+    coPanel.humanSignal = patch.humanSignal
+    if (patch.humanSignal === 'manual_done') {
+      coPanel.waitingHuman = false
+      coPanel.humanReason = ''
+    } else if (patch.humanSignal === 'user_closed') {
+      coPanel.waitingHuman = false
+      coPanel.humanReason = ''
+      coPanel.open = false
+      coPanel.userDismissedAt = Date.now()
+    }
+  }
+  if (patch.sessionEnd) {
+    coPanel.aiActive = false
+    coPanel.aiActionLabel = ''
+    const activeTab = tabs.get(activeTabId)
+    if (activeTab) hideAiCursor(activeTab).catch(() => {})
+    if (coPanel.open && coPanel.openSource === 'ai' && !coPanel.waitingHuman) {
+      const delay = typeof patch.autoCloseDelayMs === 'number' ? patch.autoCloseDelayMs : 850
+      if (delay <= 0) {
+        coPanel.open = false
+        coPanel.openSource = ''
+      } else {
+        autoCloseTimer = setTimeout(() => {
+          if (coPanel.open && coPanel.openSource === 'ai' && !coPanel.waitingHuman && aiBusyCount === 0) {
+            coPanel.open = false
+            coPanel.openSource = ''
+            broadcastState()
+          }
+        }, delay)
+      }
+    }
+  }
+  broadcastState()
+  return getPublicState()
 }
 
 function broadcastState() {
@@ -163,6 +286,51 @@ function isTabShownOnScreen(t) {
   return !!(viewport.visible && viewport.width > 10 && viewport.height > 10 && t && t.id === activeTabId)
 }
 
+function readZoomFactor(wc) {
+  try {
+    const z = wc.getZoomFactor()
+    return (typeof z === 'number' && z > 0) ? z : null
+  } catch (_e) {
+    return null
+  }
+}
+
+function pageZoomFor() {
+  return viewport.inline ? INLINE_PAGE_ZOOM : 1
+}
+
+function setTabZoom(t) {
+  const wc = t && t.view && t.view.webContents
+  if (!wc || wc.isDestroyed()) return false
+  const next = pageZoomFor()
+  const actual = readZoomFactor(wc)
+  if (actual != null && Math.abs(actual - next) < 0.008) {
+    t._appliedZoom = next
+    return false
+  }
+  try { wc.setZoomFactor(next) } catch (_e) {}
+  t._appliedZoom = next
+  return true
+}
+
+function resyncTabZoom(t) {
+  if (!t) return
+  setTabZoom(t)
+}
+
+function scheduleInlineZoomResync() {
+  const run = () => {
+    if (!viewport.visible) return
+    const t = tabs.get(activeTabId)
+    if (!t) return
+    setTabZoom(t)
+  }
+  clearTimeout(zoomResyncTimer)
+  clearTimeout(zoomResyncTimer2)
+  zoomResyncTimer = setTimeout(run, 32)
+  zoomResyncTimer2 = setTimeout(run, 200)
+}
+
 async function ensureTabMetrics(t) {
   const wc = t.view.webContents
   if (wc.isDestroyed() || !wc.debugger.isAttached()) return
@@ -170,10 +338,12 @@ async function ensureTabMetrics(t) {
     if (t._metricsEmulated) {
       t._metricsEmulated = false
       await wc.debugger.sendCommand('Emulation.clearDeviceMetricsOverride').catch(() => {})
+      resyncTabZoom(t)
     }
     return
   }
-  const { w, h } = currentStageSize()
+  const w = viewport.inline ? BASE_INLINE_W : currentStageSize().w
+  const h = viewport.inline ? BASE_INLINE_H : currentStageSize().h
   const key = `${w}x${h}`
   if (t._metricsEmulated !== key) {
     t._metricsEmulated = key
@@ -197,20 +367,80 @@ function applyViewport() {
     width: w,
     height: h,
   }
-  const offScreen = { x: -20000, y: 0, width: w, height: h }
+  const offW = viewport.inline ? BASE_INLINE_W : w
+  const offH = viewport.inline ? BASE_INLINE_H : h
+  const offScreen = {
+    x: -20000,
+    y: 0,
+    width: offW,
+    height: offH,
+  }
+  clearTimeout(zoomSettleTimer)
+  let resyncAfterShow = false
   for (const [id, t] of tabs) {
-    if (t.view.webContents.isDestroyed()) continue
+    const wc = t.view.webContents
+    if (wc.isDestroyed()) continue
     t.view.setVisible(true)
     if (show && id === activeTabId) {
-      t.view.setBounds(onScreen)
-      if (t._metricsEmulated && t.view.webContents.debugger.isAttached()) {
+      const modeChanged = t._lastInlineMode !== !!viewport.inline
+      const hadMetrics = !!t._metricsEmulated
+      const prevZoom = t._appliedZoom
+      t._lastInlineMode = !!viewport.inline
+      const onKey = `1:${onScreen.x},${onScreen.y},${onScreen.width},${onScreen.height}`
+      if (t._boundsKey !== onKey) {
+        t._boundsKey = onKey
+        t.view.setBounds(onScreen)
+      }
+
+      const finishZoom = () => {
+        if (!wc.isDestroyed()) setTabZoom(t)
+      }
+
+      if (hadMetrics && wc.debugger.isAttached()) {
         t._metricsEmulated = false
-        t.view.webContents.debugger.sendCommand('Emulation.clearDeviceMetricsOverride').catch(() => {})
+        wc.debugger.sendCommand('Emulation.clearDeviceMetricsOverride')
+          .catch(() => {})
+          .finally(finishZoom)
+      } else {
+        finishZoom()
+      }
+      if (!viewport.animating && viewport.inline && (
+        modeChanged || hadMetrics || prevZoom == null || prevZoom === 1
+      )) {
+        resyncAfterShow = true
       }
     } else {
-      t.view.setBounds(offScreen)
+      const offKey = `0:${offW},${offH}`
+      if (t._boundsKey !== offKey) {
+        t._boundsKey = offKey
+        t.view.setBounds(offScreen)
+      }
+      t._lastInlineMode = !!viewport.inline
+      setTabZoom(t)
     }
   }
+  if (resyncAfterShow) {
+    scheduleInlineZoomResync()
+  }
+}
+
+async function settleLayout(t) {
+  if (!t || !t.view || t.view.webContents.isDestroyed()) return
+  applyViewport()
+  const wc = t.view.webContents
+  if (t._metricsEmulated && wc.debugger.isAttached()) {
+    t._metricsEmulated = false
+    await wc.debugger.sendCommand('Emulation.clearDeviceMetricsOverride').catch(() => {})
+  }
+  setTabZoom(t)
+  try {
+    await evalInTab(
+      t,
+      `new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))
+      })`
+    )
+  } catch (_e) {}
 }
 
 function configureBrowserSession() {
@@ -264,6 +494,280 @@ function configureBrowserSession() {
   })
 }
 
+const AI_CURSOR_INIT_SCRIPT = `
+(() => {
+  try {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+  } catch (_) {}
+
+  if (!window.__o2HumanListenerBound) {
+    window.__o2HumanListenerBound = true;
+    let lastReport = 0;
+    const report = (kind) => {
+      const now = Date.now();
+      if (kind === 'mousemove' && now - lastReport < 260) return;
+      lastReport = now;
+      try {
+        if (typeof window.__o2ReportHumanActivity === 'function') {
+          window.__o2ReportHumanActivity(JSON.stringify({ kind, ts: now, url: location.href }));
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('mousedown', (e) => { if (e.isTrusted) report('mousedown'); }, { capture: true, passive: true });
+    window.addEventListener('wheel', (e) => { if (e.isTrusted) report('wheel'); }, { capture: true, passive: true });
+    window.addEventListener('keydown', (e) => { if (e.isTrusted) report('keydown'); }, { capture: true, passive: true });
+    window.addEventListener('touchstart', (e) => { if (e.isTrusted) report('touchstart'); }, { capture: true, passive: true });
+  }
+
+  function ensureCursorOverlay() {
+    if (window.__o2AiCursor && document.documentElement && document.documentElement.contains(window.__o2AiCursor.host)) {
+      return window.__o2AiCursor;
+    }
+    if (!document.documentElement) return null;
+    const old = document.getElementById('__o2_ai_cursor_host__');
+    if (old) old.remove();
+
+    const host = document.createElement('div');
+    host.id = '__o2_ai_cursor_host__';
+    host.setAttribute('data-o2-ignore', '1');
+    host.setAttribute('aria-hidden', 'true');
+    host.style.cssText = 'position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;pointer-events:none!important;z-index:2147483647!important;overflow:hidden!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;';
+    const shadow = host.attachShadow({ mode: 'open' });
+
+    const style = document.createElement('style');
+    style.textContent = \`
+      :host { all: initial; pointer-events: none !important; }
+      .stage {
+        position: fixed; inset: 0; pointer-events: none; overflow: hidden;
+        font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .tbox {
+        position: fixed; left: 0; top: 0; width: 0; height: 0;
+        border: 2px solid rgba(37, 99, 235, 0.88);
+        background: rgba(59, 130, 246, 0.08);
+        border-radius: 7px;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.16), 0 6px 18px rgba(29, 78, 216, 0.16);
+        opacity: 0;
+        transform: translate3d(-9999px, -9999px, 0);
+        transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                    width 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                    height 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                    opacity 0.2s ease;
+        pointer-events: none;
+      }
+      .tbox.on { opacity: 1; }
+      .tbox.typing {
+        border-color: #2563eb;
+        animation: box-pulse 1.1s ease-in-out infinite;
+      }
+      @keyframes box-pulse {
+        0%, 100% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18); }
+        50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.32); }
+      }
+      .trail-dot {
+        position: fixed; left: 0; top: 0;
+        width: 7px; height: 7px; margin-left: -3.5px; margin-top: -3.5px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(96, 165, 250, 0.95) 0%, rgba(37, 99, 235, 0.45) 70%, transparent 100%);
+        pointer-events: none;
+        animation: trail-fade 0.44s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      @keyframes trail-fade {
+        0% { opacity: 0.88; transform: translate3d(var(--tx), var(--ty), 0) scale(1); }
+        100% { opacity: 0; transform: translate3d(var(--tx), var(--ty), 0) scale(0.2); }
+      }
+      .ripple {
+        position: fixed; left: 0; top: 0;
+        width: 34px; height: 34px; margin-left: -17px; margin-top: -17px;
+        border-radius: 50%;
+        border: 2.2px solid #2563eb;
+        background: rgba(59, 130, 246, 0.22);
+        pointer-events: none;
+        animation: ripple-expand 0.56s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .ripple::after {
+        content: ""; position: absolute; inset: -6px;
+        border-radius: 50%; border: 1.5px solid rgba(96, 165, 250, 0.65);
+        animation: ripple-outer 0.56s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      @keyframes ripple-expand {
+        0% { opacity: 0.95; transform: translate3d(var(--rx), var(--ry), 0) scale(0.25); }
+        100% { opacity: 0; transform: translate3d(var(--rx), var(--ry), 0) scale(1.85); }
+      }
+      @keyframes ripple-outer {
+        0% { opacity: 0.8; transform: scale(0.5); }
+        100% { opacity: 0; transform: scale(1.35); }
+      }
+      .cursor {
+        position: fixed; left: 0; top: 0;
+        pointer-events: none;
+        opacity: 0;
+        transform: translate3d(200px, 160px, 0);
+        transition: opacity 0.22s ease;
+        will-change: transform, opacity;
+      }
+      .cursor.on { opacity: 1; }
+      .cursor-inner {
+        position: relative;
+        transform-origin: 3px 3px;
+        transition: transform 0.11s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .cursor.pressing .cursor-inner {
+        transform: scale(0.84);
+      }
+      .cursor-svg {
+        width: 24px; height: 24px; display: block;
+        filter: drop-shadow(0 4px 10px rgba(29, 78, 216, 0.45)) drop-shadow(0 1px 2px rgba(15, 23, 42, 0.35));
+      }
+    \`;
+
+    const stage = document.createElement('div');
+    stage.className = 'stage';
+    const tbox = document.createElement('div');
+    tbox.className = 'tbox';
+    const trails = document.createElement('div');
+    const ripples = document.createElement('div');
+    const cursor = document.createElement('div');
+    cursor.className = 'cursor';
+    cursor.innerHTML = \`
+      <div class="cursor-inner">
+        <svg class="cursor-svg" viewBox="0 0 24 24" fill="none">
+          <path d="M3.2 2.4L20.4 10.1C21.3 10.5 21.2 11.8 20.3 12.1L13.1 14.3L9.9 21.1C9.5 22.0 8.2 21.9 7.9 21.0L2.1 3.7C1.8 2.8 2.4 2.0 3.2 2.4Z"
+                fill="#2563EB" stroke="#FFFFFF" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M4.8 4.9L17.4 10.6L12.1 12.2L9.5 17.7L4.8 4.9Z"
+                fill="rgba(147, 197, 253, 0.32)"/>
+        </svg>
+      </div>
+    \`;
+    stage.appendChild(tbox);
+    stage.appendChild(trails);
+    stage.appendChild(ripples);
+    stage.appendChild(cursor);
+    shadow.appendChild(style);
+    shadow.appendChild(stage);
+    document.documentElement.appendChild(host);
+
+    const ctrl = {
+      host,
+      x: Math.round((window.innerWidth || 1280) * 0.48),
+      y: Math.round((window.innerHeight || 720) * 0.42),
+      visible: false,
+      raf: 0,
+      hideTimer: 0,
+      setPos(x, y) {
+        this.x = x;
+        this.y = y;
+        cursor.style.transform = \`translate3d(\${Math.round(x)}px, \${Math.round(y)}px, 0)\`;
+      },
+      spawnTrail(_x, _y) {},
+      spawnRipple(x, y) {
+        const r = document.createElement('div');
+        r.className = 'ripple';
+        r.style.setProperty('--rx', Math.round(x) + 'px');
+        r.style.setProperty('--ry', Math.round(y) + 'px');
+        ripples.appendChild(r);
+        setTimeout(() => r.remove(), 600);
+      },
+      setBox(rect, typing = false) {
+        if (!rect || !(rect.w > 0 && rect.h > 0)) {
+          tbox.classList.remove('on', 'typing');
+          return;
+        }
+        const pad = 4;
+        const bx = Math.round(rect.x - rect.w / 2 - pad);
+        const by = Math.round(rect.y - rect.h / 2 - pad);
+        tbox.style.width = Math.round(rect.w + pad * 2) + 'px';
+        tbox.style.height = Math.round(rect.h + pad * 2) + 'px';
+        tbox.style.transform = \`translate3d(\${bx}px, \${by}px, 0)\`;
+        tbox.classList.add('on');
+        tbox.classList.toggle('typing', !!typing);
+      },
+      moveTo(opts = {}) {
+        clearTimeout(this.hideTimer);
+        cancelAnimationFrame(this.raf);
+        const tx = typeof opts.x === 'number' ? opts.x : this.x;
+        const ty = typeof opts.y === 'number' ? opts.y : this.y;
+        cursor.classList.add('on');
+        this.setBox(opts.rect || null, opts.mode === 'fill');
+
+        if (!this.visible) {
+          this.visible = true;
+          this.setPos(this.x, this.y);
+        }
+        const sx = this.x;
+        const sy = this.y;
+        const dx = tx - sx;
+        const dy = ty - sy;
+        const dist = Math.hypot(dx, dy);
+        const dur = Math.min(340, Math.max(120, Number(opts.duration) || Math.round(130 + dist * 0.22)));
+        if (dist < 4) {
+          this.setPos(tx, ty);
+          this.scheduleAutoHide(opts.holdMs || 4500);
+          return Promise.resolve();
+        }
+        // Quadratic Bezier control point with subtle perpendicular arc
+        const bend = Math.min(64, dist * 0.18) * (sx < tx ? 1 : -1);
+        const cx = (sx + tx) / 2 - (dy / (dist || 1)) * bend * 0.55;
+        const cy = (sy + ty) / 2 + (dx / (dist || 1)) * bend * 0.35 - Math.min(28, dist * 0.08);
+        let lastTrail = 0;
+
+        return new Promise((resolve) => {
+          const t0 = performance.now();
+          const step = (now) => {
+            const p = Math.min(1, (now - t0) / dur);
+            // cubic-Out easing
+            const e = 1 - Math.pow(1 - p, 3);
+            const inv = 1 - e;
+            const nx = inv * inv * sx + 2 * inv * e * cx + e * e * tx;
+            const ny = inv * inv * sy + 2 * inv * e * cy + e * e * ty;
+            this.setPos(nx, ny);
+            if (now - lastTrail > 34 && p < 0.94) {
+              lastTrail = now;
+              this.spawnTrail(nx, ny);
+            }
+            if (p < 1) {
+              this.raf = requestAnimationFrame(step);
+            } else {
+              this.setPos(tx, ty);
+              this.scheduleAutoHide(opts.holdMs || 4500);
+              resolve();
+            }
+          };
+          this.raf = requestAnimationFrame(step);
+        });
+      },
+      async clickAt(opts = {}) {
+        await this.moveTo(opts);
+        cursor.classList.add('pressing');
+        this.spawnRipple(this.x, this.y);
+        await new Promise((r) => setTimeout(r, 95));
+        cursor.classList.remove('pressing');
+      },
+      scheduleAutoHide(ms = 4500) {
+        clearTimeout(this.hideTimer);
+        this.hideTimer = setTimeout(() => this.hide(), ms);
+      },
+      hide() {
+        clearTimeout(this.hideTimer);
+        cancelAnimationFrame(this.raf);
+        cursor.classList.remove('on', 'pressing');
+        tbox.classList.remove('on', 'typing');
+        this.visible = false;
+      },
+    };
+    window.__o2AiCursor = ctrl;
+    return ctrl;
+  }
+
+  window.__o2EnsureAiCursor = ensureCursorOverlay;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => ensureCursorOverlay(), { once: true });
+  } else {
+    ensureCursorOverlay();
+  }
+})();
+`
+
 async function ensureDebugger(t) {
   const wc = t.view.webContents
   if (wc.isDestroyed()) return false
@@ -279,6 +783,7 @@ async function ensureDebugger(t) {
       try {
         await wc.debugger.sendCommand('Page.enable')
         await wc.debugger.sendCommand('Runtime.enable')
+        await wc.debugger.sendCommand('Runtime.addBinding', { name: '__o2ReportHumanActivity' }).catch(() => {})
         await wc.debugger.sendCommand('Network.enable', { maxPostDataSize: 65536 })
         if (cleanUserAgent) {
           await wc.debugger.sendCommand('Network.setUserAgentOverride', {
@@ -288,16 +793,25 @@ async function ensureDebugger(t) {
         }
         await wc.debugger.sendCommand('DOM.enable')
         await wc.debugger.sendCommand('Log.enable')
+        if (ARIA_INJECT_SCRIPT) {
+          await wc.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', {
+            source: ARIA_INJECT_SCRIPT,
+          })
+        }
         await wc.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', {
-          source: `
-            try {
-              Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-            } catch (_) {}
-          `,
+          source: AI_CURSOR_INIT_SCRIPT,
         })
       } catch (_e) {}
 
     wc.debugger.on('message', (_event, method, params) => {
+      if (method === 'Runtime.bindingCalled' && params && params.name === '__o2ReportHumanActivity') {
+        const now = Date.now()
+        if (now > (t._aiSyntheticUntil || 0)) {
+          coPanel.lastHumanInputAt = now
+          hideAiCursor(t).catch(() => {})
+        }
+        return
+      }
       if (method === 'Runtime.consoleAPICalled') {
         const text = (params.args || [])
           .map((a) => (a.value !== undefined ? String(a.value) : (a.description || a.type || '')))
@@ -394,6 +908,7 @@ function createTab(initialUrl = DEFAULT_HOME, makeActive = true, skipAutoLoad = 
   const wc = view.webContents
   wc.setUserAgent(cleanUserAgent)
   view.setVisible(false)
+  try { wc.setVisualZoomLevelLimits(1, 1) } catch (_e) {}
 
   const tab = {
     id,
@@ -437,10 +952,35 @@ function createTab(initialUrl = DEFAULT_HOME, makeActive = true, skipAutoLoad = 
     broadcastState()
   }
 
+  const keepLayoutZoom = () => {
+    if (wc.isDestroyed() || tab._zoomSyncing) return
+    tab._zoomSyncing = true
+    try {
+      resyncTabZoom(tab, { force: true })
+    } finally {
+      setImmediate(() => { tab._zoomSyncing = false })
+    }
+  }
   wc.on('did-start-loading', syncMeta)
-  wc.on('did-stop-loading', syncMeta)
-  wc.on('did-navigate', syncMeta)
+  wc.on('did-stop-loading', () => {
+    syncMeta()
+    keepLayoutZoom()
+  })
+  wc.on('did-navigate', () => {
+    syncMeta()
+    keepLayoutZoom()
+  })
   wc.on('did-navigate-in-page', syncMeta)
+  wc.on('dom-ready', keepLayoutZoom)
+  wc.on('did-finish-load', keepLayoutZoom)
+  wc.on('did-frame-finish-load', (_ev, isMain) => {
+    if (isMain) keepLayoutZoom()
+  })
+  if (typeof wc.on === 'function') {
+    wc.on('zoom-changed', () => {
+      setImmediate(keepLayoutZoom)
+    })
+  }
   wc.on('page-title-updated', (_ev, title) => {
     tab.title = title || tab.title
     broadcastState()
@@ -565,7 +1105,338 @@ async function evalInTab(t, expression, awaitPromise = true) {
   return res && res.result ? res.result.value : undefined
 }
 
-const SNAPSHOT_SCRIPT = `(maxText) => {
+async function ensureAriaInTab(t) {
+  if (!ARIA_INJECT_SCRIPT) return false
+  try {
+    const has = await evalInTab(t, 'typeof window.__o2EnsureAria === "function"', false)
+    if (!has) await evalInTab(t, ARIA_INJECT_SCRIPT, false)
+    return true
+  } catch (_e) {
+    return false
+  }
+}
+
+async function captureSnapshot(t, maxChars = 8000, timeoutMs = 3500) {
+  if (!t || !t.view || t.view.webContents.isDestroyed()) return null
+  await settleLayout(t)
+  await ensureAriaInTab(t)
+  const limit = Math.min(20000, Math.max(500, Number(maxChars) || 8000))
+  const snap = await Promise.race([
+    evalInTab(t, `(${SNAPSHOT_SCRIPT})(${limit})`),
+    new Promise((r) => setTimeout(() => r(null), timeoutMs)),
+  ]).catch(() => null)
+  if (snap && !snap.aria) {
+    const fallback = await evalInTab(t, `(${SNAPSHOT_FALLBACK_SCRIPT})(${Math.min(4000, limit)})`).catch(() => null)
+    if (fallback && Array.isArray(fallback.elements)) {
+      snap.elements = fallback.elements
+      snap.textExcerpt = fallback.textExcerpt
+      if (!snap.humanVerification && fallback.humanVerification) {
+        snap.humanVerification = fallback.humanVerification
+      }
+    }
+  }
+  return snap
+}
+
+const FIND_CONTEXT_LINES = 3
+
+function indentOfAriaLine(line) {
+  return String(line).length - String(line).trimStart().length
+}
+
+function ancestorAriaIndices(lines, indents, index) {
+  const result = []
+  let indent = indents[index]
+  for (let i = index - 1; i >= 0 && indent > 0; i--) {
+    if (!lines[i].trim()) continue
+    if (indents[i] < indent) {
+      result.push(i)
+      indent = indents[i]
+    }
+  }
+  return result.reverse()
+}
+
+function compileFindRegex(source) {
+  const literal = /^\/(.*)\/([a-z]*)$/.exec(String(source || ''))
+  const pattern = literal ? literal[1] : String(source || '')
+  const flags = literal ? String(literal[2] || '').replace(/g/g, '') : ''
+  return new RegExp(pattern, flags)
+}
+
+function snapshotSearchText(snap) {
+  if (snap && snap.aria) return String(snap.aria)
+  const els = (snap && snap.elements) || []
+  return els.map((el) => {
+    const tag = el.tag || 'el'
+    const role = el.role ? `[role=${el.role}]` : ''
+    return `  [${el.ref}] <${tag}${role}> ${el.text || ''}`
+  }).join('\n')
+}
+
+function findInAriaSnapshot(yaml, opts = {}) {
+  const text = opts.text != null ? String(opts.text) : ''
+  const regexSrc = opts.regex != null ? String(opts.regex) : ''
+  if (!text && !regexSrc) {
+    return { ok: false, error: 'Provide either "text" or "regex" to search for.' }
+  }
+  if (text && regexSrc) {
+    return { ok: false, error: 'Provide only one of "text" or "regex", not both.' }
+  }
+  let maxResults = opts.maxResults
+  if (maxResults !== undefined && maxResults !== null && maxResults !== '') {
+    maxResults = Number(maxResults)
+    if (!Number.isInteger(maxResults) || maxResults <= 0) {
+      return { ok: false, error: '"maxResults" must be a positive integer.' }
+    }
+  } else {
+    maxResults = undefined
+  }
+
+  let query
+  let lineMatches
+  if (regexSrc) {
+    let re
+    try {
+      re = compileFindRegex(regexSrc)
+    } catch (_e) {
+      return { ok: false, error: 'Invalid regular expression' }
+    }
+    query = String(re)
+    lineMatches = (line) => {
+      re.lastIndex = 0
+      return re.test(line)
+    }
+  } else {
+    query = `"${text}"`
+    const needle = text.toLowerCase()
+    lineMatches = (line) => String(line).toLowerCase().includes(needle)
+  }
+
+  const lines = String(yaml || '').split('\n')
+  const indents = lines.map(indentOfAriaLine)
+  const matchedLines = []
+  for (let i = 0; i < lines.length; i++) {
+    if (lineMatches(lines[i])) matchedLines.push(i)
+  }
+
+  if (!matchedLines.length) {
+    return {
+      ok: true,
+      query,
+      total: 0,
+      shown: 0,
+      header: `No matches found for ${query}.`,
+      snippets: '',
+    }
+  }
+
+  const totalMatches = matchedLines.length
+  const matchesToRender = (maxResults !== undefined && maxResults < totalMatches)
+    ? matchedLines.slice(0, maxResults)
+    : matchedLines
+
+  const windows = []
+  for (const line of matchesToRender) {
+    const start = Math.max(0, line - FIND_CONTEXT_LINES)
+    const end = Math.min(lines.length - 1, line + FIND_CONTEXT_LINES)
+    const last = windows[windows.length - 1]
+    if (last && start <= last.end + 1) last.end = Math.max(last.end, end)
+    else windows.push({ start, end })
+  }
+
+  const path = new Set()
+  for (const match of matchesToRender) {
+    path.add(match)
+    for (const ancestor of ancestorAriaIndices(lines, indents, match)) path.add(ancestor)
+  }
+
+  const snippets = windows.map((window) => {
+    const indices = ancestorAriaIndices(lines, indents, window.start)
+    for (let i = window.start; i <= window.end; i++) indices.push(i)
+    const out = []
+    for (let i = 0; i < indices.length; i++) {
+      const index = indices[i]
+      if (i > 0 && index > indices[i - 1] + 1 && !path.has(index) && !path.has(indices[i - 1])) {
+        out.push(' '.repeat(indents[index]) + '...')
+      }
+      out.push(lines[index])
+    }
+    return out.join('\n')
+  })
+
+  const matchWord = totalMatches === 1 ? 'match' : 'matches'
+  const header = matchesToRender.length < totalMatches
+    ? `Found ${totalMatches} ${matchWord} for ${query} (showing first ${matchesToRender.length}):`
+    : `Found ${totalMatches} ${matchWord} for ${query}:`
+
+  return {
+    ok: true,
+    query,
+    total: totalMatches,
+    shown: matchesToRender.length,
+    header,
+    snippets: snippets.join('\n\n----\n\n'),
+  }
+}
+
+async function finishAction(t, extra = {}, opts = {}) {
+  const wc = t && t.view && t.view.webContents
+  if (opts.waitMs) await new Promise((r) => setTimeout(r, opts.waitMs))
+  if (wc && !wc.isDestroyed() && wc.isLoading()) {
+    await waitForLoad(wc, opts.loadTimeout || 6000)
+  }
+  broadcastState()
+  const current = resolveTab((t && t.id) || '')
+  const out = { ok: true, tab: serializeTab(current), ...extra }
+  const snap = await captureSnapshot(current, opts.maxChars || 8000).catch(() => null)
+  if (snap) out.snapshot = snap
+  return out
+}
+
+async function ensureAiCursorInTab(t) {
+  try {
+    const has = await evalInTab(t, 'typeof window.__o2EnsureAiCursor === "function"', false)
+    if (!has) {
+      await evalInTab(t, AI_CURSOR_INIT_SCRIPT, false)
+    }
+  } catch (_e) {}
+}
+
+async function animateAiCursor(t, opts = {}, isClick = false) {
+  if (!t || t.view.webContents.isDestroyed()) return
+  await ensureAiCursorInTab(t)
+  const payload = JSON.stringify(opts)
+  const fn = isClick ? 'clickAt' : 'moveTo'
+  await Promise.race([
+    evalInTab(
+      t,
+      `(() => {
+        const c = typeof window.__o2EnsureAiCursor === 'function' ? window.__o2EnsureAiCursor() : window.__o2AiCursor;
+        if (!c) return null;
+        return c.${fn}(${payload});
+      })()`,
+      true
+    ),
+    new Promise((r) => setTimeout(r, 550)),
+  ]).catch(() => {})
+}
+
+async function hideAiCursor(t) {
+  if (!t || t.view.webContents.isDestroyed()) return
+  await evalInTab(
+    t,
+    `(() => {
+      if (window.__o2AiCursor && typeof window.__o2AiCursor.hide === 'function') {
+        window.__o2AiCursor.hide();
+      }
+    })()`,
+    false
+  ).catch(() => {})
+}
+
+async function waitIfHumanActive(t) {
+  const since = Date.now() - (coPanel.lastHumanInputAt || 0)
+  if (since >= 2200) return false
+  hideAiCursor(t).catch(() => {})
+  const deadline = Date.now() + 2600
+  while (Date.now() < deadline) {
+    if (Date.now() - (coPanel.lastHumanInputAt || 0) >= 1500) break
+    await new Promise((r) => setTimeout(r, 200))
+  }
+  return true
+}
+
+const VERIFICATION_PROBE_SCRIPT = `(() => {
+  const title = (document.title || '').trim();
+  const url = location.href || '';
+  const bodyText = (document.body ? document.body.innerText : '').slice(0, 3500);
+  const isVis = (el) => {
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    if (r.width < 12 || r.height < 12) return false;
+    const cs = getComputedStyle(el);
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) !== 0;
+  };
+  const captchaSels = [
+    '#cf-turnstile', '.cf-turnstile', 'iframe[src*="challenges.cloudflare.com"]',
+    '#challenge-running', '#challenge-form', '#challenge-stage',
+    'iframe[src*="recaptcha"]', 'iframe[src*="hcaptcha"]', '.g-recaptcha', '.h-captcha',
+    '.geetest_panel', '.geetest_holder', '.geetest_wind', '#nc_1_wrapper', '.nc-container',
+    '#tcaptcha_transform', 'iframe[src*="tcaptcha"]', '.secsdk-captcha-drag-icon',
+    '.yidun_panel', '.yidun_modal', '.bili-mini-mask', '.verify-wrap', '.captcha-modal'
+  ];
+  let hasCaptcha = false;
+  let captchaReason = '';
+  for (const sel of captchaSels) {
+    const el = document.querySelector(sel);
+    if (isVis(el)) {
+      hasCaptcha = true;
+      captchaReason = '检测到页面人机验证组件';
+      break;
+    }
+  }
+  if (!hasCaptcha) {
+    if (/Just a moment|Attention Required! \\| Cloudflare|请完成人机验证|安全验证|访问验证|行为验证/i.test(title)) {
+      hasCaptcha = true;
+      captchaReason = '当前处于安全验证拦截页（' + title.slice(0, 30) + '）';
+    } else if (bodyText.length < 700 && /请拖动滑块|点击完成验证|完成下方验证|请完成安全验证|Verify you are human|Checking your browser/i.test(bodyText)) {
+      hasCaptcha = true;
+      captchaReason = '页面提示需完成人机验证';
+    }
+  }
+
+  let hasAuthForm = false;
+  let authReason = '';
+  const pwdInput = [...document.querySelectorAll('input[type="password"]')].find(isVis);
+  const smsInput = [...document.querySelectorAll('input:not([type="hidden"])')].find((el) => {
+    if (!isVis(el)) return false;
+    const ph = (el.getAttribute('placeholder') || el.getAttribute('aria-label') || '').toLowerCase();
+    return /验证码|短信码|动态码|verification code|otp|2fa/i.test(ph);
+  });
+  const isAuthUrl = /(?:^|[/.?&=_])(login|signin|passport|auth|verify|captcha|sso)(?:$|[/.?&=_])/i.test(url);
+  const modalAuth = [...document.querySelectorAll('[role="dialog"],.modal,.login-modal,.auth-modal,.passport-modal,.ant-modal-content,.el-dialog')].find((m) => {
+    if (!isVis(m)) return false;
+    const txt = (m.innerText || '').slice(0, 600);
+    return /扫码登录|密码登录|短信登录|请先登录|登录后继续|安全验证|身份验证|获取验证码/i.test(txt);
+  });
+
+  if (modalAuth) {
+    hasAuthForm = true;
+    authReason = '检测到登录/验证弹窗';
+  } else if (isAuthUrl && (pwdInput || smsInput || /扫码登录|二维码登录|账号登录|短信登录/i.test(bodyText))) {
+    hasAuthForm = true;
+    authReason = '当前处于登录或身份验证页面';
+  } else if (smsInput && bodyText.length < 1500) {
+    hasAuthForm = true;
+    authReason = '页面要求输入验证码';
+  }
+
+  const ae = document.activeElement;
+  const activeInputFocused = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
+  let hash = 0;
+  const sample = title + '|' + url + '|' + bodyText.slice(0, 1200);
+  for (let i = 0; i < sample.length; i++) {
+    hash = ((hash << 5) - hash + sample.charCodeAt(i)) | 0;
+  }
+
+  const detected = hasCaptcha || hasAuthForm;
+  const kind = hasCaptcha ? 'captcha' : (hasAuthForm ? 'login' : '');
+  const reason = captchaReason || authReason || '';
+  return {
+    detected,
+    kind,
+    reason,
+    hasCaptcha,
+    hasAuthForm,
+    activeInputFocused,
+    textHash: hash,
+    url,
+    title,
+  };
+})()`
+
+const SNAPSHOT_FALLBACK_SCRIPT = `(maxText) => {
   const INTERACTIVE = 'a[href],button,input,textarea,select,summary,[role="button"],[role="link"],[role="tab"],[role="menuitem"],[role="option"],[role="checkbox"],[role="radio"],[role="switch"],[role="combobox"],[role="textbox"],[contenteditable="true"],[onclick]';
   document.querySelectorAll('[data-o2-ref]').forEach((el) => el.removeAttribute('data-o2-ref'));
   const seen = new Set();
@@ -581,6 +1452,7 @@ const SNAPSHOT_SCRIPT = `(maxText) => {
   for (const el of candidates) {
     if (seen.has(el)) continue;
     seen.add(el);
+    if (el.id === '__o2_ai_cursor_host__' || el.closest('#__o2_ai_cursor_host__,[data-o2-ignore]')) continue;
     const rect = el.getBoundingClientRect();
     if (rect.width < 3 || rect.height < 3) continue;
     const cs = getComputedStyle(el);
@@ -625,6 +1497,7 @@ const SNAPSHOT_SCRIPT = `(maxText) => {
     .replace(/\\n{3,}/g, '\\n\\n')
     .trim()
     .slice(0, maxText || 4000);
+  const probe = ${VERIFICATION_PROBE_SCRIPT};
   return {
     title: document.title || '',
     url: location.href,
@@ -634,10 +1507,76 @@ const SNAPSHOT_SCRIPT = `(maxText) => {
     viewportHeight: window.innerHeight,
     elements,
     textExcerpt: bodyText,
+    humanVerification: probe && probe.detected ? {
+      detected: true,
+      kind: probe.kind,
+      reason: probe.reason,
+    } : undefined,
   };
 }`
 
+const SNAPSHOT_SCRIPT = `(maxChars) => {
+  const host = document.getElementById('__o2_ai_cursor_host__');
+  if (host) {
+    host.setAttribute('aria-hidden', 'true');
+    host.setAttribute('data-o2-ignore', '1');
+  }
+  const limit = maxChars || 8000;
+  let yaml = '';
+  try {
+    if (typeof window.__o2EnsureAria === 'function') {
+      const injected = window.__o2EnsureAria();
+      const root = document.body || document.documentElement;
+      if (injected && root) yaml = String(injected.ariaSnapshot(root, { mode: 'ai' }) || '');
+    }
+  } catch (_e) {}
+  if (yaml.length > limit) yaml = yaml.slice(0, limit) + '\\n...[truncated]';
+  const probe = ${VERIFICATION_PROBE_SCRIPT};
+  return {
+    title: document.title || '',
+    url: location.href,
+    scrollY: Math.round(window.scrollY || 0),
+    scrollHeight: Math.round(document.documentElement ? document.documentElement.scrollHeight : 0),
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    aria: yaml,
+    humanVerification: probe && probe.detected ? {
+      detected: true,
+      kind: probe.kind,
+      reason: probe.reason,
+    } : undefined,
+  };
+}`
+
+const RESOLVE_REF_SRC = `
+function __o2WalkAll(root, fn) {
+  if (!root) return false;
+  const list = root.querySelectorAll ? root.querySelectorAll('*') : [];
+  for (let i = 0; i < list.length; i++) {
+    const el = list[i];
+    if (fn(el)) return true;
+    if (el.shadowRoot && __o2WalkAll(el.shadowRoot, fn)) return true;
+  }
+  return false;
+}
+function __o2ResolveRef(ref) {
+  if (!ref) return null;
+  const want = String(ref).replace(/^\\[?ref=/, '').replace(/\\]$/, '').trim();
+  if (!want) return null;
+  let found = document.querySelector('[data-o2-ref="' + want.replace(/"/g, '') + '"]');
+  if (found) return found;
+  __o2WalkAll(document, function (el) {
+    const ar = el._ariaRef;
+    if (ar && String(ar.ref) === want) { found = el; return true; }
+    return false;
+  });
+  return found;
+}
+`
+
 async function locateTarget(t, spec) {
+  await settleLayout(t)
+  await ensureAriaInTab(t)
   const payload = JSON.stringify({
     ref: spec.ref || '',
     selector: spec.selector || '',
@@ -646,9 +1585,10 @@ async function locateTarget(t, spec) {
   return evalInTab(
     t,
     `(() => {
+      ${RESOLVE_REF_SRC}
       const s = ${payload};
       let el = null;
-      if (s.ref) el = document.querySelector('[data-o2-ref="' + s.ref.replace(/"/g, '') + '"]');
+      if (s.ref) el = __o2ResolveRef(s.ref);
       if (!el && s.selector) el = document.querySelector(s.selector);
       if (!el && s.text) {
         const want = s.text.trim();
@@ -658,16 +1598,30 @@ async function locateTarget(t, spec) {
       }
       if (!el) return { found: false };
       el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
-      const r = el.getBoundingClientRect();
-      return {
-        found: true,
-        tag: el.tagName.toLowerCase(),
-        text: (el.innerText || el.value || el.getAttribute('aria-label') || '').replace(/\\s+/g, ' ').trim().slice(0, 80),
-        x: Math.round(r.left + r.width / 2),
-        y: Math.round(r.top + r.height / 2),
-        w: Math.round(r.width),
-        h: Math.round(r.height),
+      const read = () => {
+        const r = el.getBoundingClientRect();
+        return {
+          found: true,
+          tag: el.tagName.toLowerCase(),
+          text: (el.innerText || el.value || el.getAttribute('aria-label') || '').replace(/\\s+/g, ' ').trim().slice(0, 80),
+          x: Math.round(r.left + r.width / 2),
+          y: Math.round(r.top + r.height / 2),
+          w: Math.round(r.width),
+          h: Math.round(r.height),
+        };
       };
+      const same = (a, b) => Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1
+        && Math.abs(a.w - b.w) <= 1 && Math.abs(a.h - b.h) <= 1;
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => {
+          const first = read();
+          requestAnimationFrame(() => {
+            const second = read();
+            if (!same(first, second)) requestAnimationFrame(() => resolve(read()));
+            else resolve(second);
+          });
+        });
+      });
     })()`
   )
 }
@@ -724,15 +1678,46 @@ async function dispatchComboKey(wc, combo) {
   })
 }
 
+function describeAiAction(action, body = {}) {
+  if (action === 'open' || action === 'navigate') return '打开 ' + String(body.url || '').slice(0, 26)
+  if (action === 'click') return '点击 ' + String(body.text || body.ref || body.selector || '目标').slice(0, 18)
+  if (action === 'hover') return '悬停 ' + String(body.text || body.ref || body.selector || '目标').slice(0, 18)
+  if (action === 'fill' || action === 'type') return '输入 ' + String(body.value || body.text || '文本').slice(0, 16)
+  if (action === 'select') return '选择 ' + String(body.label || body.value || '选项').slice(0, 16)
+  if (action === 'press') return '按键 ' + String(body.key || 'Enter')
+  if (action === 'scroll') return '滚动页面'
+  if (action === 'snapshot') return '扫描页面结构'
+  if (action === 'find') return '查找 ' + String(body.text || body.query || body.regex || '元素').slice(0, 18)
+  if (action === 'read') return '读取页面内容'
+  if (action === 'screenshot') return '截取画面'
+  if (action === 'wait_for_human') return String(body.reason || '等待人工操作')
+  return '操作浏览器'
+}
+
 async function handleControlAction(body) {
   const action = String((body && body.action) || 'status').trim()
-  aiBusyCount += 1
-  try {
-    if (action === 'status' || action === 'tabs') {
-      if (!tabOrder.length) createTab(DEFAULT_HOME, true)
-      return getPublicState()
-    }
+  if (action === 'co_panel') {
+    return updateCoPanel(body)
+  }
+  if (action === 'status' || action === 'tabs') {
+    if (!tabOrder.length) createTab(DEFAULT_HOME, true)
+    return getPublicState()
+  }
 
+  aiBusyCount += 1
+  clearTimeout(autoCloseTimer)
+  const isSilentMeta = ['console', 'network', 'cookies', 'storage', 'downloads'].includes(action)
+  if (!isSilentMeta) {
+    coPanel.aiActive = true
+    coPanel.aiActionLabel = describeAiAction(action, body)
+    if (!coPanel.open && (action === 'wait_for_human' || !coPanel.userDismissedAt)) {
+      coPanel.open = true
+      if (!coPanel.openSource) coPanel.openSource = 'ai'
+    }
+    broadcastState()
+  }
+
+  try {
     if (action === 'open' || action === 'navigate') {
       const rawUrl = String(body.url || '').trim()
       if (!rawUrl) throw new Error('missing url')
@@ -763,10 +1748,15 @@ async function handleControlAction(body) {
         new Promise((r) => setTimeout(r, 2500)),
       ])
       broadcastState()
-      const snap = await Promise.race([
-        evalInTab(t, `(${SNAPSHOT_SCRIPT})(2500)`),
-        new Promise((r) => setTimeout(() => r(null), 3000)),
-      ]).catch(() => null)
+      const snap = await captureSnapshot(t, 8000, 3000)
+      if (snap && snap.viewportWidth) {
+        animateAiCursor(t, {
+          x: Math.round(snap.viewportWidth * 0.5),
+          y: Math.round(snap.viewportHeight * 0.36),
+          label: '已打开页面',
+          duration: 200,
+        }, false).catch(() => {})
+      }
       return {
         ok: true,
         tab: serializeTab(t),
@@ -789,13 +1779,126 @@ async function handleControlAction(body) {
     await ensureDebugger(t)
     await ensureTabMetrics(t)
 
+    if (action === 'wait_for_human') {
+      const reason = String(body.reason || '需要您完成页面人机验证或登录操作，完成后将自动继续').trim()
+      const timeoutMs = Math.min(300000, Math.max(5000, Number(body.timeout_ms || 180000)))
+      const waitStart = Date.now()
+      coPanel.open = true
+      if (!coPanel.openSource) coPanel.openSource = 'ai'
+      coPanel.waitingHuman = true
+      coPanel.humanReason = reason
+      coPanel.humanSignal = ''
+      coPanel.aiActionLabel = reason
+      await hideAiCursor(t)
+      broadcastState()
+
+      const initialUrl = wc.getURL() || ''
+      const initCookies = await browserSession.cookies.get(initialUrl.startsWith('http') ? { url: initialUrl } : {}).catch(() => [])
+      const initialCookieCount = Array.isArray(initCookies) ? initCookies.length : 0
+      const initProbe = await evalInTab(t, VERIFICATION_PROBE_SCRIPT).catch(() => ({
+        hasCaptcha: false,
+        hasAuthForm: false,
+        textHash: 0,
+        url: initialUrl,
+      })) || {}
+
+      let navCount = 0
+      const onNav = () => { navCount += 1 }
+      wc.on('did-navigate', onNav)
+      wc.on('did-navigate-in-page', onNav)
+
+      let status = 'timeout'
+      let consecutivePass = 0
+      try {
+        while (Date.now() - waitStart < timeoutMs) {
+          if (coPanel.humanSignal === 'manual_done') {
+            status = 'manual_confirmed'
+            break
+          }
+          if (coPanel.humanSignal === 'user_closed') {
+            status = 'user_closed'
+            break
+          }
+          await new Promise((r) => setTimeout(r, 380))
+          if (wc.isDestroyed()) {
+            status = 'tab_closed'
+            break
+          }
+          if (wc.isLoading()) {
+            consecutivePass = 0
+            continue
+          }
+          const humanTouched = coPanel.lastHumanInputAt >= waitStart || navCount > 0
+          const idleMs = coPanel.lastHumanInputAt >= waitStart
+            ? (Date.now() - coPanel.lastHumanInputAt)
+            : (Date.now() - waitStart)
+          if (idleMs < 1800) {
+            consecutivePass = 0
+            continue
+          }
+          const curUrl = wc.getURL() || ''
+          const probe = await evalInTab(t, VERIFICATION_PROBE_SCRIPT).catch(() => null)
+          if (!probe) continue
+          if (probe.activeInputFocused) {
+            consecutivePass = 0
+            continue
+          }
+
+          let resolved = false
+          // Signal 1: Captcha existed initially and is now gone
+          if (initProbe.hasCaptcha && !probe.hasCaptcha && !probe.hasAuthForm) {
+            resolved = true
+          }
+          // Signal 2: Auth form/modal existed initially and is now gone after human interaction
+          if (!resolved && humanTouched && initProbe.hasAuthForm && !probe.hasAuthForm && !probe.hasCaptcha) {
+            resolved = true
+          }
+          // Signal 3: Navigated to a different URL that has no captcha or auth form
+          if (!resolved && curUrl && curUrl !== initialUrl && !probe.hasCaptcha && !probe.hasAuthForm) {
+            resolved = true
+          }
+          // Signal 4: Human interacted, new auth cookies set, and page content changed with no captcha/auth wall
+          if (!resolved && humanTouched && !probe.hasCaptcha && !probe.hasAuthForm && probe.textHash !== initProbe.textHash) {
+            const nowCookies = await browserSession.cookies.get(curUrl.startsWith('http') ? { url: curUrl } : {}).catch(() => [])
+            if (Array.isArray(nowCookies) && nowCookies.length > initialCookieCount) {
+              resolved = true
+            }
+          }
+
+          if (resolved) {
+            consecutivePass += 1
+            if (consecutivePass >= 2) {
+              status = 'auto_detected'
+              break
+            }
+          } else {
+            consecutivePass = 0
+          }
+        }
+      } finally {
+        wc.removeListener('did-navigate', onNav)
+        wc.removeListener('did-navigate-in-page', onNav)
+        coPanel.waitingHuman = false
+        coPanel.humanReason = ''
+        coPanel.humanSignal = ''
+        broadcastState()
+      }
+
+      const snap = await captureSnapshot(t, 8000).catch(() => null)
+      return {
+        ok: true,
+        humanStatus: status,
+        tab: serializeTab(t),
+        snapshot: snap,
+      }
+    }
+
     if (action === 'back') {
       if (wc.navigationHistory.canGoBack()) {
         wc.navigationHistory.goBack()
         await waitForLoad(wc, 6000)
       }
-      broadcastState()
-      return { ok: true, tab: serializeTab(t) }
+      return finishAction(t)
     }
 
     if (action === 'forward') {
@@ -803,21 +1906,43 @@ async function handleControlAction(body) {
         wc.navigationHistory.goForward()
         await waitForLoad(wc, 6000)
       }
-      broadcastState()
-      return { ok: true, tab: serializeTab(t) }
+      return finishAction(t)
     }
 
     if (action === 'reload') {
       wc.reload()
       await waitForLoad(wc, 8000)
-      broadcastState()
-      return { ok: true, tab: serializeTab(t) }
+      return finishAction(t)
     }
 
     if (action === 'snapshot') {
-      const maxChars = Math.min(20000, Math.max(500, Number(body.max_chars || 4000)))
-      const snap = await evalInTab(t, `(${SNAPSHOT_SCRIPT})(${maxChars})`)
-      return { ok: true, tab: serializeTab(t), ...snap }
+      const maxChars = Math.min(20000, Math.max(500, Number(body.max_chars || 8000)))
+      const snap = await captureSnapshot(t, maxChars, 8000)
+      return { ok: true, tab: serializeTab(t), ...(snap || {}) }
+    }
+
+    if (action === 'find') {
+      const text = String(body.text || body.query || '').trim()
+      const regex = String(body.regex || '').trim()
+      const snap = await captureSnapshot(t, 20000, 8000)
+      const found = findInAriaSnapshot(snapshotSearchText(snap), {
+        text: regex ? '' : text,
+        regex,
+        maxResults: body.max_results != null ? body.max_results : body.maxResults,
+      })
+      if (!found.ok) throw new Error(found.error)
+      return {
+        ok: true,
+        tab: serializeTab(t),
+        title: (snap && snap.title) || '',
+        url: (snap && snap.url) || '',
+        humanVerification: snap && snap.humanVerification,
+        query: found.query,
+        total: found.total,
+        shown: found.shown,
+        header: found.header,
+        snippets: found.snippets,
+      }
     }
 
     if (action === 'read') {
@@ -860,58 +1985,107 @@ async function handleControlAction(body) {
     }
 
     if (action === 'click') {
-      let x = typeof body.x === 'number' ? body.x : null
-      let y = typeof body.y === 'number' ? body.y : null
+      await waitIfHumanActive(t)
+      const wantsLive = !!(body.ref || body.selector || body.text)
+      let x = (!wantsLive && typeof body.x === 'number') ? body.x : null
+      let y = (!wantsLive && typeof body.y === 'number') ? body.y : null
       let hit = null
-      if (x === null || y === null) {
+      if (wantsLive || x === null || y === null) {
         hit = await locateTarget(t, body)
         if (!hit || !hit.found) {
           throw new Error('target element not found; call snapshot first to refresh element refs')
         }
         x = hit.x
         y = hit.y
+      } else {
+        await settleLayout(t)
       }
+      const clickLabel = '点击 ' + String((hit && hit.text) || body.text || body.ref || body.selector || `(${x},${y})`).slice(0, 18)
+      await animateAiCursor(t, {
+        x,
+        y,
+        label: clickLabel,
+        mode: 'click',
+        rect: hit ? { x: hit.x, y: hit.y, w: hit.w, h: hit.h } : { x, y, w: 28, h: 28 },
+      }, true)
+
       const button = body.button === 'right' ? 'right' : body.button === 'middle' ? 'middle' : 'left'
       const clicks = body.double ? 2 : 1
+      const cdpX = Math.round(x)
+      const cdpY = Math.round(y)
+      t._aiSyntheticUntil = Date.now() + 420
+
+      await evalInTab(
+        t,
+        `(() => {
+          window.__o2LastClickHit = false;
+          const onHit = () => { window.__o2LastClickHit = true; };
+          window.addEventListener('mousedown', onHit, { capture: true, once: true });
+        })()`,
+        false
+      ).catch(() => {})
+
       await wc.debugger.sendCommand('Input.dispatchMouseEvent', {
-        type: 'mouseMoved', x, y, button: 'none',
+        type: 'mouseMoved', x: cdpX, y: cdpY, button: 'none',
       })
       for (let i = 1; i <= clicks; i++) {
         await wc.debugger.sendCommand('Input.dispatchMouseEvent', {
-          type: 'mousePressed', x, y, button, clickCount: i,
+          type: 'mousePressed', x: cdpX, y: cdpY, button, clickCount: i,
         })
         await wc.debugger.sendCommand('Input.dispatchMouseEvent', {
-          type: 'mouseReleased', x, y, button, clickCount: i,
+          type: 'mouseReleased', x: cdpX, y: cdpY, button, clickCount: i,
         })
       }
-      await new Promise((r) => setTimeout(r, 350))
-      if (wc.isLoading()) await waitForLoad(wc, 6000)
-      broadcastState()
-      const current = resolveTab()
-      return {
-        ok: true,
-        clicked: hit || { x, y },
-        tab: serializeTab(current),
+
+      if (button === 'left') {
+        await evalInTab(
+          t,
+          `(() => {
+            const el = document.elementFromPoint(${Math.round(x)}, ${Math.round(y)});
+            if (!el) return;
+            if (!window.__o2LastClickHit) {
+              el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: ${Math.round(x)}, clientY: ${Math.round(y)} }));
+              el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, clientX: ${Math.round(x)}, clientY: ${Math.round(y)} }));
+              if (typeof el.click === 'function') el.click();
+            }
+          })()`,
+          false
+        ).catch(() => {})
       }
+
+      return finishAction(resolveTab() || t, { clicked: hit || { x, y } }, { waitMs: 350 })
     }
 
     if (action === 'hover') {
-      let x = typeof body.x === 'number' ? body.x : null
-      let y = typeof body.y === 'number' ? body.y : null
+      await waitIfHumanActive(t)
+      const wantsLive = !!(body.ref || body.selector || body.text)
+      let x = (!wantsLive && typeof body.x === 'number') ? body.x : null
+      let y = (!wantsLive && typeof body.y === 'number') ? body.y : null
       let hit = null
-      if (x === null || y === null) {
+      if (wantsLive || x === null || y === null) {
         hit = await locateTarget(t, body)
         if (!hit || !hit.found) throw new Error('target element not found')
         x = hit.x
         y = hit.y
+      } else {
+        await settleLayout(t)
       }
+      await animateAiCursor(t, {
+        x,
+        y,
+        label: '悬停 ' + String((hit && hit.text) || body.ref || body.selector || '').slice(0, 18),
+        mode: 'hover',
+        rect: hit ? { x: hit.x, y: hit.y, w: hit.w, h: hit.h } : null,
+      }, false)
+      t._aiSyntheticUntil = Date.now() + 260
       await wc.debugger.sendCommand('Input.dispatchMouseEvent', {
-        type: 'mouseMoved', x, y, button: 'none',
+        type: 'mouseMoved', x: Math.round(x), y: Math.round(y), button: 'none',
       })
-      return { ok: true, hovered: hit || { x, y }, tab: serializeTab(t) }
+      return finishAction(t, { hovered: hit || { x, y } })
     }
 
     if (action === 'fill' || action === 'type') {
+      await waitIfHumanActive(t)
       const value = String(body.value !== undefined ? body.value : (body.text || ''))
       const clear = body.clear !== undefined ? !!body.clear : (action === 'fill')
       const spec = JSON.stringify({
@@ -922,13 +2096,46 @@ async function handleControlAction(body) {
       const prep = await evalInTab(
         t,
         `(() => {
+          ${RESOLVE_REF_SRC}
           const s = ${spec};
           let el = null;
-          if (s.ref) el = document.querySelector('[data-o2-ref="' + s.ref.replace(/"/g, '') + '"]');
+          if (s.ref) el = __o2ResolveRef(s.ref);
           if (!el && s.selector) el = document.querySelector(s.selector);
-          if (!el) el = document.activeElement;
+          if (!el && !s.ref && !s.selector) el = document.activeElement;
           if (!el || el === document.body) return { found: false };
           el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+          const r = el.getBoundingClientRect();
+          return {
+            found: true,
+            tag: el.tagName.toLowerCase(),
+            x: Math.round(r.left + r.width / 2),
+            y: Math.round(r.top + r.height / 2),
+            w: Math.round(r.width),
+            h: Math.round(r.height),
+          };
+        })()`
+      )
+      if (!prep || !prep.found) {
+        throw new Error('input element not found; specify ref or selector')
+      }
+      await animateAiCursor(t, {
+        x: prep.x,
+        y: prep.y,
+        label: '输入「' + value.slice(0, 14) + (value.length > 14 ? '…' : '') + '」',
+        mode: 'fill',
+        rect: { x: prep.x, y: prep.y, w: prep.w, h: prep.h },
+      }, true)
+      t._aiSyntheticUntil = Date.now() + 500
+      await evalInTab(
+        t,
+        `(() => {
+          ${RESOLVE_REF_SRC}
+          const s = ${spec};
+          let el = null;
+          if (s.ref) el = __o2ResolveRef(s.ref);
+          if (!el && s.selector) el = document.querySelector(s.selector);
+          if (!el && !s.ref && !s.selector) el = document.activeElement;
+          if (!el) return;
           el.focus();
           if (s.clear) {
             if ('value' in el) {
@@ -943,14 +2150,10 @@ async function handleControlAction(body) {
               el.textContent = '';
             }
           }
-          const r = el.getBoundingClientRect();
-          return { found: true, tag: el.tagName.toLowerCase(), x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
         })()`
       )
-      if (!prep || !prep.found) {
-        throw new Error('input element not found; specify ref or selector')
-      }
       if (value) {
+        t._aiSyntheticUntil = Date.now() + 500
         await wc.debugger.sendCommand('Input.insertText', { text: value })
         await evalInTab(
           t,
@@ -964,26 +2167,38 @@ async function handleControlAction(body) {
         ).catch(() => {})
       }
       if (body.press_enter || body.pressEnter) {
+        t._aiSyntheticUntil = Date.now() + 450
         await dispatchComboKey(wc, 'Enter')
-        await new Promise((r) => setTimeout(r, 350))
-        if (wc.isLoading()) await waitForLoad(wc, 6000)
+        return finishAction(t, {}, { waitMs: 350 })
       }
-      broadcastState()
-      return { ok: true, tab: serializeTab(t) }
+      return finishAction(t)
     }
 
     if (action === 'select') {
+      await waitIfHumanActive(t)
       const spec = JSON.stringify({
         ref: body.ref || '',
         selector: body.selector || '',
         value: body.value !== undefined ? String(body.value) : '',
         label: body.label !== undefined ? String(body.label) : '',
       })
+      const hit = await locateTarget(t, body).catch(() => null)
+      if (hit && hit.found) {
+        await animateAiCursor(t, {
+          x: hit.x,
+          y: hit.y,
+          label: '选择「' + String(body.label || body.value || '').slice(0, 14) + '」',
+          mode: 'click',
+          rect: { x: hit.x, y: hit.y, w: hit.w, h: hit.h },
+        }, true)
+      }
+      t._aiSyntheticUntil = Date.now() + 320
       const out = await evalInTab(
         t,
         `(() => {
+          ${RESOLVE_REF_SRC}
           const s = ${spec};
-          let el = s.ref ? document.querySelector('[data-o2-ref="' + s.ref.replace(/"/g, '') + '"]') : null;
+          let el = s.ref ? __o2ResolveRef(s.ref) : null;
           if (!el && s.selector) el = document.querySelector(s.selector);
           if (!el || el.tagName !== 'SELECT') return { ok: false, error: 'select element not found' };
           const opts = [...el.options];
@@ -997,45 +2212,60 @@ async function handleControlAction(body) {
         })()`
       )
       if (!out || !out.ok) throw new Error((out && out.error) || 'select failed')
-      return { ok: true, selected: out, tab: serializeTab(t) }
+      return finishAction(t, { selected: out })
     }
 
     if (action === 'press') {
+      await waitIfHumanActive(t)
+      t._aiSyntheticUntil = Date.now() + 350
       await dispatchComboKey(wc, body.key || 'Enter')
-      await new Promise((r) => setTimeout(r, 200))
-      if (wc.isLoading()) await waitForLoad(wc, 5000)
-      broadcastState()
-      return { ok: true, tab: serializeTab(t) }
+      return finishAction(t, {}, { waitMs: 200, loadTimeout: 5000 })
     }
 
     if (action === 'scroll') {
+      await waitIfHumanActive(t)
       if (body.ref || body.selector) {
         const hit = await locateTarget(t, body)
         if (!hit || !hit.found) throw new Error('target element not found')
-        return { ok: true, scrolledTo: hit, tab: serializeTab(t) }
+        await animateAiCursor(t, {
+          x: hit.x,
+          y: hit.y,
+          label: '滚动到目标',
+          mode: 'scroll',
+          rect: { x: hit.x, y: hit.y, w: hit.w, h: hit.h },
+        }, false)
+        return finishAction(t, { scrolledTo: hit })
       }
       const dir = String(body.direction || 'down').toLowerCase()
       const amount = Number(body.amount || 650)
+      t._aiSyntheticUntil = Date.now() + 350
       const pos = await evalInTab(
         t,
         `(() => {
           const dir = ${JSON.stringify(dir)};
           const amt = ${amount};
-          if (dir === 'top') window.scrollTo(0, 0);
-          else if (dir === 'bottom') window.scrollTo(0, document.documentElement.scrollHeight);
-          else if (dir === 'up') window.scrollBy(0, -amt);
-          else window.scrollBy(0, amt);
-          return { scrollY: Math.round(window.scrollY), scrollHeight: Math.round(document.documentElement.scrollHeight), innerHeight: window.innerHeight };
+          if (dir === 'top') window.scrollTo({ top: 0, behavior: 'smooth' });
+          else if (dir === 'bottom') window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+          else if (dir === 'up') window.scrollBy({ top: -amt, behavior: 'smooth' });
+          else window.scrollBy({ top: amt, behavior: 'smooth' });
+          return { scrollY: Math.round(window.scrollY), scrollHeight: Math.round(document.documentElement.scrollHeight), innerHeight: window.innerHeight, innerWidth: window.innerWidth };
         })()`
       )
-      return { ok: true, ...pos, tab: serializeTab(t) }
+      await animateAiCursor(t, {
+        x: Math.round((pos.innerWidth || 1280) * 0.52),
+        y: Math.round((pos.innerHeight || 720) * (dir === 'up' || dir === 'top' ? 0.35 : 0.65)),
+        label: dir === 'up' || dir === 'top' ? '向上滚动' : '向下滚动',
+        mode: 'scroll',
+      }, false)
+      await new Promise((r) => setTimeout(r, 240))
+      return finishAction(t, pos)
     }
 
     if (action === 'wait') {
       const timeoutMs = Math.min(30000, Math.max(100, Number(body.timeout_ms || body.ms || 2000)))
       if (!body.selector && !body.text) {
         await new Promise((r) => setTimeout(r, timeoutMs))
-        return { ok: true, waitedMs: timeoutMs, tab: serializeTab(t) }
+        return finishAction(t, { waitedMs: timeoutMs })
       }
       const deadline = Date.now() + timeoutMs
       const sel = JSON.stringify(String(body.selector || ''))
@@ -1051,10 +2281,10 @@ async function handleControlAction(body) {
             return false;
           })()`
         ).catch(() => false)
-        if (matched) return { ok: true, matched: true, tab: serializeTab(t) }
+        if (matched) return finishAction(t, { matched: true })
         await new Promise((r) => setTimeout(r, 250))
       }
-      return { ok: true, matched: false, timedOut: true, tab: serializeTab(t) }
+      return finishAction(t, { matched: false, timedOut: true })
     }
 
     if (action === 'eval') {
@@ -1201,6 +2431,9 @@ async function handleControlAction(body) {
     throw new Error(`unknown browser action: ${action}`)
   } finally {
     aiBusyCount = Math.max(0, aiBusyCount - 1)
+    if (aiBusyCount === 0 && !coPanel.waitingHuman) {
+      broadcastState()
+    }
   }
 }
 
@@ -1330,13 +2563,15 @@ async function ensureBackendServer() {
     appUrl = fallbackUrl
     return appUrl
   }
+  const venvPyw = path.join(ROOT_DIR, '.venv', 'Scripts', 'pythonw.exe')
   const venvPy = path.join(ROOT_DIR, '.venv', 'Scripts', 'python.exe')
-  const pyBin = fs.existsSync(venvPy) ? venvPy : 'python'
+  const pyBin = fs.existsSync(venvPyw) ? venvPyw : (fs.existsSync(venvPy) ? venvPy : 'pythonw')
   const serverScript = path.join(ROOT_DIR, 'src', 'server.py')
   pyProc = spawn(pyBin, [serverScript, '8765', '--no-gui'], {
     cwd: ROOT_DIR,
     stdio: 'ignore',
     windowsHide: true,
+    windowsVerbatimArguments: false,
   })
   await waitHttpUp(fallbackUrl, 12000)
   appUrl = fallbackUrl
@@ -1349,19 +2584,32 @@ function setupIpc() {
     return getPublicState()
   })
 
-  ipcMain.handle('o2-browser:set-viewport', (_ev, rect) => {
-    if (rect && typeof rect === 'object') {
-      viewport.visible = !!rect.visible
-      if (typeof rect.x === 'number') viewport.x = rect.x
-      if (typeof rect.y === 'number') viewport.y = rect.y
-      if (typeof rect.width === 'number') viewport.width = rect.width
-      if (typeof rect.height === 'number') viewport.height = rect.height
-      if (viewport.visible && !tabOrder.length) {
-        createTab(DEFAULT_HOME, true)
-      }
-      applyViewport()
+  function updateViewportRect(rect) {
+    if (!rect || typeof rect !== 'object') return
+    viewport.visible = !!rect.visible
+    if (typeof rect.inline === 'boolean') viewport.inline = rect.inline
+    viewport.animating = !!rect.animating
+    if (typeof rect.x === 'number') viewport.x = rect.x
+    if (typeof rect.y === 'number') viewport.y = rect.y
+    if (typeof rect.width === 'number') viewport.width = rect.width
+    if (typeof rect.height === 'number') viewport.height = rect.height
+    if (viewport.visible && !tabOrder.length) {
+      createTab(DEFAULT_HOME, true)
     }
+    applyViewport()
+  }
+
+  ipcMain.on('o2-browser:viewport-fast', (_ev, rect) => {
+    updateViewportRect(rect)
+  })
+
+  ipcMain.handle('o2-browser:set-viewport', (_ev, rect) => {
+    updateViewportRect(rect)
     return getPublicState()
+  })
+
+  ipcMain.handle('o2-browser:set-co-panel', (_ev, patch) => {
+    return updateCoPanel(patch || {})
   })
 
   ipcMain.handle('o2-browser:new-tab', (_ev, url) => {

@@ -10,6 +10,7 @@ VER = os.path.join(BASE, "version_info.txt")
 datas = [
     (os.path.join(WEB, "index.html"), "web"),
     (os.path.join(WEB, "app.js"), "web"),
+    (os.path.join(WEB, "favicon.ico"), "web"),
     (os.path.join(WEB, "vendor"), os.path.join("web", "vendor")),
 ]
 db_file = os.path.join(BASE, "data", "zdl.sqlite")
@@ -42,6 +43,7 @@ a = Analysis(
         "catalog",
         "providers",
         "agent",
+        "api_tool",
         "attach",
         "shell_tool",
         "browser_tool",

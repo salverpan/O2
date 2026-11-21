@@ -82,6 +82,17 @@ def _req_headers(req) -> dict:
     return out
 
 
+def _hide_console_kwargs() -> dict:
+    if os.name != "nt":
+        return {}
+    kw: dict = {"creationflags": int(getattr(subprocess, "CREATE_NO_WINDOW", 0))}
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = 0
+    kw["startupinfo"] = startupinfo
+    return kw
+
+
 def _curl_escape(s: str) -> str:
     return str(s).replace("\\", "\\\\").replace('"', '\\"')
 
@@ -233,6 +244,7 @@ def _curl_open(req, timeout: float, stream: bool):
             stdin=subprocess.PIPE if data else subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            **_hide_console_kwargs(),
         )
         if data:
             try:

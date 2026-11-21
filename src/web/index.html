@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>O2</title>
+  <link rel="icon" href="/favicon.ico?v=3" />
   <link rel="stylesheet" href="/vendor/reset.css" />
   <link rel="stylesheet" href="/vendor/katex/katex.min.css" />
   <style>
@@ -390,8 +391,18 @@
       display: flex; flex-direction: column; height: 100%; width: 100%;
       min-height: 0; min-width: 0; background: var(--background);
     }
+    .chat-stage {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
     .chatlog {
-      flex: 1; overflow-y: auto; padding: var(--pad); padding-bottom: 168px;
+      position: relative;
+      flex: 1; min-height: 0; overflow-y: auto; padding: var(--pad); padding-bottom: 168px;
       transition: padding .34s cubic-bezier(.22, 1, .36, 1);
       mask-image: linear-gradient(
         to bottom,
@@ -411,6 +422,32 @@
         #000 calc(100% - 26px),
         transparent 100%
       );
+    }
+    .chat-ascii {
+      position: absolute;
+      left: 50%;
+      top: calc(50% - 64px);
+      transform: translate(-50%, -50%);
+      z-index: 1;
+      margin: 0;
+      pointer-events: none;
+      user-select: none;
+      white-space: pre;
+      font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
+      font-size: clamp(12px, 1.45vw, 16px);
+      line-height: 1.15;
+      letter-spacing: 0;
+      color: #a3aab6;
+    }
+    .ascii-fade-enter-active,
+    .ascii-fade-leave-active {
+      transition: opacity .22s ease;
+    }
+    .ascii-fade-enter-from,
+    .ascii-fade-leave-to { opacity: 0; }
+    .chatwrap.bw-inline-open .chat-ascii {
+      top: calc(50% - 48px);
+      font-size: clamp(11px, 1.2vw, 14px);
     }
     .chat-empty {
       width: min(640px, 100%); margin: 24px auto 0; background: var(--card);
@@ -1254,15 +1291,6 @@
     .bw-toggle-btn.waiting-human .icon-svg {
       animation: bw-ico-blink .75s ease-in-out infinite;
     }
-    .bw-toggle-dot {
-      position: absolute; right: -2px; top: -2px;
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #2563eb; border: 1.5px solid #fff;
-      pointer-events: none;
-    }
-    .bw-toggle-btn.waiting-human .bw-toggle-dot {
-      background: #f59e0b;
-    }
     @keyframes bw-btn-breathe {
       0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, .45), 0 0 8px rgba(37, 99, 235, .2); }
       50% { box-shadow: 0 0 0 5px rgba(59, 130, 246, 0), 0 0 14px rgba(37, 99, 235, .45); }
@@ -1475,36 +1503,6 @@
     .ask-bw-url:focus {
       border-color: var(--ring);
       box-shadow: 0 0 0 2px rgba(59, 130, 246, .14);
-    }
-    .ask-bw-badge {
-      flex: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      height: 22px;
-      padding: 0 8px;
-      border-radius: 999px;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
-      color: #1d4ed8;
-      font-size: 11.5px;
-      font-weight: 500;
-      max-width: 185px;
-    }
-    .ask-bw-badge.human {
-      background: #fffbeb;
-      border-color: #fde68a;
-      color: #b45309;
-    }
-    .ask-bw-badge-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: currentColor;
-      flex: none;
-    }
-    .ask-bw-badge-txt {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
     .ask-bw-zoom {
       flex: none;
@@ -1914,6 +1912,6 @@
 </head>
 <body>
   <div id="app"></div>
-  <script src="/app.js?v=90"></script>
+  <script src="/app.js?v=98"></script>
 </body>
 </html>

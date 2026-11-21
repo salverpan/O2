@@ -7,6 +7,7 @@ import time
 import urllib.error
 import urllib.request
 
+import api_tool as api_mod
 import browser_tool as browser_mod
 import providers as prov_mod
 import search as search_mod
@@ -44,7 +45,11 @@ TOOLS = [
                     "query": {"type": "string", "description": "检索关键词，2-10 字"},
                     "dept": {
                         "type": "string",
-                        "description": "可选，按分类目录筛选",
+                        "description": "可选，按项目名、文件夹或分类目录筛选",
+                    },
+                    "doc_type": {
+                        "type": "string",
+                        "description": "可选，按文件性质筛选：regulation(制度法规)/finance(财报数据)/contract(合同协议)/report(研报方案)/spreadsheet(表格台账)/image(图片图纸)/general(通用文档)",
                     },
                 },
                 "required": ["query"],
@@ -808,14 +813,25 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
             raise ChatCancelled()
 
     prior = _coerce_prior_sources(prior_sources)
-    system = SYSTEM_PROMPT
     tools = list(TOOLS)
     if shell_mod.enabled(cfg):
-        system += shell_mod.PROMPT
         tools.append(shell_mod.TOOL)
     if browser_mod.enabled(cfg):
-        system += browser_mod.PROMPT
         tools.append(browser_mod.TOOL)
+    if api_mod.enabled(cfg):
+        tools.append(api_mod.TOOL)
+
+    def _build_system() -> str:
+        s = SYSTEM_PROMPT
+        if shell_mod.enabled(cfg):
+            s += shell_mod.PROMPT
+        if browser_mod.enabled(cfg):
+            s += browser_mod.PROMPT
+        if api_mod.enabled(cfg):
+            s += api_mod.PROMPT + api_mod.format_api_catalog(cfg)
+        return s
+
+    system = _build_system()
     shell_cwd = shell_mod.session_cwd(cfg)
     convo: list[dict] = [{"role": "system", "content": system}]
     hist: list[dict] = []
@@ -1037,6 +1053,9 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
     next_no = max((s["n"] for s in prior), default=0) + 1
     used: set[int] = {s["chunk_id"] for s in prior}
     last_had_tools = False
+    used_browser = False
+    if browser_mod.enabled(cfg):
+        browser_mod.notify_session_start()
 
     try:
         for _round in range(max_rounds):
@@ -1092,9 +1111,38 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                     ask_qs.extend(_normalize_ask(args))
                     continue
 
+                if name == "call_api":
+                    label = api_mod.action_label(args)
+                    act = str(args.get("action") or "request").strip().lower()
+                    emit({"type": "tool", "name": "call_api", "args": {"action": act, "query": label}})
+                    try:
+                        text, ok_api, note = api_mod.run_call_api(args, cfg)
+                    except Exception as e:
+                        text, ok_api, note = json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False), False, "失败"
+                    if act in ("save", "delete", "discover") and convo and convo[0].get("role") == "system":
+                        convo[0]["content"] = _build_system()
+                    convo.append({"role": "tool", "tool_call_id": call_id, "content": text})
+                    emit({
+                        "type": "tool_result",
+                        "query": label,
+                        "count": 1 if ok_api else 0,
+                        "exit": 0 if ok_api else 1,
+                        "note": note,
+                    })
+                    continue
+
                 if name == "browser":
+                    used_browser = True
+                    act_b = str(args.get("action") or "status").strip()
                     label = browser_mod.action_label(args)
-                    emit({"type": "tool", "name": "browser", "args": {"action": args.get("action") or "", "query": label}})
+                    emit({"type": "tool", "name": "browser", "args": {"action": act_b, "query": label}})
+                    emit({
+                        "type": "browser_panel",
+                        "state": "waiting_human" if act_b == "wait_for_human" else "active",
+                        "action": act_b,
+                        "label": label,
+                        "reason": str(args.get("reason") or "") if act_b == "wait_for_human" else "",
+                    })
                     try:
                         text, ok_b, shot_img = browser_mod.run_browser(args)
                     except Exception as e:
@@ -1166,7 +1214,8 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
 
                 query = (args.get("query") or "").strip()
                 dept = (args.get("dept") or "").strip()
-                emit({"type": "tool", "name": "search_docs", "args": {"query": query, "dept": dept}})
+                doc_type = (args.get("doc_type") or "").strip()
+                emit({"type": "tool", "name": "search_docs", "args": {"query": query, "dept": dept, "doc_type": doc_type}})
 
                 if name not in ("search_docs", "search_regulations", ""):
                     known = "search_docs、read_doc、ask_user"
@@ -1174,6 +1223,8 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                         known += "、pwsh"
                     if browser_mod.enabled(cfg):
                         known += "、browser"
+                    if api_mod.enabled(cfg):
+                        known += "、call_api"
                     convo.append({"role": "tool", "tool_call_id": call_id,
                                   "content": f"未知工具 {name}。可用 {known}。"})
                     continue
@@ -1184,7 +1235,7 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                     continue
 
                 try:
-                    items = search_mod.search(con, query, dept=dept, limit=TOOL_LIMIT, cfg=cfg)
+                    items = search_mod.search(con, query, dept=dept, doc_type=doc_type, limit=TOOL_LIMIT, cfg=cfg)
                 except Exception as e:
                     convo.append({"role": "tool", "tool_call_id": call_id,
                                   "content": f"检索失败: {e}"})
@@ -1246,6 +1297,14 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         emit({"type": "done"})
     except ChatCancelled:
         return
+    finally:
+        if used_browser:
+            try:
+                emit({"type": "browser_panel", "state": "session_end"})
+            except Exception:
+                pass
+        if browser_mod.enabled(cfg):
+            browser_mod.notify_session_end(used_browser)
 
 
 _TITLE_SYSTEM = (
