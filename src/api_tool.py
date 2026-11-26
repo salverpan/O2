@@ -137,6 +137,327 @@ API_PRESETS = [
     },
 ]
 
+API_CATEGORIES = [
+    ("macro", "宏观与汇率"),
+    ("market", "行情与公司"),
+    ("filings", "披露与主体"),
+    ("trade", "贸易与航运"),
+    ("news", "新闻与事件"),
+    ("reference", "文献资料"),
+    ("geo", "天气与地理"),
+    ("dev", "开发"),
+    ("other", "其他"),
+]
+API_CATEGORY_IDS = {key for key, _label in API_CATEGORIES}
+API_CATEGORY_LABELS = dict(API_CATEGORIES)
+_CATEGORY_BY_NAME = {
+    "fred": "macro",
+    "eia": "macro",
+    "treasuryfiscaldata": "macro",
+    "bls": "macro",
+    "ecb": "macro",
+    "worldbank": "macro",
+    "frankfurter": "macro",
+    "yahoofinance": "market",
+    "fmp": "market",
+    "finnhub": "market",
+    "eastmoney": "market",
+    "eastmoneyhistory": "market",
+    "coingecko": "market",
+    "山西证券tushare网关": "market",
+    "gleif": "filings",
+    "secedgar": "filings",
+    "comtrade": "trade",
+    "comtradepreview": "trade",
+    "imfportwatch": "trade",
+    "vesselapi": "trade",
+    "digitrafficais": "trade",
+    "gdelt": "news",
+    "hackernews": "news",
+    "wikipedia": "reference",
+    "openalex": "reference",
+    "crossref": "reference",
+    "openmeteo": "geo",
+    "nws": "geo",
+    "usgs": "geo",
+    "github": "dev",
+    "pypi": "dev",
+}
+
+
+_CATEGORY_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "macro": (
+        "fred", "stlouisfed", "eia", "treasury", "fiscaldata", "bls", "ecb", "worldbank",
+        "frankfurter", "imf", "oecd", "pbc", "stats.gov", "gdp", "cpi", "ppi", "inflation",
+        "interestrate", "fedfunds", "exchangerate", "forex", "currency", "fx", "macro",
+        "宏观", "汇率", "利率", "央行", "统计局", "通胀", "国债", "财政", "外汇", "货币", "经济指标",
+    ),
+    "market": (
+        "yahoofinance", "fmp", "financialmodelingprep", "finnhub", "eastmoney", "coingecko",
+        "tushare", "akshare", "binance", "okx", "coinmarketcap", "alphavantage", "polygon.io",
+        "tiingo", "iex", "twelvedata", "stock", "quote", "ticker", "kline", "candlestick",
+        "ohlc", "equity", "etf", "fund", "crypto", "futures", "market", "orderbook",
+        "行情", "股票", "证券", "基金", "期货", "k线", "股价", "市值", "涨跌", "交易所", "龙虎榜", "盘口",
+    ),
+    "filings": (
+        "gleif", "secedgar", "sec.gov", "edgar", "cninfo", "qichacha", "tianyancha",
+        "opencorporates", "lei", "10-k", "10-q", "8-k", "filing", "prospectus", "disclosure",
+        "annualreport", "balance_sheet", "income_statement", "cash_flow",
+        "披露", "公告", "巨潮", "企查查", "天眼查", "工商", "主体", "招股书", "年报", "季报", "财报披露", "信用代码",
+    ),
+    "trade": (
+        "comtrade", "portwatch", "vessel", "digitraffic", "marinetraffic", "vesselfinder",
+        "ais", "customs", "tariff", "freight", "shipping", "container", "port", "logistics",
+        "supplychain", "bdi", "scfi", "cargo", "waybill", "import", "export", "hs_code",
+        "贸易", "航运", "船舶", "港口", "海关", "进出口", "关税", "物流", "货运", "运价", "集装箱", "运单", "供应链", "口岸",
+    ),
+    "news": (
+        "gdelt", "hackernews", "newsapi", "mediastack", "rss", "feed", "headline",
+        "breaking", "press", "reuters", "bloomberg", "tass", "interfax", "sentiment",
+        "新闻", "资讯", "快讯", "舆情", "事件", "头条", "日报", "情报", "媒体",
+    ),
+    "reference": (
+        "wikipedia", "wikimedia", "openalex", "crossref", "arxiv", "pubmed", "semanticscholar",
+        "doi", "orcid", "scholar", "paper", "citation", "journal", "encyclopedia", "library",
+        "文献", "百科", "论文", "期刊", "学术", "引文", "词条", "专利", "知识库",
+    ),
+    "geo": (
+        "openmeteo", "open-meteo", "nws", "weather.gov", "usgs", "openweathermap", "qweather",
+        "amap", "restapi.amap", "map.baidu", "mapbox", "nominatim", "openstreetmap",
+        "weather", "forecast", "climate", "earthquake", "geocode", "location", "latitude", "longitude",
+        "天气", "气象", "预报", "地理", "地图", "高德", "经纬度", "地震", "台风", "空气质量", "路线规划",
+    ),
+    "dev": (
+        "github", "gitlab", "pypi", "npmjs", "crates.io", "docker", " huggingface",
+        "stackoverflow", "cloudflare", "dns", "ipinfo", "whois", "repos", "commits",
+        "开发", "代码", "仓库", "镜像", "依赖包", "域名",
+    ),
+}
+
+
+def score_category(
+    name: str,
+    base_url: str = "",
+    notes: str = "",
+    endpoints: list[dict] | None = None,
+) -> tuple[str, int]:
+    key = re.sub(r"\s+", "", str(name or "").strip().lower())
+    if key in _CATEGORY_BY_NAME:
+        return _CATEGORY_BY_NAME[key], 100
+
+    ep_blob = ""
+    if isinstance(endpoints, list):
+        ep_parts = []
+        for ep in endpoints[:25]:
+            if isinstance(ep, dict):
+                ep_parts.append(f"{ep.get('path') or ''} {ep.get('summary') or ''} {ep.get('params') or ''}")
+        ep_blob = " ".join(ep_parts)
+
+    name_low = str(name or "").lower()
+    url_low = str(base_url or "").lower()
+    notes_low = str(notes or "").lower()[:1500]
+    ep_low = ep_blob.lower()[:1500]
+
+    best_cat = "other"
+    best_score = 0
+    for cat_id, kw_list in _CATEGORY_KEYWORDS.items():
+        score = 0
+        for kw in kw_list:
+            if kw in name_low or kw in key:
+                score += 6
+            if kw in url_low:
+                score += 5
+            if kw in notes_low:
+                score += 3
+            if kw in ep_low:
+                score += 2
+        if score > best_score:
+            best_score = score
+            best_cat = cat_id
+
+    if best_score < 3:
+        return "other", 0
+    return best_cat, best_score
+
+
+def infer_category(
+    name: str,
+    base_url: str = "",
+    notes: str = "",
+    endpoints: list[dict] | None = None,
+) -> str:
+    cat, _score = score_category(name, base_url=base_url, notes=notes, endpoints=endpoints)
+    return cat
+
+
+_RECLASSIFY_STEP = 5
+_RECLASSIFY_LOCK = threading.Lock()
+_RECLASSIFY_RUNNING = False
+
+
+def _needs_reclassification(connectors: list[dict], last_count: int, force: bool = False) -> bool:
+    n = len(connectors)
+    if n < 3:
+        return False
+    delta = n - max(0, int(last_count or 0))
+    if not force and delta < _RECLASSIFY_STEP:
+        return False
+
+    # 必要性门控（有必要才分）：
+    # 1) 存在较多未归类（"other"）接口
+    other_cnt = sum(1 for c in connectors if (c.get("category") or "other") == "other")
+    if other_cnt >= 2:
+        return True
+    # 2) 单一分类过于拥挤（>= 10 个且占总数 45% 以上），需要巡检是否有错分
+    by_cat: dict[str, int] = {}
+    for c in connectors:
+        cid = c.get("category") or "other"
+        by_cat[cid] = by_cat.get(cid, 0) + 1
+    if n >= 8 and any(cnt >= 10 or (cnt / n) > 0.48 for cnt in by_cat.values()):
+        return True
+    # 3) 本地多维特征评分与当前分类明显冲突的连接 >= 2 个
+    mismatch = 0
+    for c in connectors:
+        inferred, sc = score_category(
+            c.get("name") or "",
+            base_url=c.get("base_url") or "",
+            notes=c.get("notes") or "",
+            endpoints=c.get("endpoints"),
+        )
+        cur = c.get("category") or "other"
+        if sc >= 8 and inferred != "other" and inferred != cur:
+            mismatch += 1
+    return mismatch >= 2
+
+
+def maybe_silent_reclassify(cfg_or_data, force: bool = False) -> None:
+    """当 API 数量每增长一定阈值（默认 5 个）时自动检查必要性，有必要则在后台静默重分类。"""
+    global _RECLASSIFY_RUNNING
+    data = getattr(cfg_or_data, "data", None) if hasattr(cfg_or_data, "data") else (
+        cfg_or_data if isinstance(cfg_or_data, dict) else None
+    )
+    if not isinstance(data, dict):
+        return
+    connectors = data.get("api_connectors")
+    if not isinstance(connectors, list) or not connectors:
+        return
+
+    # 第一步：零延迟本地多维特征补全（把原本落在 other 但特征明确的接口直接自动归类）
+    local_changed = False
+    for c in connectors:
+        if not isinstance(c, dict):
+            continue
+        cur = str(c.get("category") or "").strip().lower()
+        if not cur or cur == "other" or cur not in API_CATEGORY_IDS:
+            inferred, sc = score_category(
+                c.get("name") or "",
+                base_url=c.get("base_url") or "",
+                notes=c.get("notes") or "",
+                endpoints=c.get("endpoints"),
+            )
+            if inferred != "other" and sc >= 3:
+                c["category"] = inferred
+                local_changed = True
+
+    last_count = int(data.get("api_last_classify_count") or 0)
+    if not _needs_reclassification(connectors, last_count, force=force):
+        if len(connectors) - last_count >= _RECLASSIFY_STEP:
+            data["api_last_classify_count"] = len(connectors)
+        if local_changed and hasattr(cfg_or_data, "save") and callable(cfg_or_data.save):
+            try:
+                cfg_or_data.save()
+            except Exception:
+                pass
+        return
+
+    if not prov_mod.any_key(data):
+        data["api_last_classify_count"] = len(connectors)
+        return
+
+    with _RECLASSIFY_LOCK:
+        if _RECLASSIFY_RUNNING:
+            return
+        _RECLASSIFY_RUNNING = True
+
+    def _worker() -> None:
+        global _RECLASSIFY_RUNNING
+        try:
+            ch = prov_mod.resolve_openaiish(data)
+            if not ch or not ch.get("api_key"):
+                return
+            brief = []
+            for c in (data.get("api_connectors") or [])[:80]:
+                if not isinstance(c, dict):
+                    continue
+                eps = [f"{e.get('method','')} {e.get('path','')}" for e in (c.get("endpoints") or [])[:4] if isinstance(e, dict)]
+                brief.append({
+                    "id": c.get("id"),
+                    "name": c.get("name"),
+                    "base_url": c.get("base_url"),
+                    "current_category": c.get("category") or "other",
+                    "notes": str(c.get("notes") or "")[:120],
+                    "endpoints": eps,
+                })
+            if not brief:
+                return
+            valid_cats = ", ".join(f"{k}({lbl})" for k, lbl in API_CATEGORIES)
+            sys_p = (
+                "你是 API 资产目录治理器。请审阅以下外部 API 连接列表的分类是否合理。\n"
+                f"可用分类 ID：{valid_cats}。\n"
+                "原则：**只调整归类明显错误或滞留在 other(其他) 的连接**；原本归类合理的连接不要改动。\n"
+                "只返回 JSON：{\"updates\": [{\"id\": \"连接id\", \"category\": \"分类id\"}]}"
+            )
+            url = prov_mod.chat_url(ch["base_url"], "openai" if ch["protocol"] == "anthropic" else ch["protocol"])
+            payload = {
+                "model": ch["model"] or "deepseek-flash",
+                "messages": [
+                    {"role": "system", "content": sys_p},
+                    {"role": "user", "content": json.dumps({"connectors": brief}, ensure_ascii=False)},
+                ],
+                "temperature": 0,
+                "response_format": {"type": "json_object"},
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {ch['api_key']}",
+                    "User-Agent": prov_mod.USER_AGENT,
+                    **prov_mod.extra_headers(ch.get("base_url") or "", ch.get("protocol") or "openai", ch["api_key"], "o2-api-classify"),
+                },
+                method="POST",
+            )
+            with prov_mod.urlopen(req, timeout=25) as resp:
+                res_obj = json.loads(resp.read().decode("utf-8"))
+            txt = (((res_obj.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
+            if txt.startswith("```"):
+                txt = re.sub(r"^```(?:json)?\s*", "", txt)
+                txt = re.sub(r"\s*```$", "", txt)
+            parsed = json.loads(txt) if txt else {}
+            upd_map = {}
+            for u in (parsed.get("updates") or []):
+                if isinstance(u, dict) and u.get("id") and u.get("category") in API_CATEGORY_IDS:
+                    upd_map[str(u["id"])] = str(u["category"])
+            changed = False
+            for c in (data.get("api_connectors") or []):
+                if isinstance(c, dict) and c.get("id") in upd_map:
+                    new_cat = upd_map[c["id"]]
+                    if c.get("category") != new_cat:
+                        c["category"] = new_cat
+                        changed = True
+            data["api_last_classify_count"] = len(data.get("api_connectors") or [])
+            data["api_last_classify_ts"] = int(time.time())
+            if changed and hasattr(cfg_or_data, "save") and callable(cfg_or_data.save):
+                cfg_or_data.save()
+        except Exception:
+            pass
+        finally:
+            with _RECLASSIFY_LOCK:
+                _RECLASSIFY_RUNNING = False
+
+    threading.Thread(target=_worker, daemon=True).start()
+
 _BLOCKED_CALLER_HEADER = re.compile(
     r"^(authorization|cookie|set-cookie|host|content-length|connection)$",
     re.I,
@@ -153,7 +474,7 @@ _TOKEN_CACHE: dict[str, tuple[str, float]] = {}
 
 PROMPT = """
 14. 需要调用外部或内部 HTTP/HTTPS API（REST、GraphQL、JSON-RPC 2.0、SOAP/XML、Form 表单、SSE 流、OpenAPI 等）时，调用 call_api：
-   - **已接入渠道优先**：下方「已接入外部 API 目录」列出了所有已保存的 API 连接及使用说明（含免费无需密钥的接口）。遇到相关问题必须优先传 `connector="连接名称"` 按说明调用，不要假装没有，也不要绕去爬网页。
+   - **已接入渠道优先**：下方「已接入外部 API 目录」按数据分类（命名空间）列出已保存的 API 连接及使用说明。只使用和当前问题同一类的连接。标「优先」的连接在该类里先调用；该类没有优先连接时，再从其余连接里选。不要因为某个连接标了优先，就把它用到无关问题上。调用时传 `connector="连接名称"`，不要假装没有，也不要绕去爬网页。
    - **Agent 自主添加 API 与编写使用说明**：当用户要求添加/接入某个 API、提供 API 文档或密钥，或你在任务中发现实用的公开/免费 API 时，立即调用 `call_api(action="save", ...)` 保存连接，并在 `notes`（以及可选的 `endpoints`、`default_headers`、`default_query`）中为 AI 写清楚详尽的使用说明（功能、路径、必填/选填参数、返回关键字段、示例），以便当前与后续对话直接复用。若对方提供 OpenAPI/Swagger 地址，可调用 `call_api(action="discover", url=..., save=True)` 自动解析文档并生成使用说明。
    - **密钥安全**：调用已保存连接时，密钥由运行时自动注入（支持 Bearer、Header、Query、Basic、HMAC-SHA256、OAuth2 自动换 Token、Cookie），**严禁**把密钥明文写进 url、query、headers 或回复正文中。
    - **读写权限**：GET/HEAD/OPTIONS 以及只读的 GraphQL query / JSON-RPC 查询默认可调；改变远端状态的 POST/PUT/PATCH/DELETE 或 GraphQL mutation 必须走已保存且 `allow_write=True` 的连接。"""
@@ -450,12 +771,21 @@ def normalize_connector(raw: dict | None) -> dict:
 
     base_url = str(c.get("base_url") or c.get("baseUrl") or "").strip().rstrip("/")
     notes = str(c.get("notes") or c.get("usage") or c.get("description") or "").strip()[:MAX_NOTES_CHARS]
+    cleaned_eps = _clean_endpoints(c.get("endpoints"))
     now_ms = int(time.time() * 1000)
     allow_raw = c.get("allow_write") if "allow_write" in c else c.get("allowWrite")
+    name = str(c.get("name") or "").strip() or "unnamed"
+    category = str(c.get("category") or "").strip().lower()
+    if category not in API_CATEGORY_IDS or category == "other":
+        inferred = infer_category(name, base_url=base_url, notes=notes, endpoints=cleaned_eps)
+        if category not in API_CATEGORY_IDS or inferred != "other":
+            category = inferred
 
     return {
         "id": str(c.get("id") or "").strip() or new_connector_id(),
-        "name": str(c.get("name") or "").strip() or "unnamed",
+        "name": name,
+        "category": category,
+        "preferred": bool(c.get("preferred")),
         "protocol": proto,
         "base_url": base_url,
         "auth_type": auth_type,
@@ -478,7 +808,7 @@ def normalize_connector(raw: dict | None) -> dict:
         "default_query": _clean_str_dict(c.get("default_query") or c.get("defaultQuery")),
         "allow_write": bool(allow_raw),
         "notes": notes,
-        "endpoints": _clean_endpoints(c.get("endpoints")),
+        "endpoints": cleaned_eps,
         "created_at": int(c.get("created_at") or c.get("createdAt") or now_ms),
         "updated_at": int(c.get("updated_at") or c.get("updatedAt") or now_ms),
     }
@@ -508,6 +838,8 @@ def public_connector(raw: dict) -> dict:
         "default_query": dict(n["default_query"]),
         "allow_write": n["allow_write"],
         "allowWrite": n["allow_write"],
+        "category": n["category"],
+        "preferred": n["preferred"],
         "has_key": has_key,
         "hasKey": has_key,
         "api_key_set": bool(n["api_key"]),
@@ -571,6 +903,7 @@ def merge_save(data: dict, body: dict) -> None:
         seen.add(norm["id"])
         out.append(norm)
     data["api_connectors"] = out
+    maybe_silent_reclassify(data)
 
 
 def find_connector(connectors: list[dict], id_or_name: str | None) -> dict | None:
@@ -587,7 +920,99 @@ def find_connector(connectors: list[dict], id_or_name: str | None) -> dict | Non
     return None
 
 
-def format_api_catalog(connectors_or_cfg) -> str:
+def route_api_categories(rows: list[dict], query: str = "") -> tuple[set[str], set[str]]:
+    """根据用户当前对话问题，路由匹配最相关的 API 分类与具体连接 ID（用于渐进式披露）。"""
+    q_low = str(query or "").strip().lower()
+    if not q_low or len(rows) <= 6:
+        all_cats = {(c.get("category") or "other") for c in rows}
+        all_ids = {str(c.get("id") or "") for c in rows}
+        return all_cats, all_ids
+
+    cat_scores: dict[str, int] = {}
+    matched_ids: set[str] = set()
+
+    for cat_id, kw_list in _CATEGORY_KEYWORDS.items():
+        sc = sum(3 for kw in kw_list if kw in q_low)
+        if sc > 0:
+            cat_scores[cat_id] = sc
+
+    q_tokens = [t for t in re.split(r"[\s,，。？！?!、/\\|;:()（）]+", q_low) if len(t) >= 2]
+    for c in rows:
+        cid = str(c.get("id") or "")
+        cat = c.get("category") or "other"
+        name_low = str(c.get("name") or "").lower()
+        url_low = str(c.get("base_url") or "").lower()
+        notes_low = str(c.get("notes") or "").lower()[:600]
+        if name_low and name_low in q_low:
+            matched_ids.add(cid)
+            cat_scores[cat] = cat_scores.get(cat, 0) + 12
+            continue
+        hit_tok = 0
+        for tok in q_tokens[:16]:
+            if tok in name_low or tok in url_low:
+                hit_tok += 4
+            elif tok in notes_low:
+                hit_tok += 1
+        if hit_tok >= 3:
+            matched_ids.add(cid)
+            cat_scores[cat] = cat_scores.get(cat, 0) + hit_tok
+
+    if not cat_scores and not matched_ids:
+        # 若问题未明显指向特定分类，默认只展开各分类中标记了 preferred（优先）的连接，其余折叠为 L0 索引
+        pref_ids = {str(c.get("id") or "") for c in rows if c.get("preferred")}
+        pref_cats = {(c.get("category") or "other") for c in rows if c.get("preferred")}
+        return pref_cats, pref_ids
+
+    ranked_cats = sorted(cat_scores.items(), key=lambda kv: kv[1], reverse=True)
+    routed_cats = {k for k, sc in ranked_cats[:2] if sc > 0}
+    for c in rows:
+        if (c.get("category") or "other") in routed_cats:
+            matched_ids.add(str(c.get("id") or ""))
+    return routed_cats, matched_ids
+
+
+def _format_connector_detail(c: dict, max_note_lines: int = 12, max_endpoints: int = 8) -> list[str]:
+    lines: list[str] = []
+    rw = "可读可写" if c["allow_write"] else "只读"
+    key_desc = f"需密钥({c['auth_type']})" if c["has_key"] else "免费无需密钥"
+    proto = c["protocol"].upper()
+    pref = " · 优先" if c.get("preferred") else ""
+    head = f"- **{c['name']}**{pref} [{proto}] · {key_desc} · `{c['base_url'] or '(无 base_url)'}` · {rw}"
+    lines.append(head)
+    if c["default_query"]:
+        dq = ", ".join(f"{k}={v}" for k, v in c["default_query"].items())
+        lines.append(f"  - 默认 Query: `{dq}`")
+    if c["default_headers"]:
+        dh = ", ".join(f"{k}: {v}" for k, v in c["default_headers"].items())
+        lines.append(f"  - 默认 Headers: `{dh}`")
+    if c["notes"]:
+        note_lines = c["notes"].strip().splitlines()
+        if len(note_lines) == 1:
+            lines.append(f"  - 使用说明: {note_lines[0][:300]}")
+        else:
+            lines.append("  - 使用说明:")
+            for nl in note_lines[:max_note_lines]:
+                lines.append(f"    {nl}")
+            if len(note_lines) > max_note_lines:
+                lines.append(f"    …（其余说明可通过 call_api(action=\"get\", connector=\"{c['name']}\") 展开）")
+    if c["endpoints"]:
+        eps = c["endpoints"]
+        lines.append("  - 常用端点:")
+        for ep in eps[:max_endpoints]:
+            ep_line = f"    - `{ep['method']} {ep['path']}`"
+            if ep.get("summary"):
+                ep_line += f"：{ep['summary']}"
+            if ep.get("params"):
+                ep_line += f"（参数：{ep['params']}）"
+            lines.append(ep_line)
+        if len(eps) > max_endpoints:
+            lines.append(
+                f"    - …共 {len(eps)} 个端点，调用 `call_api(action=\"get\", connector=\"{c['name']}\")` 查看完整端点表。"
+            )
+    return lines
+
+
+def format_api_catalog(connectors_or_cfg, query: str = "") -> str:
     if hasattr(connectors_or_cfg, "data"):
         raw_list = (connectors_or_cfg.data or {}).get("api_connectors") or []
     elif isinstance(connectors_or_cfg, dict):
@@ -606,39 +1031,48 @@ def format_api_catalog(connectors_or_cfg) -> str:
             "用来建立可复用的 API 知识库；未列入目录的公开 http/https 接口仍可直接传 url 调用。）"
         )
 
+    use_progressive = bool(query and len(rows) > 6)
+    routed_cats, matched_ids = route_api_categories(rows, query=query) if use_progressive else (
+        {(c.get("category") or "other") for c in rows},
+        {str(c.get("id") or "") for c in rows},
+    )
+
     lines = [
-        "\n\n### 已接入外部 API 目录（call_api）",
-        "下列是已接入的 API 渠道与 AI 使用说明（含免费无需 Key 的接口）。遇到相关问题必须优先用 `connector=\"名称\"` 调用，不要假装没有、也不要先去爬网页；密钥由运行时自动注入，严禁写进参数：",
+        "\n\n### 已接入外部 API 目录（call_api · 路由与渐进式披露）",
+        "目录按数据分类分组。已根据当前问题自动展开最相关的连接详情；未展开的分类仅显示 L0 目录索引（如需调用未展开的连接，可先 `call_api(action=\"get\", connector=\"连接名\")` 或 `call_api(action=\"list\", category=\"分类ID\")` 获取详细参数说明）。同一类里标「优先」的先调用。密钥由运行时自动注入，严禁写进参数：",
     ]
+    grouped: dict[str, list[dict]] = {}
     for c in rows:
-        rw = "可读可写" if c["allow_write"] else "只读"
-        key_desc = f"需密钥({c['auth_type']})" if c["has_key"] else "免费无需密钥"
-        proto = c["protocol"].upper()
-        head = f"- **{c['name']}** [{proto}] · {key_desc} · `{c['base_url'] or '(无 base_url)'}` · {rw}"
-        lines.append(head)
-        if c["default_query"]:
-            dq = ", ".join(f"{k}={v}" for k, v in c["default_query"].items())
-            lines.append(f"  - 默认 Query: `{dq}`")
-        if c["default_headers"]:
-            dh = ", ".join(f"{k}: {v}" for k, v in c["default_headers"].items())
-            lines.append(f"  - 默认 Headers: `{dh}`")
-        if c["notes"]:
-            note_lines = c["notes"].strip().splitlines()
-            if len(note_lines) == 1:
-                lines.append(f"  - 使用说明: {note_lines[0]}")
-            else:
-                lines.append("  - 使用说明:")
-                for nl in note_lines[:30]:
-                    lines.append(f"    {nl}")
-        if c["endpoints"]:
-            lines.append("  - 常用端点:")
-            for ep in c["endpoints"][:20]:
-                ep_line = f"    - `{ep['method']} {ep['path']}`"
-                if ep.get("summary"):
-                    ep_line += f"：{ep['summary']}"
-                if ep.get("params"):
-                    ep_line += f"（参数：{ep['params']}）"
-                lines.append(ep_line)
+        grouped.setdefault(c.get("category") or "other", []).append(c)
+    ordered = [key for key, _label in API_CATEGORIES if grouped.get(key)]
+    ordered.extend(key for key in grouped if key not in ordered)
+
+    collapsed_lines: list[str] = []
+    for key in ordered:
+        items = grouped[key]
+        items.sort(key=lambda item: (not item.get("preferred"), str(item.get("name") or "").lower()))
+        cat_label = API_CATEGORY_LABELS.get(key, "其他")
+        expanded_items = [c for c in items if not use_progressive or key in routed_cats or c["id"] in matched_ids]
+        collapsed_items = [c for c in items if c not in expanded_items]
+
+        if expanded_items:
+            lines.append(f"\n#### {cat_label} (`category=\"{key}\"`)")
+            for c in expanded_items:
+                lines.extend(_format_connector_detail(c))
+        if collapsed_items:
+            names_preview = "、".join(
+                f"{c['name']}{'[优先]' if c.get('preferred') else ''}"
+                for c in collapsed_items[:12]
+            )
+            if len(collapsed_items) > 12:
+                names_preview += f" 等 {len(collapsed_items)} 个"
+            collapsed_lines.append(
+                f"- **{cat_label}** (`category=\"{key}\"`，共 {len(collapsed_items)} 个未展开)：{names_preview}"
+            )
+
+    if collapsed_lines:
+        lines.append("\n#### 其他分类折叠索引（L0 渐进式披露 · 按需调用 `call_api(action=\"get\", connector=\"名称\")` 展开）")
+        lines.extend(collapsed_lines)
     return "\n".join(lines)
 
 
@@ -1667,11 +2101,13 @@ def discover_openapi(url: str, http_fn=None) -> dict:
         note_parts.append(desc)
     note_parts.append(f"OpenAPI 文档源: {hit_url}（共发现 {len(endpoints)} 个常用端点）")
     notes = "\n".join(note_parts)
+    category = infer_category(title, base_url=base_url, notes=notes, endpoints=endpoints)
 
     return {
         "ok": True,
         "spec_url": hit_url,
         "name": title,
+        "category": category,
         "base_url": base_url,
         "protocol": "rest",
         "auth_type": auth_type,
@@ -1715,10 +2151,37 @@ def execute_api_call(args: dict, opts: dict | None = None) -> dict:
 
     if action == "list":
         connectors = _load()
+        cat_filter = str(a.get("category") or "").strip().lower()
+        kw_filter = str(a.get("query") or a.get("q") or "").strip().lower()
+        filtered = []
+        for c in connectors:
+            pub = public_connector(c)
+            if cat_filter and pub.get("category") != cat_filter and API_CATEGORY_LABELS.get(pub.get("category"), "").lower() != cat_filter:
+                continue
+            if kw_filter:
+                blob = f"{pub.get('name','')} {pub.get('base_url','')} {pub.get('notes','')}".lower()
+                if kw_filter not in blob:
+                    continue
+            filtered.append({
+                "id": pub["id"],
+                "name": pub["name"],
+                "category": pub["category"],
+                "category_label": API_CATEGORY_LABELS.get(pub["category"], "其他"),
+                "preferred": pub["preferred"],
+                "protocol": pub["protocol"],
+                "base_url": pub["base_url"],
+                "auth_type": pub["auth_type"],
+                "has_key": pub["has_key"],
+                "allow_write": pub["allow_write"],
+                "summary": (pub["notes"] or "").splitlines()[0][:180] if pub.get("notes") else "",
+                "endpoint_count": len(pub.get("endpoints") or []),
+            })
         return {
             "ok": True,
-            "count": len(connectors),
-            "connectors": [public_connector(c) for c in connectors],
+            "count": len(filtered),
+            "total": len(connectors),
+            "connectors": filtered,
+            "hint": "调用 call_api(action=\"get\", connector=\"连接名\") 查看指定连接的完整使用说明与全部端点参数。",
         }
 
     if action in ("get", "describe"):
@@ -1857,6 +2320,8 @@ def execute_api_call(args: dict, opts: dict | None = None) -> dict:
             else [*connectors, merged]
         )
         _save(next_list)
+        if cfg is not None:
+            maybe_silent_reclassify(cfg)
         pub = public_connector(merged)
         hint = (
             f"已保存连接「{merged['name']}」（含鉴权配置与使用说明）。之后请用 connector=\"{merged['name']}\" 调用，不要再传 api_key。"

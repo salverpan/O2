@@ -4,8 +4,11 @@ import io
 import json
 import os
 import re
+import shutil
+import socket
 import sqlite3
 import sys
+import tempfile
 import threading
 import time
 import urllib.parse
@@ -23,6 +26,8 @@ import catalog as catalog_mod
 import config as cfg_mod
 import build as build_mod
 import ingest as ingest_mod
+import market_data as market_mod
+import news as news_mod
 import providers as prov_mod
 import search as search_mod
 import embed as embed_mod
@@ -50,6 +55,116 @@ def user_data_dir() -> str:
     return d
 
 
+def _cache_paths(base_dir: str) -> dict[str, list[str]]:
+    ud = user_data_dir()
+    td = tempfile.gettempdir()
+    build_dir = os.path.join(base_dir, "build")
+    att_dirs = []
+    if os.path.isdir(build_dir):
+        try:
+            for fn in os.listdir(build_dir):
+                if fn.startswith("att-"):
+                    att_dirs.append(os.path.join(build_dir, fn))
+        except OSError:
+            pass
+    prof = os.path.join(ud, "browser-profile")
+    return {
+        "uploads": [os.path.join(build_dir, "uploads")],
+        "temp_logs": [
+            os.path.join(td, "o2-browser-shots"),
+            os.path.join(td, "o2-shell"),
+            os.path.join(td, "o2-api"),
+            *att_dirs,
+        ],
+        "downloads": [os.path.join(ud, "downloads")],
+        "browser_cache": [
+            os.path.join(prof, "Cache"),
+            os.path.join(prof, "Code Cache"),
+            os.path.join(prof, "GPUCache"),
+            os.path.join(prof, "Partitions", "o2-browser", "Cache"),
+            os.path.join(prof, "Partitions", "o2-browser", "Code Cache"),
+            os.path.join(prof, "Partitions", "o2-browser", "GPUCache"),
+            os.path.join(prof, "Partitions", "o2-browser", "Service Worker", "CacheStorage"),
+        ],
+        "browser_profile": [prof],
+        "ocr_cache": [os.path.join(build_dir, "ocr_cloud")],
+    }
+
+
+def _paths_usage(paths: list[str]) -> dict:
+    total_bytes = 0
+    total_files = 0
+    for p in paths:
+        if not p or not os.path.exists(p):
+            continue
+        if os.path.isfile(p):
+            try:
+                total_bytes += os.path.getsize(p)
+                total_files += 1
+            except OSError:
+                pass
+            continue
+        for root, _dirs, files in os.walk(p):
+            for fn in files:
+                fp = os.path.join(root, fn)
+                try:
+                    total_bytes += os.path.getsize(fp)
+                    total_files += 1
+                except OSError:
+                    pass
+    return {"bytes": total_bytes, "files": total_files}
+
+
+def _clean_paths(paths: list[str], max_age_sec: float = 0.0) -> dict:
+    now = time.time()
+    freed = 0
+    removed = 0
+    for p in paths:
+        if not p or not os.path.exists(p):
+            continue
+        if os.path.basename(p).startswith("att-") and os.path.isdir(p):
+            try:
+                if max_age_sec <= 0 or (now - os.path.getmtime(p)) >= max_age_sec:
+                    st = _paths_usage([p])
+                    shutil.rmtree(p, ignore_errors=True)
+                    freed += st["bytes"]
+                    removed += max(1, st["files"])
+            except OSError:
+                pass
+            continue
+        if not os.path.isdir(p):
+            continue
+        for root, dirs, files in os.walk(p, topdown=False):
+            for fn in files:
+                fp = os.path.join(root, fn)
+                try:
+                    if max_age_sec > 0 and (now - os.path.getmtime(fp)) < max_age_sec:
+                        continue
+                    sz = os.path.getsize(fp)
+                    os.remove(fp)
+                    freed += sz
+                    removed += 1
+                except OSError:
+                    pass
+            for dn in dirs:
+                dp = os.path.join(root, dn)
+                try:
+                    if not os.listdir(dp):
+                        os.rmdir(dp)
+                except OSError:
+                    pass
+    return {"freed_bytes": freed, "removed_files": removed}
+
+
+def _auto_gc_temp_files(base_dir: str) -> None:
+    try:
+        cp = _cache_paths(base_dir)
+        # 启动时自动清理超过 12 小时的未提交上传孤儿文件与临时截图/日志
+        _clean_paths(cp["uploads"] + cp["temp_logs"], max_age_sec=12 * 3600)
+    except Exception:
+        pass
+
+
 def _fix_stdio() -> None:
     if sys.stdout is not None and sys.stderr is not None:
         return
@@ -60,7 +175,7 @@ def _fix_stdio() -> None:
     sys.stdout = sys.stderr = f
 
 
-if getattr(sys, "frozen", False):
+if getattr(sys, "frozen", False) or sys.stdout is None or sys.stderr is None:
     _fix_stdio()
 
 
@@ -83,6 +198,13 @@ class State:
         self.lock = threading.Lock()
         self.rebuilding = False
         self.src_root = self._guess_src()
+        self.news = news_mod.NewsManager(os.path.join(self.base, "data", "news.sqlite"), self.config)
+        self.news.start_background()
+        self.market = market_mod.MarketManager(
+            os.path.join(self.base, "data", "market.sqlite"),
+            self.config,
+            news_mgr=self.news,
+        )
         catalog_mod.init(os.path.join(self.base, "build"))
         threading.Thread(target=catalog_mod.refresh, daemon=True).start()
         try:
@@ -91,6 +213,10 @@ class State:
                 embed_mod.ensure_schema(con)
         except sqlite3.Error:
             pass
+        if self.config.data.get("auto_clean_temp", True):
+            threading.Thread(
+                target=_auto_gc_temp_files, args=(self.base,), daemon=True
+            ).start()
         if self.config.data.get("embed_running"):
             threading.Thread(
                 target=embed_mod.start_job, args=(self.config, self.db_path), daemon=True
@@ -250,12 +376,56 @@ class Handler(BaseHTTPRequestHandler):
             return self._page_image(qs)
         if path == "/api/search":
             return self._search(qs)
+        if path == "/api/kb":
+            return self._kb_list()
         if path == "/api/models":
             return self._models()
         if path == "/api/embed/status":
             return self._embed_status()
         if path == "/api/browser/state":
             return self._browser_state()
+        if path == "/api/cache/status":
+            return self._cache_status()
+        if path == "/api/chats":
+            return self._chats_get()
+        if path == "/api/news/status":
+            return self._news_status()
+        if path == "/api/news/feeds":
+            return self._news_feeds()
+        if path == "/api/news/feeds/export_opml":
+            return self._news_export_opml()
+        if path == "/api/news/items":
+            return self._news_items(qs)
+        if path == "/api/news/search":
+            return self._news_search(qs)
+        if path == "/api/news/entities":
+            return self._news_entities(qs)
+        if path == "/api/news/entity":
+            return self._news_entity_profile(qs)
+        if path == "/api/news/graph":
+            return self._news_entity_graph(qs)
+        if path.startswith("/api/news/item/"):
+            return self._news_item_detail(path.rsplit("/", 1)[1])
+        if path == "/api/dashboard/layout":
+            return self._dashboard_layout_get()
+        if path == "/api/market/layout":
+            return self._market_layout_get()
+        if path == "/api/market/overview":
+            return self._market_overview(qs)
+        if path == "/api/market/kline":
+            return self._market_kline(qs)
+        if path == "/api/market/sectors":
+            return self._market_sectors(qs)
+        if path == "/api/market/movers":
+            return self._market_movers(qs)
+        if path == "/api/market/macro":
+            return self._market_macro(qs)
+        if path == "/api/market/geopolitics":
+            return self._market_geopolitics(qs)
+        if path == "/api/market/search":
+            return self._market_search(qs)
+        if path == "/api/market/watchlist":
+            return self._market_watchlist_get()
         if path.startswith("/api/doc/"):
             try:
                 did = int(path.rsplit("/", 1)[1])
@@ -296,6 +466,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._folders_create()
         if u.path == "/api/folders/delete":
             return self._folders_delete()
+        if u.path == "/api/kb":
+            return self._kb_set()
         if u.path == "/api/folders/move":
             return self._folders_move()
         if u.path == "/api/attach":
@@ -316,6 +488,44 @@ class Handler(BaseHTTPRequestHandler):
             return self._connector_test()
         if u.path == "/api/connectors/discover":
             return self._connector_discover()
+        if u.path == "/api/cache/clear":
+            return self._cache_clear()
+        if u.path == "/api/cache/open":
+            return self._cache_open_dir()
+        if u.path == "/api/chats":
+            return self._chats_save()
+        if u.path == "/api/news/feeds/save":
+            return self._news_feed_save()
+        if u.path == "/api/news/feeds/delete":
+            return self._news_feed_delete()
+        if u.path == "/api/news/feeds/import_presets":
+            return self._news_import_presets()
+        if u.path == "/api/news/feeds/import_opml":
+            return self._news_import_opml()
+        if u.path == "/api/news/fetch":
+            return self._news_fetch()
+        if u.path == "/api/news/translate_pending":
+            return self._news_translate_pending()
+        if u.path == "/api/news/translate":
+            return self._news_translate_one()
+        if u.path == "/api/news/star":
+            return self._news_star()
+        if u.path == "/api/news/embed":
+            return self._news_embed()
+        if u.path == "/api/news/reindex":
+            return self._news_reindex()
+        if u.path == "/api/news/mark_read":
+            return self._news_mark_all_read()
+        if u.path == "/api/news/brief":
+            return self._news_brief()
+        if u.path == "/api/dashboard/layout":
+            return self._dashboard_layout_save()
+        if u.path == "/api/market/layout":
+            return self._market_layout_save()
+        if u.path == "/api/market/watchlist":
+            return self._market_watchlist_post()
+        if u.path == "/api/market/test_proxy":
+            return self._market_test_proxy()
         return self._err("not found", 404)
 
     def _serve_static(self, rel: str, ctype: str) -> None:
@@ -439,6 +649,28 @@ class Handler(BaseHTTPRequestHandler):
         _page_cache_put(cache_key, data)
         return self._send(200, data, "image/jpeg", cache=True)
 
+    def _kb_list(self) -> None:
+        with STATE.con() as con:
+            build_mod.ensure_schema(con)
+            return self._json({"disabled": search_mod.kb_disabled(con)})
+
+    def _kb_set(self) -> None:
+        body = self._body()
+        project = str(body.get("project") or "").strip()
+        if not project:
+            return self._err("缺少文库名称")
+        enabled = bool(body.get("enabled"))
+        try:
+            with STATE.lock:
+                con = STATE.con()
+                try:
+                    disabled = search_mod.set_kb_enabled(con, project, enabled)
+                finally:
+                    con.close()
+        except Exception as e:                       # noqa: BLE001
+            return self._err(str(e))
+        return self._json({"ok": True, "disabled": disabled})
+
     def _search(self, qs: dict) -> None:
         def g(k: str) -> str:
             return (qs.get(k) or [""])[0]
@@ -519,6 +751,8 @@ class Handler(BaseHTTPRequestHandler):
                     model=model or None,
                     effort=effort or None,
                     provider_id=provider_id or None,
+                    news_mgr=STATE.news,
+                    market_mgr=STATE.market,
                 )
             finally:
                 con.close()
@@ -577,6 +811,7 @@ class Handler(BaseHTTPRequestHandler):
         d["api_auth_types"] = api_mod.AUTH_TYPE_LABELS
         d["api_presets"] = api_mod.API_PRESETS
         d["src_root"] = STATE.src_root
+        d["detected_system_proxy"] = STATE.market.system_proxy()
         d["db_path"] = STATE.db_path
         return self._json(d)
 
@@ -750,6 +985,74 @@ class Handler(BaseHTTPRequestHandler):
         if body.get("src_root"):
             STATE.config.data["src_root"] = body["src_root"]
             STATE.src_root = body["src_root"]
+        prev_news_enabled = bool(STATE.config.data.get("news_enabled"))
+        for bool_k in (
+            "shell", "browser", "api_call", "batch_fast_meta", "auto_clean_temp",
+            "news_enabled", "news_auto_translate", "news_local_embed", "news_local_rerank",
+        ):
+            if bool_k in body and body[bool_k] is not None:
+                STATE.config.data[bool_k] = bool(body[bool_k])
+        prev_mkt_proxy = str(STATE.config.data.get("market_proxy") or "")
+        prev_mkt_mode = str(STATE.config.data.get("market_source_mode") or "auto")
+        for str_k in (
+            "pdf_ocr_mode", "browser_download_mode", "ui_density", "ui_theme",
+            "default_tab", "followup_mode",
+            "news_llm_provider_id", "news_llm_model", "news_rsshub_base",
+            "market_proxy", "market_source_mode",
+        ):
+            if str_k in body and body[str_k] is not None:
+                val = str(body[str_k]).strip()
+                if val or str_k in ("news_llm_provider_id", "news_llm_model", "market_proxy"):
+                    STATE.config.data[str_k] = val
+        if (
+            str(STATE.config.data.get("market_proxy") or "") != prev_mkt_proxy
+            or str(STATE.config.data.get("market_source_mode") or "auto") != prev_mkt_mode
+        ):
+            STATE.market.reset_routing_cache()
+        if "news_refresh_minutes" in body and body["news_refresh_minutes"] not in (None, ""):
+            try:
+                mins = int(body["news_refresh_minutes"])
+                STATE.config.data["news_refresh_minutes"] = 0 if mins <= 0 else max(1, min(1440, mins))
+            except (TypeError, ValueError):
+                pass
+        if "news_dedup_window_hours" in body and body["news_dedup_window_hours"] not in (None, ""):
+            try:
+                STATE.config.data["news_dedup_window_hours"] = max(6, min(336, int(body["news_dedup_window_hours"])))
+            except (TypeError, ValueError):
+                pass
+        for fk in ("news_dedup_sem_threshold", "news_dedup_xlang_threshold"):
+            if fk in body and body[fk] not in (None, ""):
+                try:
+                    STATE.config.data[fk] = round(max(0.65, min(0.98, float(body[fk]))), 3)
+                except (TypeError, ValueError):
+                    pass
+        if "news_glossary" in body and isinstance(body["news_glossary"], list):
+            cleaned_g = []
+            for g in body["news_glossary"]:
+                if not isinstance(g, dict):
+                    continue
+                term = str(g.get("term") or "").strip()
+                zh = str(g.get("zh") or "").strip()
+                if term and zh:
+                    cleaned_g.append({"term": term, "zh": zh, "note": str(g.get("note") or "").strip()})
+            STATE.config.data["news_glossary"] = cleaned_g
+        if "dashboard_layout" in body and (body["dashboard_layout"] is None or isinstance(body["dashboard_layout"], dict)):
+            STATE.config.data["dashboard_layout"] = body["dashboard_layout"]
+        if not prev_news_enabled and STATE.config.data.get("news_enabled"):
+            STATE.news.wake()
+        if "batch_concurrency" in body and body["batch_concurrency"] not in (None, ""):
+            try:
+                STATE.config.data["batch_concurrency"] = max(1, min(6, int(body["batch_concurrency"])))
+            except (TypeError, ValueError):
+                pass
+        if "browser_download_mode" in body and browser_mod.bridge_ready():
+            try:
+                browser_mod.call_bridge(
+                    {"action": "set_download_mode", "mode": STATE.config.data.get("browser_download_mode", "sandbox")},
+                    timeout=2.5,
+                )
+            except Exception:
+                pass
         STATE.config.save()
         return self._json({
             "ok": True,
@@ -896,20 +1199,61 @@ class Handler(BaseHTTPRequestHandler):
         project = str(_fields.get("project") or "").strip()
         folder = str(_fields.get("folder") or "").strip()
         rel_path = str(_fields.get("rel_path") or "").strip()
+        auto_commit = str(_fields.get("auto_commit") or "").strip().lower() in ("1", "true", "yes")
+        force_ocr_raw = str(_fields.get("force_ocr") or "").strip().lower()
+        force_ocr = True if force_ocr_raw in ("1", "true", "yes") else (False if force_ocr_raw in ("0", "false", "no") else None)
+        fast_meta_raw = str(_fields.get("fast_meta") or "").strip().lower()
+        fast_meta = True if fast_meta_raw in ("1", "true", "yes") else (False if fast_meta_raw in ("0", "false", "no") else None)
+        work_dir = os.path.join(STATE.base, "build")
         emit, finish = self._sse_begin()
         try:
             with STATE.con() as con:
                 depts = ingest_mod.existing_depts(con)
             meta = ingest_mod.parse_upload(
                 STATE.config,
-                os.path.join(STATE.base, "build"),
+                work_dir,
                 item["filename"], item["data"], depts,
                 on_progress=lambda p: emit({"type": "progress", **p}),
                 project=project,
                 folder=folder,
                 rel_path=rel_path,
+                db_path=STATE.db_path,
+                src_root=STATE.src_root,
+                skip_existing=str(_fields.get("skip_existing") or "1").strip() not in ("0", "false", "no"),
+                force_ocr=force_ocr,
+                fast_meta=fast_meta,
             )
-            emit({"type": "done", "ok": True, **meta})
+            if auto_commit and not meta.get("skipped") and meta.get("tmp_id"):
+                if STATE.rebuilding:
+                    raise ValueError("正在重建索引，请稍候")
+                emit({"type": "progress", "percent": 94, "message": "正在写入索引库…", "stage": "commit"})
+                commit_meta = {
+                    "project": meta.get("project") or project or "集团制度库",
+                    "folder": meta.get("folder") or folder or "",
+                    "dept": meta.get("dept") or "",
+                    "doc_type": meta.get("doc_type") or "general",
+                    "chunk_profile": meta.get("chunk_profile") or "auto",
+                    "title": meta.get("title") or os.path.splitext(item["filename"])[0],
+                    "doc_no": meta.get("doc_no") or "",
+                    "issued_date": meta.get("issued_date") or "",
+                    "status": meta.get("status") or "现行",
+                    "summary": meta.get("summary") or "",
+                    "tags": meta.get("tags") or [],
+                    "meta": meta.get("meta") or {},
+                }
+                committed = ingest_mod.commit(
+                    STATE.config,
+                    STATE.db_path,
+                    STATE.src_root,
+                    work_dir,
+                    meta["tmp_id"],
+                    commit_meta,
+                    doc_id=None,
+                    db_lock=STATE.lock,
+                )
+                emit({"type": "done", "ok": True, "committed": True, **meta, **committed})
+            else:
+                emit({"type": "done", "ok": True, **meta})
         except Exception as e:                       # noqa: BLE001
             emit({"type": "error", "error": str(e)})
         finally:
@@ -928,12 +1272,12 @@ class Handler(BaseHTTPRequestHandler):
         if STATE.rebuilding:
             return self._err("正在重建索引，请稍候")
         try:
-            with STATE.lock:
-                out = ingest_mod.commit(
-                    STATE.config, STATE.db_path, STATE.src_root,
-                    os.path.join(STATE.base, "build"),
-                    tmp_id, body, doc_id,
-                )
+            out = ingest_mod.commit(
+                STATE.config, STATE.db_path, STATE.src_root,
+                os.path.join(STATE.base, "build"),
+                tmp_id, body, doc_id,
+                db_lock=STATE.lock,
+            )
         except Exception as e:                       # noqa: BLE001
             return self._err(str(e))
         return self._json(out)
@@ -1053,6 +1397,11 @@ class Handler(BaseHTTPRequestHandler):
         if not ctl_url or not token:
             return self._err("missing ctl_url or token")
         browser_mod.register_bridge(ctl_url, token)
+        try:
+            mode = STATE.config.data.get("browser_download_mode", "sandbox")
+            browser_mod.call_bridge({"action": "set_download_mode", "mode": mode}, timeout=2.0)
+        except Exception:
+            pass
         return self._json({"ok": True})
 
     def _browser_state(self) -> None:
@@ -1101,6 +1450,558 @@ class Handler(BaseHTTPRequestHandler):
         out = api_mod.discover_openapi(url)
         return self._json(out)
 
+    def _build_cache_report(self) -> dict:
+        cp = _cache_paths(STATE.base)
+        uploads_st = _paths_usage(cp["uploads"])
+        temp_st = _paths_usage(cp["temp_logs"])
+        dl_st = _paths_usage(cp["downloads"])
+        bcache_st = _paths_usage(cp["browser_cache"])
+        bprof_st = _paths_usage(cp["browser_profile"])
+        ocr_st = _paths_usage(cp["ocr_cache"])
+        db_st = _paths_usage([STATE.db_path, STATE.db_path + "-wal", STATE.db_path + "-shm"])
+        sandbox_dl = cp["downloads"][0]
+        sys_dl = os.path.join(os.path.expanduser("~"), "Downloads")
+        dl_mode = STATE.config.data.get("browser_download_mode", "sandbox")
+        return {
+            "ok": True,
+            "uploads": {**uploads_st, "path": cp["uploads"][0]},
+            "temp_logs": {**temp_st, "bytes": uploads_st["bytes"] + temp_st["bytes"], "files": uploads_st["files"] + temp_st["files"]},
+            "downloads": {**dl_st, "path": sandbox_dl},
+            "browser_cache": {**bcache_st, "profile_bytes": bprof_st["bytes"], "path": cp["browser_profile"][0]},
+            "ocr_cache": {**ocr_st, "path": cp["ocr_cache"][0]},
+            "database": {**db_st, "path": STATE.db_path},
+            "active_download_dir": sys_dl if dl_mode == "system" else sandbox_dl,
+            "sandbox_download_dir": sandbox_dl,
+            "system_download_dir": sys_dl,
+        }
+
+    def _cache_status(self) -> None:
+        return self._json(self._build_cache_report())
+
+    def _cache_clear(self) -> None:
+        body = self._body()
+        target = str(body.get("target") or "temp").strip().lower()
+        cp = _cache_paths(STATE.base)
+        res = {"freed_bytes": 0, "removed_files": 0}
+        if target in ("temp", "uploads", "all_temp"):
+            r1 = _clean_paths(cp["uploads"] + cp["temp_logs"])
+            res["freed_bytes"] += r1["freed_bytes"]
+            res["removed_files"] += r1["removed_files"]
+            with ingest_mod._PARSED_CACHE_LOCK:
+                ingest_mod._PARSED_CACHE.clear()
+        elif target == "downloads":
+            r1 = _clean_paths(cp["downloads"])
+            res["freed_bytes"] += r1["freed_bytes"]
+            res["removed_files"] += r1["removed_files"]
+            if browser_mod.bridge_ready():
+                try:
+                    browser_mod.call_bridge({"action": "clear_cache", "clear_downloads": True}, timeout=3.0)
+                except Exception:
+                    pass
+        elif target == "browser_cache":
+            before = _paths_usage(cp["browser_cache"])["bytes"]
+            if browser_mod.bridge_ready():
+                try:
+                    browser_mod.call_bridge({"action": "clear_cache", "clear_cookies": False}, timeout=5.0)
+                except Exception:
+                    pass
+            r1 = _clean_paths(cp["browser_cache"])
+            after = _paths_usage(cp["browser_cache"])["bytes"]
+            res["freed_bytes"] = max(r1["freed_bytes"], max(0, before - after))
+            res["removed_files"] = r1["removed_files"]
+        elif target == "browser_cookies":
+            if browser_mod.bridge_ready():
+                try:
+                    browser_mod.call_bridge({"action": "clear_cache", "clear_cookies": True}, timeout=5.0)
+                except Exception:
+                    pass
+            r1 = _clean_paths(cp["browser_cache"])
+            res["freed_bytes"] = r1["freed_bytes"]
+            res["removed_files"] = r1["removed_files"]
+        elif target == "ocr_cache":
+            r1 = _clean_paths(cp["ocr_cache"])
+            res["freed_bytes"] = r1["freed_bytes"]
+            res["removed_files"] = r1["removed_files"]
+        else:
+            return self._err(f"未知的清理目标: {target}")
+        report = self._build_cache_report()
+        report.update(res)
+        return self._json(report)
+
+    def _cache_open_dir(self) -> None:
+        body = self._body()
+        kind = str(body.get("kind") or "downloads").strip().lower()
+        cp = _cache_paths(STATE.base)
+        if kind == "downloads":
+            dl_mode = STATE.config.data.get("browser_download_mode", "sandbox")
+            target_dir = os.path.join(os.path.expanduser("~"), "Downloads") if dl_mode == "system" else cp["downloads"][0]
+        elif kind == "src_root":
+            target_dir = STATE.src_root
+        elif kind == "data":
+            target_dir = os.path.dirname(STATE.db_path)
+        elif kind == "ocr_cache":
+            target_dir = cp["ocr_cache"][0]
+        else:
+            target_dir = cp["uploads"][0]
+        os.makedirs(target_dir, exist_ok=True)
+        try:
+            if sys.platform == "win32":
+                os.startfile(target_dir)  # noqa: S606
+            else:
+                import subprocess
+                subprocess.Popen(["xdg-open", target_dir])
+        except OSError as e:
+            return self._err(str(e))
+        return self._json({"ok": True, "path": target_dir})
+
+    def _chats_path(self) -> str:
+        d = os.path.dirname(STATE.db_path)
+        os.makedirs(d, exist_ok=True)
+        return os.path.join(d, "chats.json")
+
+    def _chats_get(self) -> None:
+        p = self._chats_path()
+        if not os.path.isfile(p):
+            return self._json({"ok": True, "chats": [], "active_id": ""})
+        try:
+            with STATE.lock:
+                with open(p, encoding="utf-8") as f:
+                    data = json.load(f)
+            if isinstance(data, list):
+                return self._json({"ok": True, "chats": data, "active_id": ""})
+            if isinstance(data, dict):
+                return self._json({
+                    "ok": True,
+                    "chats": data.get("chats") if isinstance(data.get("chats"), list) else [],
+                    "active_id": str(data.get("active_id") or ""),
+                })
+        except Exception:
+            pass
+        return self._json({"ok": True, "chats": [], "active_id": ""})
+
+    def _chats_save(self) -> None:
+        body = self._body()
+        incoming = body.get("chats")
+        replace_all = bool(body.get("replace"))
+        active_id = str(body.get("active_id") or "")
+        if not isinstance(incoming, list):
+            return self._err("invalid chats")
+        p = self._chats_path()
+        try:
+            with STATE.lock:
+                existing_list: list[dict] = []
+                if not replace_all and os.path.isfile(p):
+                    try:
+                        with open(p, encoding="utf-8") as f:
+                            old_raw = json.load(f)
+                        if isinstance(old_raw, list):
+                            existing_list = old_raw
+                        elif isinstance(old_raw, dict) and isinstance(old_raw.get("chats"), list):
+                            existing_list = old_raw["chats"]
+                    except Exception:
+                        existing_list = []
+                if replace_all:
+                    merged = [c for c in incoming if isinstance(c, dict) and c.get("id")][:100]
+                else:
+                    by_id: dict[str, dict] = {}
+                    for c in existing_list:
+                        if isinstance(c, dict) and c.get("id"):
+                            by_id[str(c["id"])] = c
+                    for c in incoming:
+                        if not isinstance(c, dict) or not c.get("id"):
+                            continue
+                        cid = str(c["id"])
+                        prev = by_id.get(cid)
+                        if not prev:
+                            by_id[cid] = c
+                        else:
+                            # 保留消息更完整或更新时间更新的版本
+                            prev_msgs = prev.get("messages") or []
+                            new_msgs = c.get("messages") or []
+                            if len(new_msgs) >= len(prev_msgs) or int(c.get("updatedAt") or 0) >= int(prev.get("updatedAt") or 0):
+                                by_id[cid] = c
+                    merged = sorted(
+                        by_id.values(),
+                        key=lambda x: int(x.get("activeAt") or x.get("updatedAt") or x.get("createdAt") or 0),
+                        reverse=True,
+                    )[:100]
+                with open(p, "w", encoding="utf-8") as f:
+                    json.dump({"chats": merged, "active_id": active_id}, f, ensure_ascii=False)
+            return self._json({"ok": True, "count": len(merged)})
+        except Exception as e:
+            return self._err(str(e))
+
+    def _news_status(self) -> None:
+        return self._json({"ok": True, **STATE.news.status()})
+
+    def _news_feeds(self) -> None:
+        return self._json({
+            "ok": True,
+            "feeds": STATE.news.store.list_feeds(),
+            "presets": news_mod.PRESET_FEEDS,
+            "default_glossary": news_mod.DEFAULT_GLOSSARY,
+        })
+
+    def _news_export_opml(self) -> None:
+        xml = STATE.news.store.export_opml().encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/xml; charset=utf-8")
+        self.send_header("Content-Disposition", 'attachment; filename="o2-news-feeds.opml"')
+        self.send_header("Content-Length", str(len(xml)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(xml)
+
+    def _news_feed_save(self) -> None:
+        body = self._body()
+        try:
+            feed = STATE.news.store.save_feed(body)
+            return self._json({"ok": True, "feed": feed})
+        except Exception as e:
+            return self._err(str(e))
+
+    def _news_feed_delete(self) -> None:
+        body = self._body()
+        fid = str(body.get("id") or "").strip()
+        if not fid:
+            return self._err("缺少源 id")
+        removed = STATE.news.store.delete_feed(fid, delete_items=bool(body.get("delete_items")))
+        return self._json({"ok": True, "removed": removed})
+
+    def _news_import_presets(self) -> None:
+        body = self._body()
+        langs = body.get("langs") if isinstance(body.get("langs"), list) else None
+        res = STATE.news.store.import_presets(langs=langs)
+        return self._json({"ok": True, **res, "feeds": STATE.news.store.list_feeds()})
+
+    def _news_import_opml(self) -> None:
+        body = self._body()
+        xml_text = str(body.get("xml") or "").strip()
+        if not xml_text:
+            return self._err("OPML 内容为空")
+        try:
+            res = STATE.news.store.import_opml(xml_text)
+            return self._json({"ok": True, **res, "feeds": STATE.news.store.list_feeds()})
+        except Exception as e:
+            return self._err(f"OPML 解析失败: {e}")
+
+    def _news_items(self, qs: dict) -> None:
+        lang = (qs.get("lang") or [""])[0]
+        category = (qs.get("category") or [""])[0]
+        feed_id = (qs.get("feed_id") or [""])[0]
+        q_str = (qs.get("q") or [""])[0]
+        starred = (qs.get("starred") or ["0"])[0] in ("1", "true", "yes")
+        unread_only = (qs.get("unread") or ["0"])[0] in ("1", "true", "yes")
+        sentiment = (qs.get("sentiment") or [""])[0]
+        entity = (qs.get("entity") or [""])[0]
+        try:
+            hours = int((qs.get("hours") or ["0"])[0] or 0)
+        except ValueError:
+            hours = 0
+        try:
+            min_impact = int((qs.get("min_impact") or ["0"])[0] or 0)
+        except ValueError:
+            min_impact = 0
+        try:
+            limit = int((qs.get("limit") or ["40"])[0] or 40)
+        except ValueError:
+            limit = 40
+        try:
+            offset = int((qs.get("offset") or ["0"])[0] or 0)
+        except ValueError:
+            offset = 0
+        include_dups = (qs.get("include_dups") or ["0"])[0] in ("1", "true", "yes")
+        res = STATE.news.query_items_fast(
+            lang=lang,
+            category=category,
+            feed_id=feed_id,
+            q=q_str,
+            starred=starred,
+            unread_only=unread_only,
+            sentiment=sentiment,
+            min_impact=min_impact,
+            hours=hours,
+            entity=entity,
+            canonical_only=not include_dups,
+            limit=limit,
+            offset=offset,
+        )
+        return self._json({"ok": True, **res})
+
+    def _news_item_detail(self, raw_id: str) -> None:
+        try:
+            iid = int(raw_id)
+        except ValueError:
+            return self._err("无效新闻 ID")
+        item = STATE.news.store.get_item(iid)
+        if not item:
+            return self._err("未找到该新闻", 404)
+        STATE.news.store.mark_read(iid)
+        return self._json({"ok": True, "item": item})
+
+    def _news_fetch(self) -> None:
+        body = self._body()
+        fid = str(body.get("feed_id") or "").strip()
+        auto_tr = bool(body.get("translate", STATE.config.data.get("news_auto_translate", True)))
+        res = STATE.news.fetch_all(feed_id=fid)
+        tr_res = {"translated": 0}
+        if auto_tr and res.get("ok") and not res.get("busy"):
+            try:
+                tr_res = STATE.news.translate_pending(limit=24)
+            except Exception as e:
+                tr_res = {"error": str(e), "translated": 0}
+        return self._json({"ok": True, **res, "translated": tr_res.get("translated", 0)})
+
+    def _news_translate_pending(self) -> None:
+        body = self._body()
+        try:
+            limit = int(body.get("limit") or 24)
+        except (TypeError, ValueError):
+            limit = 24
+        res = STATE.news.translate_pending(limit=max(1, min(80, limit)))
+        return self._json(res)
+
+    def _news_translate_one(self) -> None:
+        body = self._body()
+        try:
+            iid = int(body.get("id") or 0)
+        except (TypeError, ValueError):
+            return self._err("无效新闻 ID")
+        fetch_full = bool(body.get("fetch_full"))
+        try:
+            res = STATE.news.translate_item_full(iid, fetch_full=fetch_full)
+            return self._json(res)
+        except Exception as e:
+            return self._err(str(e))
+
+    def _news_star(self) -> None:
+        body = self._body()
+        try:
+            iid = int(body.get("id") or 0)
+        except (TypeError, ValueError):
+            return self._err("无效新闻 ID")
+        starred = body.get("starred")
+        val = STATE.news.store.toggle_star(iid, None if starred is None else bool(starred))
+        return self._json({"ok": True, "id": iid, "starred": val})
+
+    def _news_search(self, qs: dict) -> None:
+        q_str = (qs.get("q") or [""])[0]
+        lang = (qs.get("lang") or [""])[0]
+        category = (qs.get("category") or [""])[0]
+        try:
+            hours = int((qs.get("hours") or ["0"])[0] or 0)
+        except ValueError:
+            hours = 0
+        try:
+            limit = int((qs.get("limit") or ["24"])[0] or 24)
+        except ValueError:
+            limit = 24
+        res = STATE.news.semantic_search(q_str, limit=limit, lang=lang, category=category, hours=hours)
+        return self._json(res)
+
+    def _news_entities(self, qs: dict) -> None:
+        etype = (qs.get("type") or [""])[0]
+        q_str = (qs.get("q") or [""])[0]
+        try:
+            hours = int((qs.get("hours") or ["168"])[0] or 168)
+        except ValueError:
+            hours = 168
+        try:
+            limit = int((qs.get("limit") or ["40"])[0] or 40)
+        except ValueError:
+            limit = 40
+        items = STATE.news.store.list_entities(hours=hours, entity_type=etype, q=q_str, limit=limit)
+        return self._json({"ok": True, "entities": items})
+
+    def _news_entity_profile(self, qs: dict) -> None:
+        name = (qs.get("name") or qs.get("id") or [""])[0]
+        try:
+            hours = int((qs.get("hours") or ["168"])[0] or 168)
+        except ValueError:
+            hours = 168
+        prof = STATE.news.store.entity_profile(name, hours=hours)
+        if not prof:
+            return self._err("未找到该实体", 404)
+        return self._json({"ok": True, "profile": prof})
+
+    def _news_entity_graph(self, qs: dict) -> None:
+        try:
+            hours = int((qs.get("hours") or ["168"])[0] or 168)
+        except ValueError:
+            hours = 168
+        try:
+            limit = int((qs.get("limit") or ["24"])[0] or 24)
+        except ValueError:
+            limit = 24
+        return self._json({"ok": True, **STATE.news.store.entity_graph(hours=hours, max_nodes=limit)})
+
+    def _news_embed(self) -> None:
+        body = self._body()
+        try:
+            limit = int(body.get("limit") or 256)
+        except (TypeError, ValueError):
+            limit = 256
+        return self._json(STATE.news.embed_pending(limit=limit))
+
+    def _news_reindex(self) -> None:
+        try:
+            return self._json(STATE.news.rebuild_and_dedup_all())
+        except Exception as e:
+            return self._err(str(e))
+
+    def _news_mark_all_read(self) -> None:
+        n = STATE.news.store.mark_all_read()
+        return self._json({"ok": True, "marked": n})
+
+    def _news_brief(self) -> None:
+        body = self._body()
+        try:
+            hours = int(body.get("hours") or 24)
+        except (TypeError, ValueError):
+            hours = 24
+        force = bool(body.get("force"))
+        try:
+            return self._json(STATE.news.generate_brief(hours=hours, force=force))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _dashboard_layout_get(self) -> None:
+        saved = STATE.config.data.get("dashboard_layout")
+        default_layout = news_mod.DEFAULT_DASHBOARD_LAYOUT
+        layout, changed = news_mod.migrate_dashboard_layout(saved)
+        if changed and isinstance(saved, dict):
+            STATE.config.data["dashboard_layout"] = layout
+            STATE.config.save()
+        return self._json({"ok": True, "layout": layout, "default": default_layout})
+
+    def _dashboard_layout_save(self) -> None:
+        body = self._body()
+        if body.get("reset"):
+            STATE.config.data["dashboard_layout"] = None
+            STATE.config.save()
+            return self._json({"ok": True, "layout": news_mod.DEFAULT_DASHBOARD_LAYOUT})
+        layout = body.get("layout")
+        if not isinstance(layout, dict) or not isinstance(layout.get("workspaces"), list):
+            return self._err("无效的看板布局")
+        STATE.config.data["dashboard_layout"] = layout
+        STATE.config.save()
+        return self._json({"ok": True, "layout": layout})
+
+    def _market_layout_get(self) -> None:
+        saved = STATE.config.data.get("market_layout")
+        default_layout = market_mod.DEFAULT_MARKET_LAYOUT
+        layout, changed = market_mod.migrate_market_layout(saved)
+        if changed and isinstance(saved, dict):
+            STATE.config.data["market_layout"] = layout
+            STATE.config.save()
+        return self._json({"ok": True, "layout": layout, "default": default_layout})
+
+    def _market_layout_save(self) -> None:
+        body = self._body()
+        if body.get("reset"):
+            STATE.config.data["market_layout"] = None
+            STATE.config.save()
+            return self._json({"ok": True, "layout": market_mod.DEFAULT_MARKET_LAYOUT})
+        layout = body.get("layout")
+        if not isinstance(layout, dict) or not isinstance(layout.get("workspaces"), list):
+            return self._err("无效的行情布局")
+        STATE.config.data["market_layout"] = layout
+        STATE.config.save()
+        return self._json({"ok": True, "layout": layout})
+
+    def _market_overview(self, qs: dict) -> None:
+        force = (qs.get("force") or ["0"])[0] in ("1", "true", "yes")
+        try:
+            return self._json(STATE.market.overview(force=force))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _market_kline(self, qs: dict) -> None:
+        secid = (qs.get("secid") or [""])[0]
+        interval = (qs.get("interval") or ["1d"])[0]
+        name = (qs.get("name") or [""])[0]
+        force = (qs.get("force") or ["0"])[0] in ("1", "true", "yes")
+        try:
+            limit = int((qs.get("limit") or ["160"])[0] or 160)
+        except ValueError:
+            limit = 160
+        try:
+            return self._json(STATE.market.kline(secid, interval=interval, limit=limit, name=name, force=force))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _market_sectors(self, qs: dict) -> None:
+        force = (qs.get("force") or ["0"])[0] in ("1", "true", "yes")
+        try:
+            limit = int((qs.get("limit") or ["36"])[0] or 36)
+        except ValueError:
+            limit = 36
+        try:
+            return self._json(STATE.market.sectors(limit=limit, force=force))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _market_movers(self, qs: dict) -> None:
+        force = (qs.get("force") or ["0"])[0] in ("1", "true", "yes")
+        try:
+            limit = int((qs.get("limit") or ["15"])[0] or 15)
+        except ValueError:
+            limit = 15
+        try:
+            return self._json(STATE.market.movers(limit=limit, force=force))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _market_macro(self, qs: dict) -> None:
+        force = (qs.get("force") or ["0"])[0] in ("1", "true", "yes")
+        try:
+            return self._json(STATE.market.macro(force=force))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _market_geopolitics(self, qs: dict) -> None:
+        force = (qs.get("force") or ["0"])[0] in ("1", "true", "yes")
+        try:
+            return self._json(STATE.market.geopolitics(force=force))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _market_search(self, qs: dict) -> None:
+        q_str = (qs.get("q") or [""])[0]
+        try:
+            return self._json(STATE.market.search_symbols(q_str))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _market_watchlist_get(self) -> None:
+        return self._json({"ok": True, "items": STATE.market.store.list_watchlist()})
+
+    def _market_watchlist_post(self) -> None:
+        body = self._body()
+        act = str(body.get("action") or "add").strip().lower()
+        secid = str(body.get("secid") or "").strip()
+        try:
+            if act == "remove":
+                items = STATE.market.store.remove_watchlist(secid)
+            else:
+                items = STATE.market.store.add_watchlist(
+                    secid,
+                    str(body.get("symbol") or secid),
+                    str(body.get("name") or secid),
+                    str(body.get("market_group") or "custom"),
+                )
+            return self._json({"ok": True, "items": items})
+        except Exception as e:
+            return self._err(str(e))
+
+    def _market_test_proxy(self) -> None:
+        body = self._body()
+        proxy_override = body.get("proxy")
+        try:
+            return self._json(STATE.market.test_proxy(proxy_override))
+        except Exception as e:
+            return self._err(str(e))
+
 
 def _alert(msg: str) -> None:
     try:
@@ -1112,6 +2013,15 @@ def _alert(msg: str) -> None:
 
 class QuietHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
+    allow_reuse_address = os.name != "nt"
+
+    def server_bind(self) -> None:
+        if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            try:
+                self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            except OSError:
+                pass
+        super().server_bind()
 
     def handle_error(self, request, client_address) -> None:
         exc = sys.exc_info()[1]
@@ -1158,19 +2068,10 @@ def _run_window(url: str) -> bool:
         env.pop("ELECTRON_RUN_AS_NODE", None)
         env.pop("CHROME_CRASHPAD_PIPE_NAME", None)
         try:
-            flags = 0
-            startupinfo = None
-            if os.name == "nt":
-                flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                startupinfo.wShowWindow = 0
             proc = subprocess.Popen(
                 [electron_exe, desk_dir, f"--app-url={url}"],
                 cwd=desk_dir,
                 env=env,
-                creationflags=flags,
-                startupinfo=startupinfo,
             )
             proc.wait()
             return True

@@ -9,10 +9,28 @@ const { spawn } = require('child_process')
 const ROOT_DIR = path.resolve(__dirname, '..')
 const DATA_ROOT = path.join(process.env.LOCALAPPDATA || app.getPath('appData'), 'O2')
 const PROFILE_DIR = path.join(DATA_ROOT, 'browser-profile')
+const SANDBOX_DOWNLOADS_DIR = path.join(DATA_ROOT, 'downloads')
 const TABS_FILE = path.join(PROFILE_DIR, 'tabs-session.json')
 const ERR_LOG = path.join(DATA_ROOT, 'electron-err.log')
 const PARTITION = 'persist:o2-browser'
 const DEFAULT_HOME = 'https://www.bing.com'
+let downloadMode = 'sandbox'
+try {
+  const rawCfg = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'config.json'), 'utf8'))
+  if (rawCfg && rawCfg.browser_download_mode === 'system') downloadMode = 'system'
+} catch (_e) {}
+
+function getDownloadDir() {
+  if (downloadMode === 'system') {
+    return app.getPath('downloads')
+  }
+  try {
+    fs.mkdirSync(SANDBOX_DOWNLOADS_DIR, { recursive: true })
+    return SANDBOX_DOWNLOADS_DIR
+  } catch (_e) {
+    return app.getPath('downloads')
+  }
+}
 let ARIA_INJECT_SCRIPT = ''
 try {
   ARIA_INJECT_SCRIPT = fs.readFileSync(path.join(__dirname, 'aria-inject.js'), 'utf8')
@@ -40,6 +58,7 @@ let pyProc = null
 let mainWindow = null
 let browserSession = null
 let cleanUserAgent = ''
+let electronUserAgent = ''
 let ctlServer = null
 let ctlPort = 0
 const ctlToken = crypto.randomBytes(16).toString('hex')
@@ -89,6 +108,61 @@ function buildCleanUA(raw) {
     .replace(/\s+O2\/[^\s]+/gi, '')
     .replace(/\s+Electron\/[^\s]+/gi, '')
     .trim()
+}
+
+const GOOGLE_SIGN_IN_HOSTS = new Set(['accounts.google.com', 'accounts.youtube.com'])
+const MAX_SIGN_IN_RESTARTS = 4
+
+function pageHostname(url) {
+  try {
+    const u = new URL(String(url || ''))
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return ''
+    return u.hostname.toLowerCase()
+  } catch (_e) {
+    return ''
+  }
+}
+
+function isGoogleSignInUrl(url) {
+  return GOOGLE_SIGN_IN_HOSTS.has(pageHostname(url))
+}
+
+function userAgentForPage(url) {
+  if (!electronUserAgent || !cleanUserAgent) return ''
+  return isGoogleSignInUrl(url) ? electronUserAgent : cleanUserAgent
+}
+
+function applyPageUserAgent(wc, url) {
+  if (!wc || wc.isDestroyed()) return
+  const want = userAgentForPage(url)
+  if (!want || wc.getUserAgent() === want) return
+  wc.setUserAgent(want)
+}
+
+function crossesSignInBoundary(fromUrl, toUrl) {
+  if (!pageHostname(toUrl)) return false
+  return isGoogleSignInUrl(fromUrl) !== isGoogleSignInUrl(toUrl)
+}
+
+let signInHeaderHookInstalled = false
+function installSignInUserAgentHook() {
+  if (signInHeaderHookInstalled || !browserSession) return
+  signInHeaderHookInstalled = true
+  // 只改主框架那个名字。客户端提示不动，也不要用调试接口覆盖，否则提示会被冲掉。
+  browserSession.webRequest.onBeforeSendHeaders(
+    { urls: ['<all_urls>'], types: ['mainFrame'] },
+    (details, callback) => {
+      const headers = details.requestHeaders || {}
+      const key = Object.keys(headers).find((k) => k.toLowerCase() === 'user-agent') || ''
+      const want = userAgentForPage(details.url)
+      if (key && want) {
+        const current = headers[key]
+        const known = current === electronUserAgent || current === cleanUserAgent
+        if (known && current !== want) headers[key] = want
+      }
+      callback({ requestHeaders: headers })
+    }
+  )
 }
 
 function normalizeInputUrl(raw) {
@@ -445,9 +519,11 @@ async function settleLayout(t) {
 
 function configureBrowserSession() {
   browserSession = session.fromPartition(PARTITION)
-  cleanUserAgent = buildCleanUA(browserSession.getUserAgent())
+  electronUserAgent = browserSession.getUserAgent()
+  cleanUserAgent = buildCleanUA(electronUserAgent)
   app.userAgentFallback = cleanUserAgent
   browserSession.setUserAgent(cleanUserAgent)
+  installSignInUserAgentHook()
 
   browserSession.setPermissionRequestHandler((_wc, _permission, callback) => {
     callback(true)
@@ -458,7 +534,7 @@ function configureBrowserSession() {
   }
 
   browserSession.on('will-download', (_event, item) => {
-    const dlDir = app.getPath('downloads')
+    const dlDir = getDownloadDir()
     const baseName = item.getFilename() || ('download-' + Date.now())
     let target = path.join(dlDir, baseName)
     if (fs.existsSync(target)) {
@@ -785,12 +861,6 @@ async function ensureDebugger(t) {
         await wc.debugger.sendCommand('Runtime.enable')
         await wc.debugger.sendCommand('Runtime.addBinding', { name: '__o2ReportHumanActivity' }).catch(() => {})
         await wc.debugger.sendCommand('Network.enable', { maxPostDataSize: 65536 })
-        if (cleanUserAgent) {
-          await wc.debugger.sendCommand('Network.setUserAgentOverride', {
-            userAgent: cleanUserAgent,
-            platform: 'Win32',
-          })
-        }
         await wc.debugger.sendCommand('DOM.enable')
         await wc.debugger.sendCommand('Log.enable')
         if (ARIA_INJECT_SCRIPT) {
@@ -961,12 +1031,30 @@ function createTab(initialUrl = DEFAULT_HOME, makeActive = true, skipAutoLoad = 
       setImmediate(() => { tab._zoomSyncing = false })
     }
   }
+  wc.on('did-start-navigation', (_event, url, isInPlace, isMainFrame) => {
+    if (!isMainFrame || isInPlace) return
+    applyPageUserAgent(wc, url)
+  })
+  wc.on('will-redirect', (event, url, isInPlace, isMainFrame) => {
+    if (!isMainFrame || isInPlace) return
+    const from = wc.getURL() || tab.url || ''
+    if (!crossesSignInBoundary(from, url)) return
+    if ((tab._signInRestarts || 0) >= MAX_SIGN_IN_RESTARTS) return
+    event.preventDefault()
+    tab._signInRestarts = (tab._signInRestarts || 0) + 1
+    setImmediate(() => {
+      if (wc.isDestroyed()) return
+      wc.loadURL(url).catch(() => {})
+    })
+  })
   wc.on('did-start-loading', syncMeta)
   wc.on('did-stop-loading', () => {
     syncMeta()
     keepLayoutZoom()
+    if (!wc.isDestroyed() && !wc.isLoading()) applyPageUserAgent(wc, wc.getURL())
   })
   wc.on('did-navigate', () => {
+    tab._signInRestarts = 0
     syncMeta()
     keepLayoutZoom()
   })
@@ -1003,6 +1091,7 @@ function createTab(initialUrl = DEFAULT_HOME, makeActive = true, skipAutoLoad = 
 
   const targetUrl = normalizeInputUrl(initialUrl)
   tab.url = targetUrl
+  applyPageUserAgent(wc, targetUrl)
   if (!skipAutoLoad) {
     wc.loadURL(targetUrl).catch(() => {})
   }
@@ -1698,6 +1787,29 @@ async function handleControlAction(body) {
   const action = String((body && body.action) || 'status').trim()
   if (action === 'co_panel') {
     return updateCoPanel(body)
+  }
+  if (action === 'set_download_mode') {
+    downloadMode = body.mode === 'system' ? 'system' : 'sandbox'
+    return { ok: true, mode: downloadMode, dir: getDownloadDir() }
+  }
+  if (action === 'clear_cache') {
+    if (browserSession) {
+      await browserSession.clearCache().catch(() => {})
+      if (body.clear_cookies) {
+        await browserSession.clearStorageData({
+          storages: ['cookies', 'localstorage', 'indexdb', 'serviceworkers', 'cachestorage', 'shadercache'],
+        }).catch(() => {})
+      } else {
+        await browserSession.clearStorageData({
+          storages: ['serviceworkers', 'cachestorage', 'shadercache'],
+        }).catch(() => {})
+      }
+    }
+    if (body.clear_downloads) {
+      downloads.length = 0
+      broadcastState()
+    }
+    return { ok: true }
   }
   if (action === 'status' || action === 'tabs') {
     if (!tabOrder.length) createTab(DEFAULT_HOME, true)

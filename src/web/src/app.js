@@ -1,9 +1,16 @@
 import { createApp, reactive, ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from 'vue/dist/vue.esm-bundler.js'
-import Antd, { message, Modal } from 'ant-design-vue'
+import Antd, { message, Modal, theme as antdTheme } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import { Marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 import katex from 'katex'
+import { createChart, ColorType, CrosshairMode } from 'lightweight-charts'
+import * as echarts from 'echarts/core'
+import { TreemapChart, LineChart } from 'echarts/charts'
+import { TooltipComponent, GridComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+
+echarts.use([TreemapChart, LineChart, TooltipComponent, GridComponent, CanvasRenderer])
 
 const api = {
   async get(path) {
@@ -51,6 +58,36 @@ const ICO = {
   edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
   project: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10"/><path d="M7 12h6"/><path d="M7 16h8"/></svg>',
   sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>',
+  appearance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 14 10-10"/><path d="m4 20 16-16"/><path d="m10 20 10-10"/></svg>',
+  shortcut: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-7 8h5v10h4V11h5z"/></svg>',
+  provider: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4"/><path d="M15 2v4"/><path d="M9 18v4"/><path d="M15 18v4"/><path d="M2 9h4"/><path d="M2 15h4"/><path d="M18 9h4"/><path d="M18 15h4"/></svg>',
+  embed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+  storage: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>',
+  rss: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>',
+  dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>',
+  pinWindow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg>',
+  external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 6-6"/></svg>',
+  heatmap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></svg>',
+  flame: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  starFill: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  translate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>',
+  checkAll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/></svg>',
+  layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+  compact: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 9v12"/></svg>',
+  panelRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg>',
+  arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>',
+  arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  robot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 2v6"/><circle cx="12" cy="2" r="1"/><path d="M8 13h.01"/><path d="M16 13h.01"/><path d="M9 17h6"/></svg>',
+  brief: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  unlock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>',
+  maximize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
+  minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
 }
 
 const DOC_TYPE_SPECS = [
@@ -93,8 +130,53 @@ const IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.svg', '.webp', '.
 const App = {
   template: `
 <a-config-provider :theme="theme" :locale="zhCN">
-<div class="shell">
-  <aside class="sider" :class="{ 'sider-hist': histMode }">
+<div class="shell" :class="cfg.ui_density ? ('density-' + cfg.ui_density) : 'density-default'">
+  <!-- 布局一：顶部标签页 -->
+  <header v-if="cfg.ui_density === 'topbar'" class="app-top-tabbar">
+    <div class="att-left">
+      <button v-for="n in navs" :key="n.key" type="button"
+              :class="['att-nav-btn', tab === n.key ? 'on' : '']"
+              :title="n.label"
+              @click="tab = n.key">
+        <span class="nav-ico" v-html="n.icon"></span>
+        <span>{{ n.label }}</span>
+      </button>
+      <span class="att-divider"></span>
+      <button type="button" class="att-nav-btn" title="管理会话" @click="openHistBrowse">
+        <span class="nav-ico" v-html="ICO.search"></span>
+      </button>
+    </div>
+    <div class="att-tabs">
+      <div v-for="c in allSessionChats" :key="c.id"
+           :class="['att-tab', c.id === chatId && tab === 'ask' ? 'on' : '']"
+           :title="c.title || '新对话'"
+           @click="openHistChat(c)">
+        <span class="att-tab-title">{{ c.title || '新对话' }}</span>
+        <matrix-loader v-if="runningIds[c.id]" />
+        <button v-if="allSessionChats.length > 1" type="button" class="att-tab-close"
+                title="关闭会话" @click.stop="closeSessionTab(c)">×</button>
+      </div>
+      <button type="button" class="att-new-btn" title="新建会话" @click="newChat">
+        <span v-html="ICO.plus"></span>
+      </button>
+    </div>
+    <div class="att-right">
+      <button type="button" class="att-nav-btn"
+              :title="cfg.ui_theme === 'dark' ? '切换浅色主题' : '切换深色终端主题'"
+              @click="toggleTheme">
+        <span class="nav-ico" v-html="cfg.ui_theme === 'dark' ? ICO.sun : ICO.moon"></span>
+      </button>
+      <button type="button" :class="['att-nav-btn', tab === 'settings' ? 'on' : '']"
+              @click="tab = tab === 'settings' ? (lastAppTab || 'ask') : 'settings'">
+        <span class="nav-ico" v-html="ICO.settings"></span>
+        <span>设置</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 布局二（侧边标签页）与布局三（收件箱）：左侧应用栏始终可见 -->
+  <aside v-if="cfg.ui_density !== 'topbar' || histMode" class="sider"
+         :class="{ 'sider-hist': histMode, 'sider-inbox': cfg.ui_density === 'compact' }">
     <div v-if="histMode" class="hist-manage-pane">
       <div class="hist-manage-head">
         <span class="hist-manage-title">{{ histPaneTitle }}</span>
@@ -110,7 +192,7 @@ const App = {
         </span>
       </div>
       <div class="hist-scroll">
-        <a-empty v-if="!histGroups.length" description="还没有历史对话" />
+        <o2-empty v-if="!histGroups.length" description="还没有历史对话" />
         <div v-for="g in histGroups" :key="g.key" class="hist-group">
           <div class="hist-label">{{ g.label }}</div>
           <div v-for="c in g.items" :key="c.id" role="button" tabindex="0"
@@ -146,54 +228,80 @@ const App = {
           <span>{{ n.label }}</span>
         </button>
       </div>
+
+      <!-- 收件箱顶部快捷操作：搜索会话 -->
+      <div v-if="cfg.ui_density === 'compact'" class="sider-quick-actions">
+        <div class="sider-search-row">
+          <span class="sider-search-ico" v-html="ICO.search"></span>
+          <input v-model="histSearchQuery" type="text" class="sider-search-input" placeholder="搜索会话…" />
+          <button v-if="histSearchQuery" type="button" class="sider-search-clear" @click="histSearchQuery = ''">×</button>
+        </div>
+      </div>
+
       <button type="button" class="nav-item nav-history" @click="openHistBrowse">
         <span class="nav-ico" v-html="ICO.history"></span>
         <span>历史</span>
       </button>
+
       <section class="hist">
         <div class="hist-head">
-          <span class="hist-head-label">历史对话</span>
+          <span class="hist-head-label">{{ cfg.ui_density === 'compact' ? '最近' : '会话' }}</span>
           <span class="hist-head-actions">
-            <a-tooltip title="新对话">
+            <a-tooltip title="新建会话">
               <button type="button" class="hist-tool" @click="newChat">
                 <span class="nav-ico" v-html="ICO.plus"></span>
               </button>
             </a-tooltip>
             <a-tooltip title="管理">
-              <button type="button" class="hist-tool" :disabled="!histGroups.length" @click="openHistManage">
+              <button type="button" class="hist-tool" :disabled="!allSessionChats.length" @click="openHistManage">
                 <span class="nav-ico" v-html="ICO.manage"></span>
               </button>
             </a-tooltip>
           </span>
         </div>
-        <div class="hist-scroll">
-          <div v-if="!histGroups.length" class="hist-empty">暂无历史对话</div>
-          <template v-for="g in histGroups" :key="g.key">
-            <div class="hist-label">{{ g.label }}</div>
-            <button type="button" v-for="c in g.items" :key="c.id"
-                    :class="['hist-item', c.id === chatId ? 'on' : '']"
-                    :title="c.title" @click="openHistChat(c)">
-              <span v-if="c.pinned" class="hist-pin" v-html="ICO.pin"></span>
-              <span class="hist-title">{{ c.title || '新对话' }}</span>
+
+        <!-- 布局三：收件箱模式 -->
+        <div v-if="cfg.ui_density === 'compact'" class="hist-scroll inbox-scroll">
+          <div v-if="!filteredSessionChats.length" class="hist-empty">暂无匹配会话</div>
+          <button type="button" v-for="c in filteredSessionChats" :key="c.id"
+                  :class="['inbox-item', c.id === chatId ? 'on' : '']"
+                  :title="c.title" @click="openHistChat(c)">
+            <div class="inbox-item-top">
+              <span class="inbox-item-title">{{ c.title || '新对话' }}</span>
               <matrix-loader v-if="runningIds[c.id]" />
-            </button>
-          </template>
+              <span v-else-if="c.pinned" class="hist-pin" v-html="ICO.pin"></span>
+            </div>
+            <div class="inbox-item-sub">
+              <span class="inbox-item-proj">{{ convTurnCount(c) }} 轮对话</span>
+              <span class="inbox-item-time">{{ convRelTime(c.activeAt || c.createdAt) }}</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- 布局二：侧边标签页模式 -->
+        <div v-else class="hist-scroll">
+          <div v-if="!allSessionChats.length" class="hist-empty">暂无历史对话</div>
+          <button type="button" v-for="c in allSessionChats" :key="c.id"
+                  :class="['hist-item', c.id === chatId ? 'on' : '']"
+                  :title="c.title" @click="openHistChat(c)">
+            <span v-if="c.pinned" class="hist-pin" v-html="ICO.pin"></span>
+            <span class="hist-title">{{ c.title || '新对话' }}</span>
+            <matrix-loader v-if="runningIds[c.id]" />
+          </button>
         </div>
       </section>
-      <button type="button" :class="['nav-item', 'nav-settings', tab === 'settings' ? 'on' : '']"
-              @click="tab = 'settings'">
-        <span class="nav-ico" v-html="ICO.settings"></span>
-        <span>设置</span>
-      </button>
+
+      <div class="sider-foot-row">
+        <button type="button" :class="['nav-item', 'nav-settings', tab === 'settings' ? 'on' : '']"
+                @click="tab = 'settings'">
+          <span class="nav-ico" v-html="ICO.settings"></span>
+          <span>设置</span>
+        </button>
+      </div>
     </nav>
   </aside>
 
   <div class="main">
-    <header v-if="tab === 'settings'" class="topbar">
-      <h1>{{ pageTitle }}</h1>
-      <span v-if="cfgSaveHint" class="settings-save-hint">{{ cfgSaveHint }}</span>
-    </header>
-
     <div class="content" :class="['pane-' + tab, paneOn ? 'switching' : '']">
       <div class="pane-stage">
       <template v-if="tab === 'search'">
@@ -202,11 +310,12 @@ const App = {
           <p class="lead">支持跨项目检索制度条文、财报指标、合同要素、结构化表格与图纸视觉索引。</p>
           <div class="search-row">
             <a-input
+              ref="searchInputEl"
               v-model:value="q"
               size="large"
               allow-clear
               placeholder="输入关键词、文档标题、文号、公司主体、合同方或表头字段…"
-              @pressEnter="doSearch" />
+              @keydown="onSearchKeydown" />
             <a-button type="primary" size="large" :loading="loading" @click="doSearch">搜索</a-button>
           </div>
           <div class="filters">
@@ -268,7 +377,7 @@ const App = {
               <div class="hit-body" v-html="r.snippet"></div>
               <div class="hit-open">打开原文定位</div>
             </div>
-            <a-empty v-if="!loading && searched && !results.length" description="没有找到匹配内容" />
+            <o2-empty v-if="!loading && searched && !results.length" description="没有找到匹配内容" />
           </div>
         </a-spin>
       </template>
@@ -334,7 +443,6 @@ const App = {
                   </div>
                   <div v-if="browserState.coPanel.waitingHuman" class="ask-bw-human-bar">
                     <div class="ask-bw-human-info">
-                      <span class="ask-bw-human-pulse"></span>
                       <span class="ask-bw-human-text">{{ browserState.coPanel.humanReason || '需要您完成页面人机验证或登录，完成后将自动继续下一步' }}</span>
                     </div>
                     <button type="button" class="ask-bw-human-btn" @click="confirmHumanBrowserDone">我已完成，继续</button>
@@ -352,6 +460,77 @@ const App = {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="cfg.news_enabled && askNewsOpen"
+               :class="['ask-news-float', askNewsMode === 'float' ? 'mode-float' : 'mode-dock']"
+               :style="askNewsMode === 'float' ? askNewsFloatStyle : null">
+            <div class="anf-head" @pointerdown="onAskNewsDragStart">
+              <div class="anf-title">
+                <span class="nav-ico" v-html="ICO.rss"></span>
+                <span>新闻流快讯</span>
+                <a-tag v-if="newsStatus.pending_l1 > 0" color="processing">{{ newsStatus.pending_l1 }} 待译</a-tag>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px" @pointerdown.stop>
+                <a-tooltip :title="askNewsMode === 'float' ? '停靠右侧抽屉' : '切换自由悬浮窗'">
+                  <button type="button" class="bw-btn" @click="askNewsMode = askNewsMode === 'float' ? 'dock' : 'float'" v-html="ICO.pinWindow"></button>
+                </a-tooltip>
+                <a-tooltip title="刷新新闻">
+                  <button type="button" class="bw-btn" @click="fetchNewsNow()" v-html="ICO.reload"></button>
+                </a-tooltip>
+                <a-tooltip title="关闭">
+                  <button type="button" class="bw-btn" @click="askNewsOpen = false" v-html="ICO.close"></button>
+                </a-tooltip>
+              </div>
+            </div>
+            <div class="anf-tools">
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="news-lang-pills">
+                  <button v-for="lg in [{id:'all',l:'全'},{id:'zh',l:'中'},{id:'en',l:'英'},{id:'ru',l:'俄'},{id:'ja',l:'日'}]" :key="lg.id"
+                          type="button" :class="['news-pill-btn', newsFilters.lang === lg.id ? 'on' : '']"
+                          @click="newsFilters.lang = lg.id; runNewsSearch(true)">{{ lg.l }}</button>
+                </div>
+                <button type="button" :class="['ft-btn', newsSearchMode === 'semantic' ? 'on' : '']"
+                        title="切换关键词 / Embedding 语义检索"
+                        @click="newsSearchMode = newsSearchMode === 'semantic' ? 'keyword' : 'semantic'; if ((newsFilters.q || '').trim()) runNewsSearch(true)">
+                  {{ newsSearchMode === 'semantic' ? '语义' : '词' }}
+                </button>
+                <a-input v-model:value="newsFilters.q" size="small" allow-clear placeholder="筛选标题/语义/实体…"
+                         @pressEnter="runNewsSearch(true)" />
+              </div>
+            </div>
+            <div class="anf-list">
+              <o2-empty v-if="!newsItems.length" description="暂无新闻，请在设置→新闻流导入源并抓取" />
+              <div v-for="it in newsItems" :key="it.id"
+                   :class="['anf-item', askNewsPicked[it.id] ? 'picked' : '']"
+                   @click="toggleAskNewsPick(it)">
+                <a-checkbox :checked="!!askNewsPicked[it.id]" style="margin-top:2px" />
+                <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:3px">
+                  <div class="news-card-meta">
+                    <span :class="['news-lang-badge', it.lang]">{{ it.lang }}</span>
+                    <span v-if="it.sentiment" :class="['news-sent', it.sentiment]">{{ sentimentLabel(it.sentiment) }}</span>
+                    <span>{{ it.feed_name }}</span>
+                    <span v-if="it.l1_status === 'pending'" style="color:var(--warn)">未译</span>
+                    <span style="margin-left:auto" class="ft-mono">{{ formatNewsTime(it.published_at) }}</span>
+                  </div>
+                  <div style="font-size:12.5px;font-weight:600;line-height:1.38;color:var(--foreground)">
+                    {{ it.title_zh || it.title_orig }}
+                  </div>
+                  <div v-if="it.entities && it.entities.length" style="display:flex;gap:4px;flex-wrap:wrap" @click.stop>
+                    <span v-for="e in it.entities.slice(0, 3)" :key="e.name" class="ft-ent-pill"
+                          @click="openEntityDossier(e.name)">{{ e.name }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="anf-foot">
+              <span class="hint">已选 {{ askNewsPickedCount }} 条</span>
+              <div style="display:flex;gap:6px">
+                <a-button size="small" :disabled="!askNewsPickedCount" @click="askNewsPicked = {}">清空</a-button>
+                <a-button size="small" :disabled="!askNewsPickedCount" @click="citeSelectedNewsToAsk(false)">引用</a-button>
+                <a-button size="small" type="primary" :disabled="!askNewsPickedCount" @click="citeSelectedNewsToAsk(true)">发送分析</a-button>
               </div>
             </div>
           </div>
@@ -378,7 +557,7 @@ const App = {
                   </div>
                 </div>
                 <div v-if="m.error" class="chat-error">{{ m.error }}</div>
-                <div v-if="m.role === 'assistant' && (m.content || (m.streaming && !m.ask))"
+                <div v-if="m.role === 'assistant' && m.streaming && !m.ask"
                      class="answer-text"
                      :ref="(el) => bindAnswer(m, el)"
                      @click="onAnswerClick($event, m)"></div>
@@ -448,6 +627,20 @@ const App = {
                  @dragleave.prevent="onAttachLeave"
                  @drop.prevent="onAttachDrop"
                  @paste="onAttachPaste">
+              <div v-if="currentQueued.length" class="queued-bar">
+                <span>排队中 ({{ currentQueued.length }})：</span>
+                <span v-for="(qf, idx) in currentQueued" :key="qf.id" class="queued-pill" :title="qf.text">
+                  <span class="queued-pill-text">{{ qf.text || '（附件/引用）' }}</span>
+                  <button type="button" title="取消排队" @click="removeQueuedFollowup(idx)">×</button>
+                </span>
+              </div>
+              <div v-if="citedNews.length" class="cited-news-bar">
+                <div v-for="cn in citedNews" :key="cn.id" class="cited-news-chip" :title="cn.title_zh || cn.title_orig">
+                  <span :class="['news-lang-badge', cn.lang]">{{ cn.lang }}</span>
+                  <span class="cited-news-chip-title">{{ cn.title_zh || cn.title_orig }}</span>
+                  <button type="button" @click="removeCitedNews(cn.id)">×</button>
+                </div>
+              </div>
               <div v-if="attachments.length" class="attach-row">
                 <div v-for="a in attachments" :key="a.id" :class="['attach-chip', a.state]" :title="a.error || a.name">
                   <span class="attach-name">{{ a.name }}</span>
@@ -455,9 +648,9 @@ const App = {
                   <button type="button" class="attach-x" @click="removeAttach(a.id)">×</button>
                 </div>
               </div>
-              <a-textarea v-model:value="question" :auto-size="{ minRows: 3, maxRows: 6 }"
+              <a-textarea ref="askInputEl" v-model:value="question" :auto-size="{ minRows: 3, maxRows: 6 }"
                 placeholder="输入问题，Enter 发送，可直接粘贴文件"
-                @pressEnter="onEnter" />
+                @keydown="onAskKeydown" />
               <div class="composer-bar">
                 <a-tooltip title="上传附件或图片">
                   <button type="button" class="attach-btn" :disabled="asking" @click="pickAttach">
@@ -474,6 +667,11 @@ const App = {
                           ]"
                           @click="toggleAskBrowserByUser">
                     <span class="icon-svg" v-html="ICO.globe"></span>
+                  </button>
+                </a-tooltip>
+                <a-tooltip v-if="cfg.news_enabled" title="打开新闻流浮动窗口（勾选新闻引用给 AI 分析）">
+                  <button type="button" :class="['attach-btn', askNewsOpen ? 'on' : '']" @click="toggleAskNews">
+                    <span class="icon-svg" v-html="ICO.rss"></span>
                   </button>
                 </a-tooltip>
                 <input ref="attachInput" class="attach-input" type="file" multiple
@@ -613,6 +811,941 @@ const App = {
         </div>
       </template>
 
+      <!-- 终端看板 -->
+      <template v-if="tab === 'dashboard'">
+        <div class="dash-shell">
+          <!-- Row 1: 单行极简指令带（可横滑工作区 Tab · 双击重命名 · 悬浮删除 · 零滑钮） -->
+          <div class="ft-cmdbar">
+            <span class="ft-brand-pill">
+              <span>O2</span>
+            </span>
+            <span class="ft-mono hint" style="flex:none">{{ terminalClock }}</span>
+            <span class="ft-sep"></span>
+            <div class="ws-tab-strip">
+              <div v-for="ws in (dashboardLayout.workspaces || [])" :key="ws.id"
+                   :class="['ws-tab', dashboardLayout.activeWorkspace === ws.id ? 'on' : '']"
+                   :title="ws.name + '（双击重命名）'"
+                   @click="switchDashboardWorkspace(ws.id)">
+                <input v-if="editingWsKey === 'dash:' + ws.id"
+                       v-model="editingWsName"
+                       class="ws-tab-input"
+                       @click.stop
+                       @keydown.enter.prevent="commitWsRename('dash', ws)"
+                       @keydown.esc.prevent="cancelWsRename()"
+                       @blur="commitWsRename('dash', ws)" />
+                <span v-else class="ws-tab-lbl" @dblclick.stop="startWsRename('dash', ws)">{{ ws.name }}</span>
+                <button v-if="(dashboardLayout.workspaces || []).length > 1 && editingWsKey !== 'dash:' + ws.id"
+                        type="button" class="ws-tab-del" title="删除此工作区"
+                        @click.stop="deleteDashboardWorkspaceById(ws.id)">×</button>
+              </div>
+              <button type="button" class="ft-icon-btn" style="width:24px;height:24px" title="新建工作区"
+                      @click="createDashboardWorkspace()" v-html="ICO.plus"></button>
+            </div>
+            <span class="ft-sep"></span>
+            <div class="ft-tools-group">
+              <button type="button"
+                      :class="['ft-badge-mini', !dashboardLayout.locked ? 'warn' : '']"
+                      :title="dashboardLayout.locked ? '布局已锁定（点击解锁自由拖拽与缩放）' : '布局已解锁（可拖标题栏移动、拖边缘/角缩放）'"
+                      @click="toggleDashboardLock()">
+                <span v-html="dashboardLayout.locked ? ICO.lock : ICO.unlock" style="display:inline-flex"></span>
+                <span>{{ dashboardLayout.locked ? '已锁定' : '自由调整' }}</span>
+              </button>
+              <button type="button" :class="['ft-icon-btn', dashCompact ? 'on' : '']"
+                      :title="dashCompact ? '已开启紧凑间距（点击还原）' : '切换紧凑间距'"
+                      @click="dashCompact = !dashCompact" v-html="ICO.compact"></button>
+              <button type="button" :class="['ft-icon-btn', dashPulseOpen ? 'on' : '']"
+                      :title="dashPulseOpen ? '隐藏右侧态势栏' : '显示右侧态势栏'"
+                      @click="dashPulseOpen = !dashPulseOpen" v-html="ICO.panelRight"></button>
+              <span class="ft-sep"></span>
+              <button type="button" :class="['ft-icon-btn', (newsFetching || marketLoading) ? 'on' : '']"
+                      title="刷新行情与情报" @click="refreshDashboardAll()" v-html="ICO.reload"></button>
+              <button type="button" class="ft-icon-btn" title="工作区与布局管理"
+                      @click="dashCustomizeOpen = true" v-html="ICO.layers"></button>
+              <button type="button" class="ft-icon-btn"
+                      :title="cfg.ui_theme === 'dark' ? '浅色主题' : '深色终端'"
+                      @click="toggleTheme" v-html="cfg.ui_theme === 'dark' ? ICO.sun : ICO.moon"></button>
+            </div>
+          </div>
+
+          <!-- Row 2: MKT / WIRE 实时滚动 Ticker -->
+          <div class="ft-ticker">
+            <div class="news-lang-pills" style="padding:1px 2px">
+              <button type="button" :class="['news-pill-btn', dashTickerMode === 'mkt' ? 'on' : '']"
+                      style="padding:1px 7px;font-size:10px" @click="dashTickerMode = 'mkt'">MKT</button>
+              <button type="button" :class="['news-pill-btn', dashTickerMode === 'wire' ? 'on' : '']"
+                      style="padding:1px 7px;font-size:10px" @click="dashTickerMode = 'wire'">WIRE</button>
+            </div>
+            <div class="dash-ticker-track">
+              <template v-if="dashTickerMode === 'mkt'">
+                <span v-for="tk in (marketOverview.ribbon || [])" :key="'mtk-' + tk.secid"
+                      class="dash-ticker-item ft-mono" @click="openMarketDetail(tk)">
+                  <span style="font-weight:700">{{ tk.symbol }}</span>
+                  <span>{{ fmtPrice(tk.price) }}</span>
+                  <span :style="{ color: (tk.pct || 0) > 0 ? 'var(--up)' : ((tk.pct || 0) < 0 ? 'var(--down)' : 'var(--muted-foreground)') }">
+                    {{ fmtPct(tk.pct) }}
+                  </span>
+                </span>
+              </template>
+              <template v-else>
+                <span v-for="tk in newsItems.slice(0, 8)" :key="'tk-' + tk.id"
+                      class="dash-ticker-item" @click="tab = 'news'; selectNewsItem(tk)">
+                  <span :class="['news-lang-badge', tk.lang]">{{ tk.lang }}</span>
+                  <span class="ft-mono hint">{{ formatNewsTime(tk.published_at) }}</span>
+                  <span>{{ (tk.title_zh || tk.title_orig).slice(0, 44) }}</span>
+                </span>
+              </template>
+            </div>
+            <span class="ft-mono" style="color:var(--ok);font-weight:600">API {{ readyConnectorCount }}/{{ (cfg.api_connectors || []).length }}</span>
+          </div>
+
+          <!-- 主体：24列自由拖拽 & 无级缩放工作台 + 分栏拖拽条 + 右侧可折叠 INTEL PULSE 栏 -->
+          <div class="ft-dash-body">
+            <div class="ft-dash-main" :class="{ compact: dashCompact }">
+              <free-grid
+                :items="activeDashboardWidgets"
+                :cols="24"
+                :row-height="dashCompact ? 22 : 26"
+                :gap="dashCompact ? 4 : 6"
+                :locked="!!dashboardLayout.locked"
+                v-model:maximized-id="dashMaximizedId"
+                @layout-commit="saveDashboardLayoutDebounced"
+              >
+                <template #item="{ widget: w, isMaximized, toggleMaximize, startDrag }">
+                  <div class="ft-panel-head"
+                       :title="dashboardLayout.locked ? '双击全屏聚焦' : '按住拖动位置 · 双击全屏聚焦'"
+                       @pointerdown="startDrag($event)"
+                       @dblclick="toggleMaximize()">
+                    <div class="ft-panel-title">
+                      <span class="ft-badge-sq">{{ (widgetMeta(w.type) && widgetMeta(w.type).badge) || 'W' }}</span>
+                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ w.title }}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:3px;flex:none">
+                      <template v-if="w.type === 'watchlist_slot'">
+                        <div style="display:inline-flex;gap:2px;margin-right:4px">
+                          <button v-for="iv in ['1d','1w','1M']" :key="'wiv-' + iv" type="button"
+                                  :class="['ft-btn', dashWlInterval === iv ? 'on' : '']"
+                                  style="height:18px;padding:0 5px;font-size:10px"
+                                  @click="dashWlInterval = iv; loadDashKline()">{{ iv.toUpperCase() }}</button>
+                        </div>
+                        <button type="button" class="ft-ico-btn" title="AI 分析当前标的" @click="askAiAboutSymbol(dashKlineData || dashWlSelected)" v-html="ICO.robot"></button>
+                        <button type="button" class="ft-ico-btn" title="进入行情终端" @click="tab = 'markets'" v-html="ICO.chart"></button>
+                        <button type="button" class="ft-ico-btn" title="刷新" @click="loadMarketOverview(true); loadDashKline(true)" v-html="ICO.reload"></button>
+                      </template>
+                      <template v-else-if="w.type === 'sector_heatmap'">
+                        <button type="button" class="ft-ico-btn" title="进入行情热力图工作区" @click="switchMarketWorkspace('mkt_heatmap'); tab = 'markets'" v-html="ICO.heatmap"></button>
+                        <button type="button" class="ft-ico-btn" title="刷新板块" @click="loadMarketSectors(true)" v-html="ICO.reload"></button>
+                      </template>
+                      <template v-else-if="w.type === 'macro_curve'">
+                        <button type="button" class="ft-ico-btn" title="AI 宏观研判" @click="askAiMacro()" v-html="ICO.robot"></button>
+                        <button type="button" class="ft-ico-btn" title="刷新宏观" @click="loadMacroData(true)" v-html="ICO.reload"></button>
+                      </template>
+                      <template v-else-if="w.type === 'geo_odds'">
+                        <button type="button" class="ft-ico-btn" title="AI 地缘研判" @click="askAiGeo()" v-html="ICO.robot"></button>
+                        <button type="button" class="ft-ico-btn" title="刷新地缘" @click="loadGeoData(true)" v-html="ICO.reload"></button>
+                      </template>
+                      <button v-else-if="w.type === 'desk_note'" type="button" class="ft-ico-btn" title="重生成 AI 简报" @click="loadNewsBrief(true)" v-html="ICO.reload"></button>
+                      <button v-else-if="w.type === 'entity_pulse'" type="button" class="ft-ico-btn" title="刷新实体" @click="loadNewsEntities(); loadEntityGraph()" v-html="ICO.reload"></button>
+                      <button v-else-if="w.type === 'live_wire'" type="button" class="ft-ico-btn" title="新闻流" @click="tab = 'news'" v-html="ICO.external"></button>
+                      <button v-else-if="w.type === 'connector_hub'" type="button" class="ft-ico-btn" title="连接器" @click="jumpToConnectorSettings('')" v-html="ICO.settings"></button>
+                      <button type="button" class="ft-ico-btn" :title="isMaximized ? '还原 (Esc)' : '全屏聚焦'"
+                              @click.stop="toggleMaximize()" v-html="isMaximized ? ICO.minimize : ICO.maximize"></button>
+                    </div>
+                  </div>
+
+                  <!-- Watchlist + Live K-Line with News Markers -->
+                  <div v-if="w.type === 'watchlist_slot'" class="ft-panel-body" style="padding:6px 8px;overflow:hidden">
+                    <div class="wl-split">
+                      <div class="wl-list" :style="{ width: dashWatchlistWidth + 'px' }">
+                        <div v-for="item in (marketOverview.watchlist || [])" :key="'dwl-' + item.secid"
+                             :class="['wl-row', dashWlSelected && dashWlSelected.secid === item.secid ? 'on' : '']"
+                             @click="selectDashWatchItem(item)">
+                          <div style="min-width:0;overflow:hidden">
+                            <div style="font-weight:600;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.name }}</div>
+                            <div class="ft-mono hint" style="font-size:10px">{{ item.symbol }}</div>
+                          </div>
+                          <span class="ft-mono" style="font-weight:600">{{ fmtPrice(item.price) }}</span>
+                          <span class="ft-mono" :style="{ fontWeight: 600, color: (item.pct || 0) > 0 ? 'var(--up)' : ((item.pct || 0) < 0 ? 'var(--down)' : 'var(--muted-foreground)') }">
+                            {{ fmtPct(item.pct) }}
+                          </span>
+                        </div>
+                      </div>
+                      <split-resizer direction="v" v-model="dashWatchlistWidth" :min="145" :max="420" @commit="saveDashboardLayoutDebounced" />
+                      <div class="wl-chart-col">
+                        <div class="wl-chart-head">
+                          <b>{{ (dashKlineData && dashKlineData.name) || (dashWlSelected && dashWlSelected.name) || '-' }}</b>
+                          <span class="ft-mono hint">{{ (dashKlineData && dashKlineData.secid) || '' }}</span>
+                          <span v-if="dashKlineData && dashKlineData.price != null" class="ft-mono" style="font-weight:700">
+                            {{ fmtPrice(dashKlineData.price) }}
+                            <span :style="{ color: (dashKlineData.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">{{ fmtPct(dashKlineData.pct) }}</span>
+                          </span>
+                          <span class="spacer"></span>
+                          <div style="display:inline-flex;align-items:center;gap:3px">
+                            <button type="button" :class="['ft-chip', chartOpts.ma ? 'on' : '']" title="显示/隐藏均线 MA5/MA20" @click="chartOpts.ma = !chartOpts.ma">MA</button>
+                            <button type="button" :class="['ft-chip', chartOpts.vol ? 'on' : '']" title="显示/隐藏成交量" @click="chartOpts.vol = !chartOpts.vol">VOL</button>
+                            <button type="button" :class="['ft-chip', chartOpts.markers ? 'on' : '']" title="显示/隐藏新闻事件打点" @click="chartOpts.markers = !chartOpts.markers">NEWS</button>
+                          </div>
+                        </div>
+                        <div style="flex:1;min-height:0;position:relative">
+                          <kline-chart :data="dashKlineData" :theme="cfg.ui_theme"
+                                       :show-ma="chartOpts.ma" :show-vol="chartOpts.vol" :show-markers="chartOpts.markers"
+                                       @pick-marker="onPickKlineNewsMarker" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Sector Heatmap -->
+                  <div v-else-if="w.type === 'sector_heatmap'" class="ft-panel-body" style="padding:4px 6px;overflow:hidden">
+                    <div v-if="marketSectors.length" style="flex:1;min-height:0;display:flex;position:relative">
+                      <sector-treemap :items="marketSectors" :theme="cfg.ui_theme" height="100%" @pick="onPickSector" />
+                    </div>
+                    <div v-else class="hint" style="padding:18px;text-align:center">加载板块中…</div>
+                  </div>
+
+                  <!-- Macro Yields & FX Matrix -->
+                  <div v-else-if="w.type === 'macro_curve'" class="ft-panel-body" style="padding:4px 8px;overflow:hidden">
+                    <div v-if="macroData.treasury && macroData.treasury.rates && macroData.treasury.rates.length"
+                         style="flex:1;min-height:96px;display:flex;position:relative">
+                      <yield-chart :rates="macroData.treasury.rates" :theme="cfg.ui_theme" height="100%" />
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;flex:none">
+                      <div v-for="fx in macroFxGrid" :key="fx.pair"
+                           style="padding:4px 6px;border:1px solid var(--border);border-radius:3px;background:var(--background)">
+                        <div class="ft-mono hint" style="font-size:10px">{{ fx.pair }}</div>
+                        <div class="ft-mono" style="font-size:12.5px;font-weight:700;color:var(--foreground)">{{ fx.val }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Geopolitics Polymarket + PortWatch -->
+                  <div v-else-if="w.type === 'geo_odds'" class="ft-panel-body" style="padding:4px 8px;gap:5px">
+                    <div v-for="ev in (geoData.events || []).slice(0, 12)" :key="ev.id"
+                         style="display:flex;flex-direction:column;gap:3px;padding:4px 0;border-bottom:1px solid var(--border);cursor:pointer"
+                         @click="openNewsInBrowser(ev.url)">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px">
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)">{{ ev.title }}</span>
+                        <span class="ft-mono" style="font-weight:700;color:var(--primary);flex:none">{{ ev.yes_pct != null ? (ev.yes_pct + '%') : '-' }}</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:6px">
+                        <div style="flex:1;height:4px;background:var(--muted);border-radius:2px;overflow:hidden">
+                          <div :style="{ width: Math.min(100, ev.yes_pct || 0) + '%', height: '100%', background: 'var(--primary)' }"></div>
+                        </div>
+                        <span class="ft-mono hint" style="font-size:10px">\${{ fmtCompact(ev.volume24h) }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Panel A: 核心数据源与市场连接器紧凑表 -->
+                  <div v-else-if="w.type === 'connector_hub'" class="ft-panel-body" style="padding:2px 6px">
+                    <table class="ft-table">
+                      <thead>
+                        <tr><th>连接器</th><th>分类</th><th>状态</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="c in (cfg.api_connectors || []).slice(0, 18)" :key="'dc-' + c.id"
+                            @click="jumpToConnectorSettings(c.id)">
+                          <td><b>{{ c.name }}</b></td>
+                          <td style="color:var(--muted-foreground)">{{ c.category || 'other' }}</td>
+                          <td class="ft-mono">
+                            <span v-if="c.auth_type === 'none'" style="color:var(--ok)">● 免Key</span>
+                            <span v-else-if="c.api_key_set || c.api_secret_set" style="color:var(--ok)">● 已配</span>
+                            <span v-else style="color:var(--warn)">○ 待配</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- Panel B: 实体热度与 SVG 共现网络 -->
+                  <div v-else-if="w.type === 'entity_pulse'" class="ft-panel-body">
+                    <div v-if="!entityGraphLayout.nodes.length" class="hint" style="padding:18px 8px;text-align:center">暂无实体</div>
+                    <template v-else>
+                      <svg viewBox="0 0 320 148" preserveAspectRatio="xMidYMid meet"
+                           style="width:100%;flex:1;min-height:110px;background:var(--background);border:1px solid var(--border);border-radius:3px">
+                        <line v-for="(ed, ei) in entityGraphLayout.edges" :key="'eg-' + ei"
+                              :x1="ed.x1" :y1="ed.y1" :x2="ed.x2" :y2="ed.y2"
+                              stroke="var(--border)" :stroke-width="Math.min(3, 0.8 + ed.weight * 0.5)" stroke-opacity="0.85" />
+                        <g v-for="nd in entityGraphLayout.nodes" :key="'en-' + nd.id"
+                           style="cursor:pointer" @click="openEntityDossier(nd.canonical_name)">
+                          <circle :cx="nd.x" :cy="nd.y" :r="nd.r" :fill="nd.color" fill-opacity="0.22" :stroke="nd.color" stroke-width="1.5" />
+                          <text :x="nd.x" :y="nd.y + nd.r + 10" text-anchor="middle" font-size="9" fill="var(--foreground)">
+                            {{ nd.canonical_name.slice(0, 7) }}
+                          </text>
+                        </g>
+                      </svg>
+                      <table class="ft-table" style="flex:none">
+                        <thead><tr><th>实体</th><th>类</th><th>提及</th><th>情绪</th></tr></thead>
+                        <tbody>
+                          <tr v-for="ent in newsEntities.slice(0, 6)" :key="'et-' + ent.id"
+                              @click="openEntityDossier(ent.canonical_name)">
+                            <td><b>{{ ent.canonical_name }}</b></td>
+                            <td class="ft-mono" style="color:var(--muted-foreground)">{{ ent.entity_type }}</td>
+                            <td class="ft-mono">{{ ent.mentions }}</td>
+                            <td class="ft-mono" :style="{ color: ent.net_sentiment > 0 ? 'var(--up)' : (ent.net_sentiment < 0 ? 'var(--down)' : 'var(--muted-foreground)') }">
+                              {{ ent.net_sentiment >= 0 ? '+' : '' }}{{ ent.net_sentiment }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </template>
+                  </div>
+
+                  <!-- Panel C: 情报情绪与风险温度计 -->
+                  <div v-else-if="w.type === 'sentiment_gauge'" class="ft-panel-body">
+                    <div style="display:flex;align-items:center;justify-content:center;flex-direction:column;flex:1;min-height:86px">
+                      <svg viewBox="0 0 220 118" preserveAspectRatio="xMidYMid meet" style="width:min(100%, 220px);height:auto;max-height:130px">
+                        <path d="M 20 100 A 90 90 0 0 1 200 100" fill="none" stroke="var(--muted)" stroke-width="14" stroke-linecap="round" />
+                        <path d="M 20 100 A 90 90 0 0 1 200 100" fill="none" :stroke="sentimentGauge.color" stroke-width="14" stroke-linecap="round"
+                              :stroke-dasharray="sentimentGauge.dash" />
+                        <text x="110" y="78" text-anchor="middle" font-size="24" font-weight="700" fill="var(--foreground)">{{ sentimentGauge.score }}</text>
+                        <text x="110" y="96" text-anchor="middle" font-size="10.5" font-weight="700" :fill="sentimentGauge.color">{{ sentimentGauge.label }}</text>
+                      </svg>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;flex:none">
+                      <div v-for="row in sentimentSignals" :key="row.label" style="display:flex;align-items:center;gap:6px">
+                        <span style="width:68px;color:var(--muted-foreground)">{{ row.label }}</span>
+                        <div style="flex:1;height:6px;background:var(--muted);border-radius:2px;overflow:hidden">
+                          <div :style="{ width: row.pct + '%', height: '100%', background: row.color }"></div>
+                        </div>
+                        <span class="ft-mono" style="width:42px;text-align:right">{{ row.val }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Panel D: 实时多语种情报流 (LIVE WIRE) -->
+                  <div v-else-if="w.type === 'live_wire'" class="ft-panel-body" style="padding:4px 6px;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px;padding-bottom:4px;border-bottom:1px solid var(--border);flex:none">
+                      <div class="news-lang-pills">
+                        <button v-for="lg in [{id:'all',l:'ALL'},{id:'zh',l:'ZH'},{id:'en',l:'EN'},{id:'ru',l:'RU'},{id:'ja',l:'JA'}]" :key="lg.id"
+                                type="button" :class="['news-pill-btn', newsFilters.lang === lg.id ? 'on' : '']"
+                                @click="newsFilters.lang = lg.id; loadNewsItems(true)">{{ lg.l }}</button>
+                      </div>
+                      <span class="spacer"></span>
+                      <span class="hint ft-mono">{{ newsStatus.items_total || 0 }} / {{ newsStatus.pending_l1 || 0 }}</span>
+                    </div>
+                    <div style="flex:1;min-height:0;overflow-y:auto">
+                      <o2-empty v-if="!newsItems.length" description="暂无新闻" />
+                      <div v-for="it in newsItems.slice(0, (w.config && w.config.limit) || 24)" :key="'dw-' + it.id"
+                           style="display:grid;grid-template-columns:46px 28px 16px minmax(0,1fr) auto;align-items:center;gap:6px;padding:4px 4px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer"
+                           @click="tab = 'news'; selectNewsItem(it)">
+                        <span class="ft-mono hint">{{ formatNewsTime(it.published_at) }}</span>
+                        <span :class="['news-lang-badge', it.lang]" style="text-align:center">{{ it.lang }}</span>
+                        <span :style="{ color: it.sentiment === 'bullish' ? 'var(--up)' : (it.sentiment === 'bearish' ? 'var(--down)' : 'var(--muted-foreground)') }">
+                          {{ it.sentiment === 'bullish' ? '▲' : (it.sentiment === 'bearish' ? '▼' : '•') }}
+                        </span>
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)">
+                          {{ it.title_zh || it.title_orig }}
+                        </span>
+                        <span class="hint lw-row-src" style="font-size:10.5px;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.feed_name }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Panel E: DESK NOTE · AI 情报简报 -->
+                  <div v-else-if="w.type === 'desk_note'" class="ft-panel-body">
+                    <div v-if="newsBriefLoading" class="hint">生成中…</div>
+                    <div v-else-if="newsBriefText" class="answer-text" style="font-size:12px;line-height:1.55"
+                         v-html="renderAnswer(newsBriefText, { sources: [] })"></div>
+                    <div v-else style="display:flex;align-items:center;justify-content:center;flex:1">
+                      <button type="button" class="ft-btn on" @click="loadNewsBrief(true)">
+                        <span class="nav-ico" v-html="ICO.brief" style="width:12px;height:12px"></span>
+                        <span>24h 简报</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-else class="ft-panel-body" style="justify-content:center;align-items:center">
+                    <span class="ft-mono hint">[M4] QUANT LAB</span>
+                  </div>
+                </template>
+              </free-grid>
+            </div>
+
+            <!-- 可拖拽分栏条 + 右侧可折叠 INTEL PULSE 态势窄栏 -->
+            <split-resizer v-if="dashPulseOpen" direction="v" :reverse="true"
+                           v-model="dashPulseWidth" :min="196" :max="480"
+                           @commit="saveDashboardLayoutDebounced" />
+            <aside v-if="dashPulseOpen" class="ft-pulse-rail" :style="{ width: dashPulseWidth + 'px' }">
+              <div class="ft-pulse-sec" style="background:var(--muted)">
+                <div class="ft-pulse-lbl">
+                  <span>● PULSE</span>
+                  <span class="ft-mono">{{ sentimentGauge.label }}</span>
+                </div>
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <span class="ft-mono" style="font-size:20px;font-weight:700;color:var(--foreground)">
+                    {{ sentimentGauge.score }}<span style="font-size:12px;color:var(--muted-foreground)">/100</span>
+                  </span>
+                  <span class="ft-mono hint">{{ newsStatus.net_tone >= 0 ? '+' : '' }}{{ newsStatus.net_tone || 0 }}</span>
+                </div>
+                <div class="ft-breadth-bar">
+                  <div :style="{ width: sentimentGauge.score + '%', background: sentimentGauge.color }"></div>
+                </div>
+              </div>
+
+              <div class="ft-pulse-sec">
+                <div class="ft-pulse-lbl"><span>ZH / EN / RU</span><span class="ft-mono">{{ (newsStatus.by_lang && newsStatus.by_lang.zh) || 0 }}/{{ (newsStatus.by_lang && newsStatus.by_lang.en) || 0 }}/{{ (newsStatus.by_lang && newsStatus.by_lang.ru) || 0 }}</span></div>
+                <div class="ft-breadth-bar">
+                  <div :style="{ width: langPct('zh') + '%', background: '#3b82f6' }"></div>
+                  <div :style="{ width: langPct('en') + '%', background: '#10b981' }"></div>
+                  <div :style="{ width: langPct('ru') + '%', background: '#f59e0b' }"></div>
+                </div>
+                <div style="font-size:11px;display:flex;align-items:center;justify-content:space-between;margin-top:2px">
+                  <span class="ft-mono">EMB {{ newsStatus.embedded_total || 0 }}/{{ newsStatus.items_total || 0 }}</span>
+                  <button type="button" class="ft-icon-btn" title="向量化" @click="embedNewsNow()" v-html="ICO.embed"></button>
+                </div>
+              </div>
+
+              <div class="ft-pulse-sec">
+                <div class="ft-pulse-lbl"><span>ENTITIES (7D)</span><span class="ft-mono">{{ newsStatus.entities_total || 0 }}</span></div>
+                <div v-for="ent in newsEntities.slice(0, 6)" :key="'pe-' + ent.id"
+                     class="ft-mkt-row" style="cursor:pointer" @click="openEntityDossier(ent.canonical_name)">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)">{{ ent.canonical_name }}</span>
+                  <span class="ft-mono" :style="{ color: ent.net_sentiment > 0 ? 'var(--up)' : (ent.net_sentiment < 0 ? 'var(--down)' : 'var(--muted-foreground)') }">
+                    {{ ent.mentions }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="ft-pulse-sec">
+                <div class="ft-pulse-lbl"><span>SESSIONS</span></div>
+                <div v-for="mk in marketHours" :key="mk.code" class="ft-mkt-row ft-mono">
+                  <span style="font-weight:600;color:var(--foreground)">{{ mk.code }}</span>
+                  <span :style="{ color: mk.open ? 'var(--up)' : 'var(--muted-foreground)' }">
+                    ● {{ mk.detail }}
+                  </span>
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          <div class="ft-statusbar ft-mono">
+            <span>MKT: {{ (marketOverview.stats && marketOverview.stats.total) || 0 }} | FEEDS: {{ newsStatus.feeds_enabled || 0 }}/{{ newsStatus.feeds_total || 0 }} | API: {{ readyConnectorCount }}/{{ (cfg.api_connectors || []).length }}</span>
+            <span>{{ dashboardLayout.locked ? 'LOCKED' : '24-COL FREE GRID' }} | EMB: {{ newsStatus.embedded_total || 0 }}/{{ newsStatus.items_total || 0 }} | UNREAD: {{ newsStatus.unread || 0 }}</span>
+          </div>
+        </div>
+      </template>
+
+      <!-- 行情终端主页面：24列自由拖拽 & 无级缩放工作台 -->
+      <template v-if="tab === 'markets'">
+        <div class="mk-shell">
+          <div class="ft-cmdbar">
+            <div class="mk-search-wrap" style="flex:none">
+              <a-input v-model:value="mktSearchQuery" size="small" allow-clear style="width:168px"
+                       placeholder="代码/名称…" @input="onMktSearchInput" @focus="mktSearchOpen = !!(mktSearchQuery && mktSearchQuery.trim() && mktSearchHits.length)" />
+              <div v-if="mktSearchOpen && mktSearchHits.length" class="mk-search-pop">
+                <div v-for="hit in mktSearchHits" :key="'msh-' + hit.secid" class="mk-search-item"
+                     @click="selectMarketSymbol(hit); mktSearchOpen = false">
+                  <span class="ft-mono" style="color:var(--primary);font-weight:600">{{ hit.symbol }}</span>
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ hit.name }}</span>
+                  <span class="ft-mono hint" style="font-size:10px">{{ hit.market }}</span>
+                  <button type="button" class="ft-icon-btn" style="width:20px;height:20px"
+                          :title="isInWatchlist(hit.secid) ? '移出自选' : '加入自选'"
+                          @click.stop="toggleWatchlistSymbol(hit)"
+                          v-html="isInWatchlist(hit.secid) ? ICO.starFill : ICO.star"></button>
+                </div>
+              </div>
+            </div>
+            <span class="ft-sep"></span>
+            <div class="ws-tab-strip">
+              <div v-for="ws in (marketLayout.workspaces || [])" :key="ws.id"
+                   :class="['ws-tab', marketLayout.activeWorkspace === ws.id ? 'on' : '']"
+                   :title="ws.name + '（双击重命名）'"
+                   @click="switchMarketWorkspace(ws.id)">
+                <input v-if="editingWsKey === 'mkt:' + ws.id"
+                       v-model="editingWsName"
+                       class="ws-tab-input"
+                       @click.stop
+                       @keydown.enter.prevent="commitWsRename('mkt', ws)"
+                       @keydown.esc.prevent="cancelWsRename()"
+                       @blur="commitWsRename('mkt', ws)" />
+                <span v-else class="ws-tab-lbl" @dblclick.stop="startWsRename('mkt', ws)">{{ ws.name }}</span>
+                <button v-if="(marketLayout.workspaces || []).length > 1 && editingWsKey !== 'mkt:' + ws.id"
+                        type="button" class="ws-tab-del" title="删除此工作区"
+                        @click.stop="deleteMarketWorkspaceById(ws.id)">×</button>
+              </div>
+              <button type="button" class="ft-icon-btn" style="width:24px;height:24px" title="新建行情工作区"
+                      @click="createMarketWorkspace()" v-html="ICO.plus"></button>
+            </div>
+            <span class="ft-sep"></span>
+            <div class="ft-tools-group">
+              <button type="button"
+                      :class="['ft-badge-mini', !marketLayout.locked ? 'warn' : '']"
+                      :title="marketLayout.locked ? '布局已锁定（点击解锁自由拖拽与缩放）' : '布局已解锁（可拖标题栏移动、拖边缘/角缩放）'"
+                      @click="toggleMarketLock()">
+                <span v-html="marketLayout.locked ? ICO.lock : ICO.unlock" style="display:inline-flex"></span>
+                <span>{{ marketLayout.locked ? '已锁定' : '自由调整' }}</span>
+              </button>
+              <button type="button" :class="['ft-icon-btn', mktCompact ? 'on' : '']"
+                      :title="mktCompact ? '已开启紧凑间距（点击还原）' : '切换紧凑间距'"
+                      @click="mktCompact = !mktCompact" v-html="ICO.compact"></button>
+              <button type="button" :class="['ft-icon-btn', mktDetailOpen ? 'on' : '']"
+                      :title="mktDetailOpen ? '隐藏右侧详情栏' : '显示右侧详情栏'"
+                      @click="mktDetailOpen = !mktDetailOpen" v-html="ICO.panelRight"></button>
+              <span class="ft-sep"></span>
+              <button type="button" class="ft-icon-btn" title="行情工作区与布局管理"
+                      @click="mktCustomizeOpen = true" v-html="ICO.layers"></button>
+              <button type="button" :class="['ft-icon-btn', marketLoading ? 'on' : '']" title="刷新行情"
+                      @click="loadMarketOverview(true); loadMarketKline(mktSelectedSecid, true); loadMarketSectors(true); loadMarketMovers(true)" v-html="ICO.reload"></button>
+            </div>
+          </div>
+
+          <!-- KPI Ribbon (10 cards with 5D sparkline) -->
+          <div class="mk-ribbon">
+            <div v-for="card in (marketOverview.ribbon || [])" :key="'rk-' + card.secid"
+                 :class="['mk-kpi', mktSelectedSecid === card.secid ? 'on' : '']"
+                 @click="selectMarketSymbol(card)">
+              <div class="mk-kpi-top">
+                <span>{{ card.symbol }}</span>
+                <span :style="{ color: (card.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
+                  {{ (card.pct || 0) >= 0 ? '▲' : '▼' }} {{ fmtPct(card.pct) }}
+                </span>
+              </div>
+              <div class="mk-kpi-price ft-mono">{{ fmtPrice(card.price) }}</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+                <span class="ft-mono hint" style="font-size:10px">{{ (card.chg || 0) >= 0 ? '+' : '' }}{{ fmtPrice(card.chg) }}</span>
+                <spark-line :values="card.spark" :up="(card.pct || 0) >= 0" />
+              </div>
+            </div>
+          </div>
+
+          <div class="mk-body">
+            <div class="mk-main" :class="{ compact: mktCompact }">
+              <free-grid
+                :items="activeMarketWidgets"
+                :cols="24"
+                :row-height="mktCompact ? 22 : 26"
+                :gap="mktCompact ? 4 : 6"
+                :locked="!!marketLayout.locked"
+                v-model:maximized-id="mktMaximizedId"
+                @layout-commit="saveMarketLayoutDebounced"
+              >
+                <template #item="{ widget: w, isMaximized, toggleMaximize, startDrag }">
+                  <div class="ft-panel-head"
+                       :title="marketLayout.locked ? '双击全屏聚焦' : '按住拖动位置 · 双击全屏聚焦'"
+                       @pointerdown="startDrag($event)"
+                       @dblclick="toggleMaximize()">
+                    <div class="ft-panel-title">
+                      <span class="ft-badge-sq">{{ (mktWidgetMeta(w.type) && mktWidgetMeta(w.type).badge) || (w.title || 'M').slice(0, 1) }}</span>
+                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ w.title }}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:3px;flex:none">
+                      <template v-if="w.type === 'kline_main'">
+                        <div style="display:inline-flex;gap:2px;margin-right:2px">
+                          <button v-for="iv in ['1d','1w','1M']" :key="'mkwiv-' + iv" type="button"
+                                  :class="['ft-btn', mktInterval === iv ? 'on' : '']"
+                                  style="height:18px;padding:0 5px;font-size:10px"
+                                  @click="mktInterval = iv; loadMarketKline(mktSelectedSecid, true)">{{ iv.toUpperCase() }}</button>
+                        </div>
+                        <button type="button" class="ft-ico-btn" title="AI 研判该标的"
+                                @click="askAiAboutSymbol(mktKlineData || { secid: mktSelectedSecid, name: mktSelectedName })"
+                                v-html="ICO.robot"></button>
+                      </template>
+                      <template v-else-if="w.type === 'sector_heatmap'">
+                        <button type="button" class="ft-ico-btn" title="刷新板块" @click="loadMarketSectors(true)" v-html="ICO.reload"></button>
+                      </template>
+                      <template v-else-if="w.type.startsWith('movers_')">
+                        <button type="button" class="ft-ico-btn" title="刷新异动" @click="loadMarketMovers(true)" v-html="ICO.reload"></button>
+                      </template>
+                      <span v-else-if="w.type === 'watchlist'" class="ft-mono hint" style="font-size:10.5px;margin-right:2px">{{ (marketOverview.watchlist || []).length }}</span>
+                      <span v-else class="ft-mono hint" style="font-size:10.5px;margin-right:2px">{{ (marketPanelItems(w) || []).length }}</span>
+                      <button type="button" class="ft-ico-btn" :title="isMaximized ? '还原 (Esc)' : '全屏聚焦'"
+                              @click.stop="toggleMaximize()" v-html="isMaximized ? ICO.minimize : ICO.maximize"></button>
+                    </div>
+                  </div>
+
+                  <!-- 内嵌 K-Line 自由模块 -->
+                  <div v-if="w.type === 'kline_main'" class="ft-panel-body" style="padding:4px 8px;overflow:hidden">
+                    <div class="wl-chart-head">
+                      <b>{{ (mktKlineData && mktKlineData.name) || mktSelectedName || mktSelectedSecid }}</b>
+                      <span class="ft-mono hint">{{ mktSelectedSecid }}</span>
+                      <span v-if="mktKlineData && mktKlineData.price != null" class="ft-mono" style="font-weight:700">
+                        {{ fmtPrice(mktKlineData.price) }}
+                        <span :style="{ color: (mktKlineData.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">{{ fmtPct(mktKlineData.pct) }}</span>
+                      </span>
+                      <span class="spacer"></span>
+                      <div style="display:inline-flex;align-items:center;gap:3px">
+                        <button type="button" :class="['ft-chip', chartOpts.ma ? 'on' : '']" title="显示/隐藏均线 MA5/MA20" @click="chartOpts.ma = !chartOpts.ma">MA</button>
+                        <button type="button" :class="['ft-chip', chartOpts.vol ? 'on' : '']" title="显示/隐藏成交量" @click="chartOpts.vol = !chartOpts.vol">VOL</button>
+                        <button type="button" :class="['ft-chip', chartOpts.markers ? 'on' : '']" title="显示/隐藏新闻事件打点" @click="chartOpts.markers = !chartOpts.markers">NEWS</button>
+                      </div>
+                    </div>
+                    <div style="flex:1;min-height:0;position:relative">
+                      <kline-chart :data="mktKlineData" :theme="cfg.ui_theme"
+                                   :show-ma="chartOpts.ma" :show-vol="chartOpts.vol" :show-markers="chartOpts.markers"
+                                   @pick-marker="onPickKlineNewsMarker" />
+                    </div>
+                  </div>
+
+                  <!-- 板块热力图自由模块 -->
+                  <div v-else-if="w.type === 'sector_heatmap'" class="ft-panel-body" style="padding:4px 6px;overflow:hidden">
+                    <div v-if="marketSectors.length" style="flex:1;min-height:0;display:flex;position:relative">
+                      <sector-treemap :items="marketSectors" :theme="cfg.ui_theme" height="100%" @pick="onPickSector" />
+                    </div>
+                    <div v-else class="hint" style="padding:18px;text-align:center">加载板块中…</div>
+                  </div>
+
+                  <!-- 涨跌异动自由模块 -->
+                  <div v-else-if="w.type === 'movers_gainers' || w.type === 'movers_losers' || w.type === 'movers_active'"
+                       class="ft-panel-body" style="padding:0;gap:0">
+                    <div v-for="it in marketMoverItems(w.type)" :key="w.id + '-' + it.secid"
+                         :class="['mk-row', mktSelectedSecid === it.secid ? 'on' : '']"
+                         style="grid-template-columns:10px minmax(0,1fr) 68px 60px 64px"
+                         @click="selectMarketSymbol(it)">
+                      <span class="mk-dot" :style="{ background: (it.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }"></span>
+                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.name }} <span class="hint ft-mono">{{ it.symbol }}</span></span>
+                      <span class="ft-mono" style="text-align:right">{{ fmtPrice(it.price) }}</span>
+                      <span class="ft-mono" style="text-align:right;font-weight:600" :style="{ color: (it.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">{{ fmtPct(it.pct) }}</span>
+                      <span class="ft-mono hint mk-col-chg" style="text-align:right">{{ fmtCompact(it.amount) }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 自选列表自由模块 -->
+                  <div v-else-if="w.type === 'watchlist'" class="ft-panel-body" style="padding:0;gap:0">
+                    <div v-for="row in (marketOverview.watchlist || [])" :key="w.id + '-' + row.secid"
+                         :class="['mk-row', mktSelectedSecid === row.secid ? 'on' : '']"
+                         @click="selectMarketSymbol(row)">
+                      <span class="mk-dot" :style="{ background: (row.pct || 0) > 0 ? 'var(--up)' : ((row.pct || 0) < 0 ? 'var(--down)' : 'var(--muted-foreground)') }"></span>
+                      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500" :title="row.symbol">
+                        {{ row.name }}
+                      </span>
+                      <span class="ft-mono" style="text-align:right;font-weight:600">{{ fmtPrice(row.price) }}</span>
+                      <span class="ft-mono mk-col-chg" style="text-align:right" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
+                        {{ (row.chg || 0) >= 0 ? '+' : '' }}{{ fmtPrice(row.chg) }}
+                      </span>
+                      <span class="ft-mono" style="text-align:right;font-weight:600" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
+                        {{ fmtPct(row.pct) }}
+                      </span>
+                      <span class="mk-col-spark"><spark-line :values="row.spark" :up="(row.pct || 0) >= 0" /></span>
+                    </div>
+                  </div>
+
+                  <!-- 多市场行情面板自由模块 -->
+                  <div v-else class="ft-panel-body" style="padding:0;gap:0">
+                    <div v-for="row in marketPanelItems(w)" :key="w.id + '-' + row.secid"
+                         :class="['mk-row', mktSelectedSecid === row.secid ? 'on' : '']"
+                         @click="selectMarketSymbol(row)">
+                      <span class="mk-dot" :style="{ background: (row.pct || 0) > 0 ? 'var(--up)' : ((row.pct || 0) < 0 ? 'var(--down)' : 'var(--muted-foreground)') }"></span>
+                      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500" :title="row.symbol">
+                        {{ row.name }}
+                      </span>
+                      <span class="ft-mono" style="text-align:right;font-weight:600">{{ fmtPrice(row.price) }}</span>
+                      <span class="ft-mono mk-col-chg" style="text-align:right" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
+                        {{ (row.chg || 0) >= 0 ? '+' : '' }}{{ fmtPrice(row.chg) }}
+                      </span>
+                      <span class="ft-mono" style="text-align:right;font-weight:600" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
+                        {{ fmtPct(row.pct) }}
+                      </span>
+                      <span class="mk-col-spark"><spark-line :values="row.spark" :up="(row.pct || 0) >= 0" /></span>
+                    </div>
+                  </div>
+                </template>
+              </free-grid>
+            </div>
+
+            <!-- 垂直分栏拖拽条 + 右侧可调宽详情栏 -->
+            <split-resizer v-if="mktDetailOpen" direction="v" :reverse="true"
+                           v-model="mktDetailWidth" :min="280" :max="680"
+                           @commit="saveMarketLayoutDebounced" />
+            <aside v-if="mktDetailOpen" class="mk-detail" :style="{ width: mktDetailWidth + 'px' }">
+              <div class="mk-detail-head">
+                <div style="min-width:0">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <b style="font-size:14px;color:var(--foreground)">{{ (mktKlineData && mktKlineData.name) || mktSelectedName || mktSelectedSecid }}</b>
+                    <span class="ft-mono hint" style="font-size:11px">{{ mktSelectedSecid }}</span>
+                  </div>
+                  <div v-if="mktKlineData && mktKlineData.price != null" class="ft-mono" style="font-size:12px;margin-top:2px">
+                    <b>{{ fmtPrice(mktKlineData.price) }}</b>
+                    <span style="margin-left:6px" :style="{ color: (mktKlineData.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
+                      {{ (mktKlineData.chg || 0) >= 0 ? '+' : '' }}{{ fmtPrice(mktKlineData.chg) }} ({{ fmtPct(mktKlineData.pct) }})
+                    </span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <button type="button" :class="['ft-icon-btn', isInWatchlist(mktSelectedSecid) ? 'on' : '']"
+                          :title="isInWatchlist(mktSelectedSecid) ? '移出自选' : '加入自选'"
+                          @click="toggleWatchlistSymbol({ secid: mktSelectedSecid, symbol: mktSelectedSymbol || mktSelectedSecid, name: (mktKlineData && mktKlineData.name) || mktSelectedName })"
+                          v-html="isInWatchlist(mktSelectedSecid) ? ICO.starFill : ICO.star"></button>
+                  <button type="button" class="ft-icon-btn" title="AI 研判该标的"
+                          @click="askAiAboutSymbol(mktKlineData || { secid: mktSelectedSecid, name: mktSelectedName })"
+                          v-html="ICO.robot"></button>
+                  <button type="button" class="ft-icon-btn" title="收起" @click="mktDetailOpen = false" v-html="ICO.close"></button>
+                </div>
+              </div>
+
+              <div class="mk-detail-ctrl">
+                <div class="news-lang-pills">
+                  <button v-for="iv in ['1d','1w','1M']" :key="'dk-' + iv" type="button"
+                          :class="['news-pill-btn', mktInterval === iv ? 'on' : '']"
+                          @click="mktInterval = iv; loadMarketKline(mktSelectedSecid, true)">{{ iv.toUpperCase() }}</button>
+                </div>
+                <span class="spacer"></span>
+                <div style="display:inline-flex;align-items:center;gap:3px">
+                  <button type="button" :class="['ft-chip', chartOpts.ma ? 'on' : '']" title="显示/隐藏均线 MA5/MA20" @click="chartOpts.ma = !chartOpts.ma">MA</button>
+                  <button type="button" :class="['ft-chip', chartOpts.vol ? 'on' : '']" title="显示/隐藏成交量" @click="chartOpts.vol = !chartOpts.vol">VOL</button>
+                  <button type="button" :class="['ft-chip', chartOpts.markers ? 'on' : '']" title="显示/隐藏新闻事件打点" @click="chartOpts.markers = !chartOpts.markers">NEWS</button>
+                </div>
+              </div>
+
+              <div class="mk-chart-box" :style="{ height: mktDetailChartHeight + 'px' }">
+                <kline-chart :data="mktKlineData" :theme="cfg.ui_theme"
+                             :show-ma="chartOpts.ma" :show-vol="chartOpts.vol" :show-markers="chartOpts.markers"
+                             @pick-marker="onPickKlineNewsMarker" />
+              </div>
+
+              <!-- 水平分栏拖拽条：自由拉高/拉低 K 线图与新闻区比例 -->
+              <split-resizer direction="h" v-model="mktDetailChartHeight" :min="150" :max="540"
+                             @commit="saveMarketLayoutDebounced" />
+
+              <div v-if="mktTechSummary" class="ft-telemetry ft-mono" style="justify-content:space-between">
+                <span>RSI14: <b>{{ mktTechSummary.rsi }}</b></span>
+                <span>MACD: <b>{{ mktTechSummary.macd }}</b></span>
+                <span>{{ (mktKlineData && mktKlineData.source) || '' }}</span>
+              </div>
+
+              <div style="flex:1;min-height:0;overflow-y:auto;padding:6px 10px;display:flex;flex-direction:column;gap:4px">
+                <div class="ft-pulse-lbl" style="margin-bottom:2px">
+                  <span>NEWS EVENTS</span>
+                  <span class="ft-mono">{{ ((mktKlineData && mktKlineData.news_events) || []).length }}</span>
+                </div>
+                <div v-for="ev in ((mktKlineData && mktKlineData.news_events) || [])" :key="'ke-' + ev.id"
+                     style="display:grid;grid-template-columns:68px 26px minmax(0,1fr);align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11.5px;cursor:pointer"
+                     @click="onPickKlineNewsMarker(ev)">
+                  <span class="ft-mono hint">{{ ev.time }}</span>
+                  <span :class="['news-lang-badge', ev.lang]" style="text-align:center">{{ ev.lang }}</span>
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)">{{ ev.title }}</span>
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          <div class="ft-statusbar ft-mono">
+            <span>QUOTES: {{ (marketOverview.stats && marketOverview.stats.total) || 0 }} | ▲ {{ (marketOverview.stats && marketOverview.stats.up) || 0 }} ▼ {{ (marketOverview.stats && marketOverview.stats.down) || 0 }}</span>
+            <span>{{ marketLayout.locked ? 'LOCKED' : '24-COL FREE GRID' }} | {{ ((marketOverview.stats && marketOverview.stats.sources) || []).join(' · ') }}</span>
+          </div>
+        </div>
+      </template>
+
+      <!-- 新闻流主页面 -->
+      <template v-if="tab === 'news'">
+        <div class="news-shell">
+          <!-- Row 1: 单行指令过滤条 (图标按钮与滑钮化) -->
+          <div class="ft-news-cmd">
+            <span class="dash-ticker-badge">INTEL</span>
+            <a-input v-model:value="newsFilters.q" size="small" allow-clear style="width:168px"
+                     placeholder="检索…" @pressEnter="runNewsSearch(true)" />
+            <span class="ft-sw-wrap" title="语义向量检索">
+              <span>语义</span>
+              <a-switch size="small" :checked="newsSearchMode === 'semantic'"
+                        @change="(v) => { newsSearchMode = v ? 'semantic' : 'keyword'; if ((newsFilters.q || '').trim()) runNewsSearch(true) }" />
+            </span>
+            <a-select v-model:value="newsFilters.category" style="width:98px" size="small" @change="runNewsSearch(true)">
+              <a-select-option value="all">全部分类</a-select-option>
+              <a-select-option v-for="cat in newsCategories" :key="cat" :value="cat">{{ cat }}</a-select-option>
+            </a-select>
+            <div style="display:inline-flex;gap:2px">
+              <button v-for="hw in [{h:1,l:'1H'},{h:6,l:'6H'},{h:24,l:'24H'},{h:168,l:'7D'},{h:0,l:'全'}]" :key="hw.h"
+                      type="button" :class="['ft-btn', newsFilters.hours === hw.h ? 'on' : '']"
+                      @click="newsFilters.hours = hw.h; runNewsSearch(true)">{{ hw.l }}</button>
+            </div>
+            <div class="news-lang-pills">
+              <button v-for="lg in [{id:'all',l:'全'},{id:'zh',l:'中'},{id:'en',l:'英'},{id:'ru',l:'俄'},{id:'ja',l:'日'}]" :key="lg.id"
+                      type="button" :class="['news-pill-btn', newsFilters.lang === lg.id ? 'on' : '']"
+                      @click="newsFilters.lang = lg.id; runNewsSearch(true)">{{ lg.l }}</button>
+            </div>
+            <span class="ft-sw-wrap" title="仅看未读">
+              <span>未读({{ newsStatus.unread || 0 }})</span>
+              <a-switch size="small" :checked="newsFilters.unread" @change="(v) => { newsFilters.unread = !!v; runNewsSearch(true) }" />
+            </span>
+            <button type="button" class="ft-icon-btn" title="全部标为已读" @click="markAllNewsRead()" v-html="ICO.checkAll"></button>
+            <button type="button" :class="['ft-icon-btn', newsFilters.starred ? 'on' : '']" title="仅看收藏"
+                    @click="newsFilters.starred = !newsFilters.starred; runNewsSearch(true)"
+                    v-html="newsFilters.starred ? ICO.starFill : ICO.star"></button>
+            <span class="spacer"></span>
+            <div class="news-lang-pills">
+              <button v-for="vm in [{id:'zh',l:'译'},{id:'bilingual',l:'双'},{id:'orig',l:'原'}]" :key="vm.id"
+                      type="button" :class="['news-pill-btn', newsViewMode === vm.id ? 'on' : '']"
+                      @click="newsViewMode = vm.id">{{ vm.l }}</button>
+            </div>
+            <button type="button" class="ft-icon-btn" title="24h AI 简报" @click="openBriefModal()" v-html="ICO.brief"></button>
+            <button type="button" :class="['ft-icon-btn', newsEmbedding ? 'on' : '']" title="向量化待索引新闻"
+                    @click="embedNewsNow()" v-html="ICO.embed"></button>
+            <button type="button" :class="['ft-badge-mini warn']" title="翻译与实体抽取"
+                    @click="translatePendingNews()">
+              <span v-html="ICO.translate"></span>
+              <span>{{ newsTranslating ? '…' : (newsStatus.pending_l1 || 0) }}</span>
+            </button>
+            <button type="button" :class="['ft-icon-btn', newsFetching ? 'on' : '']" title="抓取最新新闻"
+                    @click="fetchNewsNow()" v-html="ICO.reload"></button>
+            <button type="button" class="ft-icon-btn" title="新闻源与模型设置" @click="openNewsSettings" v-html="ICO.settings"></button>
+          </div>
+
+          <!-- Row 2: 遥测统计带 + 红黄绿 Tone 条 -->
+          <div class="ft-telemetry ft-mono">
+            <span>FEEDS <b>{{ newsStatus.feeds_enabled || 0 }}/{{ newsStatus.feeds_total || 0 }}</b></span>
+            <span>ARTS <b>{{ newsStatus.items_total || 0 }}</b></span>
+            <span v-if="newsStatus.dedup_saved > 0" :title="'已去重折叠 ' + newsStatus.dedup_saved + ' 条重复报道（总抓取 ' + (newsStatus.raw_items_total || 0) + '）'">DEDUP <b style="color:var(--ok)">-{{ newsStatus.dedup_saved }}</b></span>
+            <span>CLST <b>{{ newsStatus.clusters_total || 0 }}</b></span>
+            <span>ENT <b>{{ newsStatus.entities_total || 0 }}</b></span>
+            <span>EMB <b>{{ newsStatus.embedded_total || 0 }}</b></span>
+            <span style="display:inline-flex;align-items:center;gap:6px">
+              <span>TONE</span>
+              <span class="ft-tone-bar">
+                <span :style="{ width: toneRatio.bullish + '%', background: 'var(--up)' }"></span>
+                <span :style="{ width: toneRatio.neutral + '%', background: '#94a3b8' }"></span>
+                <span :style="{ width: toneRatio.bearish + '%', background: 'var(--down)' }"></span>
+              </span>
+              <b>{{ newsStatus.net_tone >= 0 ? '+' : '' }}{{ newsStatus.net_tone || 0 }}</b>
+            </span>
+            <a-tag v-if="newsFilters.entity" closable color="blue" @close="newsFilters.entity = ''; runNewsSearch(true)">
+              实体: {{ newsFilters.entity }}
+            </a-tag>
+            <span class="spacer"></span>
+            <span v-if="newsLastSearchMode === 'hybrid+rerank'" style="color:var(--ok)">● HYBRID + RERANK</span>
+            <span v-else-if="newsLastSearchMode === 'hybrid'" style="color:var(--ok)">● HYBRID VECTOR SEARCH</span>
+          </div>
+
+          <!-- Row 3: BREAKING 高优突发横幅（支持多源/跨语种共振评分与切换） -->
+          <div v-if="showBreakingBanner && currentBreaking"
+               class="ft-breaking" @click="selectNewsItem(currentBreaking)">
+            <span class="ft-breaking-tag">BREAKING</span>
+            <span :class="['news-lang-badge', currentBreaking.lang]">{{ currentBreaking.lang }}</span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--foreground)">
+              {{ currentBreaking.title_zh || currentBreaking.title_orig }}
+            </span>
+            <span v-for="bt in (currentBreaking.breaking_tags || []).slice(0, 2)" :key="'bt-' + bt"
+                  class="ft-ent-pill" style="color:var(--down);border-color:rgba(239,68,68,.35)">{{ bt }}</span>
+            <span class="hint ft-mono">{{ currentBreaking.feed_name }}</span>
+            <button v-if="newsStatus.breaking && newsStatus.breaking.length > 1" type="button"
+                    class="ft-ico-btn ft-mono" style="width:auto;padding:0 5px;font-size:10.5px" title="切换下一条突发"
+                    @click.stop="nextBreaking()">{{ (breakingIdx % newsStatus.breaking.length) + 1 }}/{{ newsStatus.breaking.length }} ›</button>
+            <button type="button" class="ft-ico-btn" @click.stop="showBreakingBanner = false">×</button>
+          </div>
+
+          <!-- 主区：全宽单行虚拟滚动快讯表 + 右侧滑出式详情栏 -->
+          <div class="ft-wire-wrap">
+            <div class="ft-wire-list" ref="newsListEl" @scroll="onNewsListScroll">
+              <o2-empty v-if="!newsLoading && !newsItems.length" description="暂无匹配新闻" style="margin-top:48px" />
+              <div v-else :style="{ height: (newsItems.length * 31) + 'px', position: 'relative' }">
+                <div :style="{ transform: 'translateY(' + (newsVirtStart * 31) + 'px)', willChange: 'transform' }">
+                  <div v-for="it in newsVirtRows" :key="it.id"
+                       :class="['ft-wire-row', !it.read ? 'unread' : '', newsSelectedItem && newsSelectedItem.id === it.id ? 'on' : '']"
+                       @click="selectNewsItem(it)">
+                    <span class="ft-mono hint" style="font-size:11px">{{ formatNewsTime(it.published_at) }}</span>
+                    <span style="display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden">
+                      <span class="news-status-dot" :style="{ width:'6px', height:'6px', background: it.sentiment === 'bullish' ? 'var(--up)' : (it.sentiment === 'bearish' ? 'var(--down)' : '#64748b') }"></span>
+                      <span style="font-size:11px;color:var(--primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.feed_name }}</span>
+                    </span>
+                    <span :class="['news-lang-badge', it.lang]" style="text-align:center">{{ it.lang }}</span>
+                    <span class="ft-wire-title" :title="it.title_orig">
+                      {{ newsViewMode === 'orig' ? it.title_orig : (it.title_zh || it.title_orig) }}
+                      <span v-if="newsViewMode === 'bilingual' && it.title_zh && it.title_zh !== it.title_orig"
+                            style="color:var(--muted-foreground);font-weight:400;margin-left:8px;font-size:11.5px">
+                        {{ it.title_orig }}
+                      </span>
+                    </span>
+                    <span class="ft-wire-ents" @click.stop>
+                      <span v-if="it.cluster_count > 1" class="ft-ent-pill" style="color:var(--muted-foreground)">+{{ it.cluster_count - 1 }}</span>
+                      <span v-for="e in (it.entities || []).slice(0, 2)" :key="e.name" class="ft-ent-pill"
+                            @click="openEntityDossier(e.name)">{{ e.name }}</span>
+                    </span>
+                    <span class="ft-imp-bars" :title="'冲击烈度 ' + (it.impact || 0) + '/5'">
+                      <i :class="{ on: (it.impact || 0) >= 1 }" style="height:5px"></i>
+                      <i :class="{ on: (it.impact || 0) >= 3 }" style="height:8px"></i>
+                      <i :class="{ on: (it.impact || 0) >= 4 }" style="height:11px"></i>
+                    </span>
+                    <span :class="['ft-sent-bar', it.sentiment || 'neutral']" :title="sentimentLabel(it.sentiment)"></span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="newsItems.length" class="ft-mono hint" style="height:28px;display:flex;align-items:center;justify-content:center;font-size:11px">
+                <span v-if="newsLoadingMore">LOADING…</span>
+                <span v-else-if="newsHasMore">↓ {{ newsItems.length }} / {{ newsTotal }}</span>
+                <span v-else>END · {{ newsItems.length }}</span>
+              </div>
+            </div>
+
+            <!-- 右侧滑出式阅读与 AI 研判栏 -->
+            <aside v-if="newsSelectedItem" class="ft-wire-detail">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                <div class="news-card-meta">
+                  <span :class="['news-lang-badge', newsSelectedItem.lang]">{{ newsSelectedItem.lang }}</span>
+                  <span><b>{{ newsSelectedItem.feed_name }}</b></span>
+                  <span>· {{ newsSelectedItem.category }}</span>
+                  <span class="ft-mono">· {{ formatNewsTime(newsSelectedItem.published_at) }}</span>
+                </div>
+                <button type="button" class="ft-ico-btn" title="收起详情面板" @click="newsSelectedItem = null">×</button>
+              </div>
+              <div>
+                <h3 style="margin:0;font-size:16px;line-height:1.45;color:var(--foreground)">
+                  {{ newsSelectedItem.title_zh || newsSelectedItem.title_orig }}
+                </h3>
+                <div v-if="newsSelectedItem.title_zh && newsSelectedItem.title_zh !== newsSelectedItem.title_orig"
+                     class="news-detail-orig-title" style="font-size:12.5px">
+                  {{ newsSelectedItem.title_orig }}
+                </div>
+              </div>
+
+              <div class="news-detail-actions">
+                <button type="button" class="ft-icon-btn on" title="AI 研判" @click="sendNewsToChat([newsSelectedItem])" v-html="ICO.robot"></button>
+                <button v-if="newsSelectedItem.lang !== 'zh'" type="button" :class="['ft-icon-btn', newsDetailLoading ? 'on' : '']"
+                        :title="newsSelectedItem.l2_status === 'done' ? '重翻全文' : '精翻全文 (L2)'"
+                        @click="translateNewsFull(newsSelectedItem.id, true)" v-html="ICO.translate"></button>
+                <button v-if="newsSelectedItem.url" type="button" class="ft-icon-btn" title="原文浏览器"
+                        @click="openNewsInBrowser(newsSelectedItem.url)" v-html="ICO.external"></button>
+                <button type="button" :class="['ft-icon-btn', newsSelectedItem.starred ? 'on' : '']" title="收藏"
+                        @click="toggleNewsStar(newsSelectedItem)" v-html="newsSelectedItem.starred ? ICO.starFill : ICO.star"></button>
+              </div>
+
+              <div v-if="(newsSelectedItem.entities && newsSelectedItem.entities.length) || (newsSelectedItem.tags && newsSelectedItem.tags.length)"
+                   style="display:flex;gap:5px;flex-wrap:wrap">
+                <a-tag v-for="e in (newsSelectedItem.entities || [])" :key="'de-' + e.name" color="blue"
+                       style="cursor:pointer" @click="openEntityDossier(e.name)">
+                  {{ e.name }} · {{ e.type || 'ORG' }}
+                </a-tag>
+                <a-tag v-for="tg in (newsSelectedItem.tags || [])" :key="'dt-' + tg">{{ tg }}</a-tag>
+              </div>
+
+              <div v-if="newsSelectedItem.cluster_items && newsSelectedItem.cluster_items.length" class="news-cluster-box">
+                <div style="font-size:11.5px;font-weight:600;color:var(--foreground)">
+                  同事件跨语种/跨媒体报道 ({{ newsSelectedItem.cluster_items.length }})
+                </div>
+                <div v-for="sib in newsSelectedItem.cluster_items" :key="'sib-' + sib.id"
+                     style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"
+                     @click="selectNewsItem(sib)">
+                  <span :class="['news-lang-badge', sib.lang]">{{ sib.lang }}</span>
+                  <span class="hint">{{ sib.feed_name }}</span>
+                  <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--primary)">
+                    {{ sib.title_zh || sib.title_orig }}
+                  </span>
+                </div>
+              </div>
+
+              <div v-if="newsViewMode === 'bilingual'" style="display:flex;flex-direction:column;gap:10px">
+                <div class="news-bilingual-col">
+                  <div class="hint" style="margin-bottom:4px;font-weight:600">中文译文</div>
+                  {{ newsSelectedItem.content_zh || newsSelectedItem.summary_zh || '尚未精翻全文，可点击上方「精翻全文 (L2)」' }}
+                </div>
+                <div class="news-bilingual-col">
+                  <div class="hint" style="margin-bottom:4px;font-weight:600">原文 ({{ newsSelectedItem.lang }})</div>
+                  {{ newsSelectedItem.content_orig || newsSelectedItem.summary_orig || '无原文正文' }}
+                </div>
+              </div>
+              <div v-else-if="newsViewMode === 'orig'" class="news-detail-content" style="font-size:13px">
+                {{ newsSelectedItem.content_orig || newsSelectedItem.summary_orig || '无原文正文' }}
+              </div>
+              <div v-else class="news-detail-content" style="font-size:13px">
+                {{ newsSelectedItem.content_zh || newsSelectedItem.summary_zh || newsSelectedItem.content_orig || newsSelectedItem.summary_orig || '暂无正文' }}
+              </div>
+            </aside>
+          </div>
+
+          <div class="ft-statusbar ft-mono">
+            <span>DISPLAY {{ newsItems.length }} / {{ newsTotal }} | MODE: {{ newsLastSearchMode === 'hybrid+rerank' ? 'USEARCH+TANTIVY+RERANK' : (newsLastSearchMode === 'hybrid' ? 'USEARCH+TANTIVY' : (newsLastSearchMode === 'bm25' ? 'TANTIVY BM25' : 'TANTIVY+SQL')) }}</span>
+            <span>● {{ (newsStatus.engine && newsStatus.engine.vec_backend === 'usearch-cpp') ? 'USEARCH + TANTIVY' : 'NEWS WIRE' }}{{ (newsStatus.engine && newsStatus.engine.local_gpu && newsStatus.engine.local_gpu.device === 'cuda') ? ' · CUDA FP16' : '' }}</span>
+          </div>
+        </div>
+      </template>
+
       <div v-if="catalogAlive" v-show="tab === 'catalog'" class="cat-workspace">
           <!-- 左侧：Cursor 风格项目与多级文件树（支持下钻到文件与拖拽移动） -->
           <aside class="cat-tree-pane">
@@ -649,6 +1782,7 @@ const App = {
                    :class="[
                      'tree-node',
                      row.kind === 'file' ? 'is-file' : '',
+                     kbOff[row.project] ? 'kb-off' : '',
                      row.isSelected ? 'on' : '',
                      dropTargetKey === row.key ? 'drop-over' : '',
                    ]"
@@ -672,10 +1806,12 @@ const App = {
                 <span v-if="row.kind === 'project'" class="tree-node-ico" v-html="ICO.project"></span>
                 <span v-else-if="row.kind === 'folder'" class="tree-node-ico"
                       v-html="row.open ? ICO.folderOpen : ICO.folder"></span>
+                <span v-else-if="row.kind === 'placeholder'" :class="['tree-spin', row.loading ? 'on' : '']"></span>
                 <span v-else :class="['tree-file-dot', extBadgeClass(row.doc.file_ext)]">{{ extBadgeText(row.doc.file_ext) }}</span>
 
                 <span class="tree-node-name" :title="row.tooltip">{{ row.name }}</span>
-                <span v-if="row.kind !== 'file'" class="tree-node-cnt">{{ row.count }}</span>
+                <span v-if="row.kind === 'project' || row.kind === 'folder'" class="tree-node-cnt">{{ row.count }}</span>
+                <span v-else-if="row.kind === 'placeholder'" class="tree-node-cnt">{{ row.status }}</span>
 
                 <span class="tree-node-acts" @click.stop>
                   <template v-if="row.kind === 'project' || row.kind === 'folder'">
@@ -695,6 +1831,12 @@ const App = {
                             @click="deleteDocRecord(row.doc)" v-html="ICO.trash"></button>
                   </template>
                 </span>
+                <button v-if="row.kind === 'project'" type="button"
+                        :class="['tree-kb', kbOff[row.project] ? 'off' : '']"
+                        :title="kbOff[row.project] ? '问答已关闭这个文库，文件仍可查看' : '问答会使用这个文库'"
+                        @click.stop="toggleProjectKb(row)">
+                  <span class="tree-kb-knob"></span>
+                </button>
               </div>
             </div>
           </aside>
@@ -744,13 +1886,20 @@ const App = {
             </div>
 
             <div class="table-card" ref="tableCard">
-              <a-table :data-source="filteredDocs" :columns="dynamicColumns" row-key="id" size="middle"
+              <a-table :data-source="catalogRows" :columns="dynamicColumns" row-key="id" size="middle"
                        :scroll="{ x: 980, y: tableY }"
                        :pagination="{ pageSize: 30, showSizeChanger: false, position: ['bottomCenter'] }"
                        :custom-row="rowClick">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'title'">
-                    <div class="doc-cell-main">
+                    <div v-if="record._placeholder" class="doc-cell-main ingest-ph">
+                      <div class="doc-cell-top">
+                        <span :class="['tree-spin', record._loading ? 'on' : '']"></span>
+                        <span class="doc-title" :title="record.title">{{ record.title }}</span>
+                        <span class="ingest-ph-status">{{ record._status }}</span>
+                      </div>
+                    </div>
+                    <div v-else class="doc-cell-main">
                       <div class="doc-cell-top">
                         <span :class="['ext-badge', extBadgeClass(record.file_ext)]">{{ extBadgeText(record.file_ext) }}</span>
                         <a class="doc-title" :title="record.title || record.rel_path">{{ record.title || record.rel_path }}</a>
@@ -822,333 +1971,1251 @@ const App = {
 
       <template v-if="tab === 'settings'">
         <div class="settings">
-          <div class="settings-body" :class="{ switching: settingsOn }">
-          <nav class="settings-nav">
-            <span class="settings-nav-pill" :style="settingsPillStyle"></span>
-            <button type="button" v-for="s in settingsPrimary"
-                    :key="s.key"
-                    :ref="(el) => bindSettingsNav(s.key, el)"
-                    :class="['settings-nav-item', settingsSection === s.key ? 'on' : '']"
-                    @click="settingsSection = s.key">{{ s.label }}</button>
-          </nav>
-          <section v-if="settingsSection === 'llm'" class="settings-card settings-llm">
-            <div class="settings-card-head">
-              <h3>智能问答</h3>
-              <p>配置渠道与模型后即可提问。</p>
-            </div>
-            <div class="provider-layout">
-              <div class="provider-nav">
-                <div class="provider-list">
-                  <span class="slide-pill" :style="llmPillStyle"></span>
-                  <button type="button" v-for="p in cfg.providers" :key="p.id"
-                          :ref="(el) => bindLlmProvider(p.id, el)"
-                          :class="['provider-item', settingsPid === p.id ? 'on' : '']"
-                          @click="settingsPid = p.id">
-                    <span class="provider-item-name">{{ p.name }}</span>
-                    <span class="provider-item-state">{{ p.api_key_set ? '已启用' : '未配置' }}</span>
+          <div class="oc-settings-wrap">
+            <div class="oc-settings-inner">
+              <aside class="oc-sider">
+                <button type="button" class="oc-back-btn" @click="exitSettings">
+                  <span v-html="ICO.left"></span>
+                  <span>返回应用</span>
+                </button>
+                <div class="oc-search-box">
+                  <span class="oc-search-ico" v-html="ICO.search"></span>
+                  <input v-model="settingsSearch" type="text" class="oc-search-input" placeholder="搜索设置项…" />
+                  <button v-if="settingsSearch" type="button" class="oc-search-clear" @click="settingsSearch = ''">
+                    <span v-html="ICO.close"></span>
                   </button>
-                  <a-button class="provider-add" block @click="openAddProvider">添加渠道</a-button>
                 </div>
-              </div>
-              <div class="provider-form" v-if="currentProvider">
-                <a-form layout="vertical">
-                  <a-form-item label="Base URL">
-                    <a-input v-model:value="currentProvider.base_url" size="large"
-                             :placeholder="urlPlaceholder(currentProvider)" />
-                  </a-form-item>
-                  <a-form-item label="API 格式">
-                    <a-select v-model:value="currentProvider.protocol" size="large">
-                      <a-select-option v-for="o in protocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
-                    </a-select>
-                  </a-form-item>
-                  <a-form-item label="API Key">
-                    <div class="field-with-action">
-                      <a-input-password v-model:value="currentProvider.api_key" size="large"
-                        :placeholder="currentProvider.api_key_set ? '已保存，留空则不修改' : '输入 API Key'"
-                        @blur="saveProviderKey(currentProvider)" @pressEnter="saveProviderKey(currentProvider)" />
-                      <a-button v-if="currentProvider.api_key_set" danger @click="clearProviderKey(currentProvider)">清除</a-button>
+                <nav class="oc-nav">
+                  <div v-for="(grp, gi) in ocSettingsGroups" :key="gi" class="oc-nav-group">
+                    <button v-for="item in grp" :key="item.key" type="button"
+                            :class="[
+                              'oc-nav-item',
+                              !settingsSearch.trim() && settingsSection === item.key ? 'on' : '',
+                              settingsSearch.trim() && isNavMatched(item.key) ? 'on' : '',
+                              settingsSearch.trim() && !isNavMatched(item.key) ? 'dim' : '',
+                            ]"
+                            @click="selectSettingsNav(item.key)">
+                      <span class="oc-nav-ico" v-html="item.icon"></span>
+                      <span>{{ item.label }}</span>
+                      <span v-if="item.badge && item.badge()" class="oc-nav-badge">{{ item.badge() }}</span>
+                    </button>
+                  </div>
+                </nav>
+              </aside>
+
+              <main class="oc-main" :class="{ switching: settingsOn }">
+                <div class="oc-main-container">
+                  <div v-if="!settingsSearch.trim()" class="oc-page-head">
+                    <div>
+                      <h2>{{ ocActiveMeta.title }}</h2>
+                      <p>{{ ocActiveMeta.desc }}</p>
                     </div>
-                  </a-form-item>
-                  <a-form-item>
-                    <div class="model-list-head">
-                      <span>模型列表</span>
-                      <div class="model-list-actions">
-                        <a-button v-if="currentProvider.api_key_set" @click="syncProviderModels(currentProvider)">从接口同步</a-button>
-                        <a-button type="primary" @click="openAddModel">+ 添加模型</a-button>
-                      </div>
+                    <div class="oc-head-right">
+                      <span v-if="cfgSaveHint" class="oc-save-pill">{{ cfgSaveHint }}</span>
                     </div>
-                    <div v-if="!(currentProvider.models && currentProvider.models.length)" class="model-empty">
-                      <span class="model-empty-ico" v-html="ICO.info"></span>
-                      <span>当前没有配置模型，添加模型后可在聊天中使用。</span>
+                  </div>
+                  <div v-else class="oc-page-head">
+                    <div>
+                      <h2>搜索结果：“{{ settingsSearch.trim() }}”</h2>
+                      <p>点击左侧任一分类可退出搜索并查看完整分组</p>
                     </div>
-                    <div v-else class="model-rows">
-                      <div v-for="m in currentProvider.models" :key="m.id" class="model-row">
-                        <div class="model-row-main">
-                          <b>{{ m.label || m.id }}</b>
-                          <span v-if="m.label && m.label !== m.id" class="hint">{{ m.id }}</span>
+                    <div class="oc-head-right">
+                      <a-button size="small" @click="settingsSearch = ''">清除搜索</a-button>
+                    </div>
+                  </div>
+
+                  <!-- 1. 偏好设置 (general) -->
+                  <template v-if="showSettingsSec('general')">
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">常规</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">界面布局</div>
+                            <div class="oc-row-desc">选择在工作区与会话之间切换以及跟踪运行中任务的方式</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <div class="oc-layout-cards">
+                              <!-- Card 1: 顶部标签页 (topbar) -->
+                              <button type="button" :class="['oc-layout-card', cfg.ui_density === 'topbar' ? 'on' : '']"
+                                      @click="cfg.ui_density = 'topbar'">
+                                <div class="oc-layout-preview oc-prev-topbar">
+                                  <div class="oc-prev-topstrip">
+                                    <span class="oc-wire-pill on"></span>
+                                    <span class="oc-wire-pill"></span>
+                                    <span class="oc-wire-pill"></span>
+                                  </div>
+                                  <div class="oc-prev-body">
+                                    <span class="oc-wire-line"></span>
+                                    <span class="oc-wire-line short"></span>
+                                  </div>
+                                </div>
+                                <span class="oc-layout-label">顶部标签页</span>
+                              </button>
+
+                              <!-- Card 2: 侧边标签页 (default / sidebar) -->
+                              <button type="button" :class="['oc-layout-card', (!cfg.ui_density || cfg.ui_density === 'default' || cfg.ui_density === 'comfortable') ? 'on' : '']"
+                                      @click="cfg.ui_density = 'default'">
+                                <div class="oc-layout-preview oc-prev-sidebar">
+                                  <div class="oc-prev-sidecol">
+                                    <span class="oc-wire-pill on"></span>
+                                    <span class="oc-wire-pill"></span>
+                                    <span class="oc-wire-pill"></span>
+                                  </div>
+                                  <div class="oc-prev-body">
+                                    <span class="oc-wire-line"></span>
+                                    <span class="oc-wire-line short"></span>
+                                  </div>
+                                </div>
+                                <span class="oc-layout-label">侧边标签页</span>
+                              </button>
+
+                              <!-- Card 3: 收件箱 / 紧凑 (compact) -->
+                              <button type="button" :class="['oc-layout-card', cfg.ui_density === 'compact' ? 'on' : '']"
+                                      @click="cfg.ui_density = 'compact'">
+                                <div class="oc-layout-preview oc-prev-inbox">
+                                  <div class="oc-prev-inboxcol">
+                                    <span class="oc-prev-dotrow"><i class="dot-b"></i><b></b></span>
+                                    <span class="oc-prev-dotrow"><i class="dot-g"></i><b></b></span>
+                                    <span class="oc-prev-dotrow"><i class="dot-o"></i><b></b></span>
+                                    <span class="oc-prev-dotrow"><i class="dot-b"></i><b></b></span>
+                                  </div>
+                                  <div class="oc-prev-body">
+                                    <span class="oc-wire-line"></span>
+                                    <span class="oc-wire-line short"></span>
+                                  </div>
+                                </div>
+                                <span class="oc-layout-label">收件箱</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <button type="button" class="model-row-del" @click="removeProviderModel(currentProvider, m.id)">删除</button>
-                      </div>
-                    </div>
-                  </a-form-item>
-                </a-form>
-                <a-button class="provider-del" danger @click="removeProvider(currentProvider)">删除渠道</a-button>
-              </div>
-            </div>
-          </section>
 
-          <section v-else-if="settingsSection === 'api'" class="settings-card settings-llm">
-            <div class="settings-card-head">
-              <h3>外部 API 连接库</h3>
-              <p>添加连接后，对话中可按说明调用；密钥运行时注入。</p>
-            </div>
-            <div class="provider-layout">
-              <div class="provider-nav">
-                <div class="provider-list">
-                  <span class="slide-pill" :style="apiPillStyle"></span>
-                  <button type="button" v-for="c in cfg.api_connectors" :key="c.id"
-                          :ref="(el) => bindApiConnector(c.id, el)"
-                          :class="['provider-item', settingsApiId === c.id ? 'on' : '']"
-                          @click="settingsApiId = c.id">
-                    <span class="provider-item-name">{{ c.name }}</span>
-                    <span class="provider-item-state">{{ apiConnectorStateText(c) }}</span>
-                  </button>
-                  <a-button class="provider-add" block @click="openAddApiConnector">添加连接</a-button>
-                </div>
-              </div>
-              <div class="provider-form" v-if="currentApiConnector">
-                <a-form layout="vertical">
-                  <div class="form-grid-2">
-                    <a-form-item label="连接名称">
-                      <a-input v-model:value="currentApiConnector.name" size="large" placeholder="如 FRED、高德天气、企业ERP" />
-                    </a-form-item>
-                    <a-form-item label="API 协议">
-                      <a-select v-model:value="currentApiConnector.protocol" size="large">
-                        <a-select-option v-for="o in apiProtocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
-                      </a-select>
-                    </a-form-item>
-                  </div>
-                  <a-form-item label="Base URL">
-                    <div class="field-with-action">
-                      <a-input v-model:value="currentApiConnector.base_url" size="large"
-                               placeholder="https://api.example.com" />
-                      <a-button :loading="apiDiscovering" @click="discoverIntoConnector(currentApiConnector)">解析 OpenAPI</a-button>
-                    </div>
-                  </a-form-item>
-                  <div class="form-grid-2">
-                    <a-form-item label="鉴权方式">
-                      <a-select v-model:value="currentApiConnector.auth_type" size="large">
-                        <a-select-option v-for="o in apiAuthTypes" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
-                      </a-select>
-                    </a-form-item>
-                    <a-form-item v-if="currentApiConnector.auth_type === 'bearer'" label="Authorization 前缀">
-                      <a-input v-model:value="currentApiConnector.auth_prefix" size="large" placeholder="Bearer" />
-                    </a-form-item>
-                    <a-form-item v-else-if="currentApiConnector.auth_type === 'header' || currentApiConnector.auth_type === 'hmac_sha256'" label="密钥 Header 名">
-                      <a-input v-model:value="currentApiConnector.header_name" size="large" placeholder="X-Api-Key" />
-                    </a-form-item>
-                    <a-form-item v-else-if="currentApiConnector.auth_type === 'query'" label="密钥 Query 参数名">
-                      <a-input v-model:value="currentApiConnector.query_name" size="large" placeholder="api_key" />
-                    </a-form-item>
-                    <a-form-item v-else-if="currentApiConnector.auth_type === 'oauth2_client_credentials'" label="OAuth2 Token URL">
-                      <a-input v-model:value="currentApiConnector.token_url" size="large" placeholder="https://example.com/oauth/token" />
-                    </a-form-item>
-                  </div>
-                  <a-form-item v-if="currentApiConnector.auth_type !== 'none'" :label="apiKeyLabel(currentApiConnector.auth_type)">
-                    <div class="field-with-action">
-                      <a-input-password v-model:value="currentApiConnector.api_key" size="large"
-                        :placeholder="currentApiConnector.api_key_set ? '已保存，留空保持不变' : '填入密钥（运行时自动注入，不回显给模型）'"
-                        @blur="saveApiConnectorKey(currentApiConnector)" @pressEnter="saveApiConnectorKey(currentApiConnector)" />
-                      <a-button v-if="currentApiConnector.api_key_set" danger @click="clearApiConnectorKey(currentApiConnector)">清除</a-button>
-                    </div>
-                  </a-form-item>
-                  <a-form-item v-if="needsApiSecret(currentApiConnector.auth_type)" :label="apiSecretLabel(currentApiConnector.auth_type)">
-                    <div class="field-with-action">
-                      <a-input-password v-model:value="currentApiConnector.api_secret" size="large"
-                        :placeholder="currentApiConnector.api_secret_set ? '已保存，留空保持不变' : '填入 Secret / 密码'"
-                        @blur="saveApiConnectorSecret(currentApiConnector)" @pressEnter="saveApiConnectorSecret(currentApiConnector)" />
-                      <a-button v-if="currentApiConnector.api_secret_set" danger @click="clearApiConnectorSecret(currentApiConnector)">清除</a-button>
-                    </div>
-                  </a-form-item>
-                  <div v-if="currentApiConnector.auth_type === 'hmac_sha256'" class="form-grid-2">
-                    <a-form-item label="签名参数 / 头名称">
-                      <a-input v-model:value="currentApiConnector.signature_param" size="large" placeholder="signature" />
-                    </a-form-item>
-                    <a-form-item label="签名位置与编码">
-                      <a-input-group compact>
-                        <a-select v-model:value="currentApiConnector.signature_in" size="large" style="width: 50%">
-                          <a-select-option value="query">Query 参数</a-select-option>
-                          <a-select-option value="header">HTTP Header</a-select-option>
-                        </a-select>
-                        <a-select v-model:value="currentApiConnector.signature_encoding" size="large" style="width: 50%">
-                          <a-select-option value="hex">Hex</a-select-option>
-                          <a-select-option value="base64">Base64</a-select-option>
-                        </a-select>
-                      </a-input-group>
-                    </a-form-item>
-                  </div>
-                  <a-form-item>
-                    <label class="embed-switch">
-                      <span>允许写入操作（POST / PUT / PATCH / DELETE / GraphQL mutation）</span>
-                      <a-switch v-model:checked="currentApiConnector.allow_write" />
-                    </label>
-                  </a-form-item>
-                  <a-form-item label="给 AI 的使用说明（常用路径、参数、返回结构与调用示例）">
-                    <a-textarea v-model:value="currentApiConnector.notes" :auto-size="{ minRows: 4, maxRows: 10 }"
-                      placeholder="写明接口用途、路径、必填/选填参数及示例。免费公开接口也请写清，方便 AI 在对话中自动识别并调用。" />
-                  </a-form-item>
-                  <a-form-item v-if="currentApiConnector.endpoints && currentApiConnector.endpoints.length" label="已登记端点">
-                    <div class="model-rows">
-                      <div v-for="(ep, ei) in currentApiConnector.endpoints" :key="ei" class="model-row">
-                        <div class="model-row-main">
-                          <b>{{ ep.method }} {{ ep.path }}</b>
-                          <span v-if="ep.summary || ep.params" class="hint">{{ [ep.summary, ep.params ? ('参数: ' + ep.params) : ''].filter(Boolean).join(' · ') }}</span>
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">默认启动页面</div>
+                            <div class="oc-row-desc">选择启动 O2 桌面端或刷新工作区时的默认落点视图</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.default_tab" style="width: 170px">
+                              <a-select-option value="ask">智能问答</a-select-option>
+                              <a-select-option v-if="cfg.news_enabled" value="dashboard">终端看板</a-select-option>
+                              <a-select-option v-if="cfg.news_enabled" value="news">新闻流</a-select-option>
+                              <a-select-option value="search">多模态检索</a-select-option>
+                              <a-select-option value="catalog">文件与目录库</a-select-option>
+                              <a-select-option value="browser">内置浏览器</a-select-option>
+                            </a-select>
+                          </div>
                         </div>
-                        <button type="button" class="model-row-del" @click="removeApiEndpoint(currentApiConnector, ei)">移除</button>
-                      </div>
-                    </div>
-                  </a-form-item>
-                </a-form>
-                <div class="provider-form-foot">
-                  <div class="model-list-actions">
-                    <a-button :loading="apiTesting" @click="testApiConnector(currentApiConnector)">测试连接</a-button>
-                    <span v-if="apiTestHint" class="hint">{{ apiTestHint }}</span>
-                  </div>
-                  <a-button danger @click="removeApiConnector(currentApiConnector)">删除连接</a-button>
-                </div>
-              </div>
-              <div class="provider-form" v-else>
-                <div class="model-empty">
-                  <span class="model-empty-ico" v-html="ICO.info"></span>
-                  <span>暂无连接，点击左侧「添加连接」开始。</span>
-                </div>
-              </div>
-            </div>
-          </section>
 
-          <section v-else-if="settingsSection === 'embed'" class="settings-card settings-llm">
-            <div class="settings-card-head">
-              <h3>Embedding 向量化</h3>
-              <p>按语义找得更准，但更慢、更费额度。</p>
-            </div>
-            <div class="embed-actions">
-              <label class="embed-switch">
-                <span>在搜索和回答中使用</span>
-                <a-switch v-model:checked="cfg.embed_use" />
-              </label>
-              <label class="embed-switch">
-                <span>运行向量化</span>
-                <a-switch :checked="cfg.embed_running" @change="toggleEmbedRun" />
-              </label>
-            </div>
-            <div class="provider-layout">
-              <div class="provider-nav">
-                <div class="provider-list">
-                  <span class="slide-pill" :style="embedPillStyle"></span>
-                  <button type="button" v-for="p in cfg.embed_providers" :key="p.id"
-                          :ref="(el) => bindEmbedProvider(p.id, el)"
-                          :class="['provider-item', settingsEmbedPid === p.id ? 'on' : '']"
-                          @click="selectEmbedChannel(p)">
-                    <span class="provider-item-name">{{ p.name }}</span>
-                    <span class="provider-item-state">{{ p.api_key_set ? '已启用' : '未配置' }}</span>
-                  </button>
-                  <a-button class="provider-add" block @click="openAddEmbedProvider">添加渠道</a-button>
-                </div>
-              </div>
-              <div class="provider-form" v-if="currentEmbedProvider">
-                <a-form layout="vertical">
-                  <a-form-item label="Base URL">
-                    <a-input v-model:value="currentEmbedProvider.base_url" size="large"
-                             :placeholder="embedUrlPlaceholder(currentEmbedProvider)" />
-                  </a-form-item>
-                  <a-form-item label="API 格式">
-                    <a-select v-model:value="currentEmbedProvider.protocol" size="large">
-                      <a-select-option v-for="o in embedProtocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
-                    </a-select>
-                  </a-form-item>
-                  <a-form-item label="API Key">
-                    <div class="field-with-action">
-                      <a-input-password v-model:value="currentEmbedProvider.api_key" size="large"
-                        :placeholder="currentEmbedProvider.api_key_set ? '已保存，留空则不修改' : '输入 API Key'"
-                        @blur="saveEmbedKey(currentEmbedProvider)" @pressEnter="saveEmbedKey(currentEmbedProvider)" />
-                      <a-button v-if="currentEmbedProvider.api_key_set" danger @click="clearEmbedKey(currentEmbedProvider)">清除</a-button>
-                    </div>
-                  </a-form-item>
-                  <a-form-item v-if="currentEmbedProvider.models && currentEmbedProvider.models.length" label="当前模型">
-                    <a-select v-model:value="cfg.embed_model" size="large"
-                              @change="cfg.embed_provider_id = currentEmbedProvider.id">
-                      <a-select-option v-for="m in currentEmbedProvider.models" :key="m.id" :value="m.id">
-                        {{ m.label || m.id }}
-                      </a-select-option>
-                    </a-select>
-                  </a-form-item>
-                  <a-form-item>
-                    <div class="model-list-head">
-                      <span>模型列表</span>
-                      <div class="model-list-actions">
-                        <a-button v-if="currentEmbedProvider.api_key_set" @click="syncEmbedModels(currentEmbedProvider)">从接口同步</a-button>
-                        <a-button type="primary" @click="openAddEmbedModel">+ 添加模型</a-button>
-                      </div>
-                    </div>
-                    <div v-if="!(currentEmbedProvider.models && currentEmbedProvider.models.length)" class="model-empty">
-                      <span class="model-empty-ico" v-html="ICO.info"></span>
-                      <span>当前没有配置模型，添加后可用于向量化。</span>
-                    </div>
-                    <div v-else class="model-rows">
-                      <div v-for="m in currentEmbedProvider.models" :key="m.id"
-                           :class="['model-row', 'is-pick', cfg.embed_model === m.id ? 'on' : '']"
-                           @click="cfg.embed_model = m.id; cfg.embed_provider_id = currentEmbedProvider.id">
-                        <div class="model-row-main">
-                          <b>{{ m.label || m.id }}</b>
-                          <span v-if="m.label && m.label !== m.id" class="hint">{{ m.id }}</span>
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">后续消息行为</div>
+                            <div class="oc-row-desc">选择在回答生成中继续发送消息时是引导当前轮次还是排入队列</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.followup_mode" style="width: 170px">
+                              <a-select-option value="steer">引导当前轮次</a-select-option>
+                              <a-select-option value="queue">加入等待队列</a-select-option>
+                            </a-select>
+                          </div>
                         </div>
-                        <button type="button" class="model-row-del" @click.stop="removeEmbedModel(currentEmbedProvider, m.id)">删除</button>
                       </div>
                     </div>
-                  </a-form-item>
-                </a-form>
-                <a-button class="provider-del" danger @click="removeEmbedProvider(currentEmbedProvider)">删除渠道</a-button>
-              </div>
-            </div>
-            <div class="embed-run">
-              <span class="hint">{{ embedStatusText }}</span>
-            </div>
-          </section>
 
-          <section v-else-if="settingsSection === 'ocr'" class="settings-card">
-            <div class="settings-card-head">
-              <h3>文字识别</h3>
-              <p>PaddleOCR-VL。新增或更新文件时用于识别扫描件。</p>
-            </div>
-            <a-form layout="vertical">
-              <a-form-item label="PaddleOCR Token">
-                <div class="field-with-action">
-                  <a-input-password v-model:value="cfg.paddle_token" size="large"
-                    :placeholder="cfg.paddle_token_set ? '已保存，留空则不修改' : '填入后用于新增和更新文件'"
-                    @blur="savePaddle" @pressEnter="savePaddle" />
-                  <a-button v-if="cfg.paddle_token_set" danger @click="clearPaddle">清除</a-button>
-                </div>
-              </a-form-item>
-            </a-form>
-          </section>
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">智能体工具与执行权限</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">内置持久化浏览器 (Chromium)</div>
+                            <div class="oc-row-desc">允许 AI 在问答界面上方同屏展开共享浏览器窗口，模拟鼠标操作网页与查询实时信息</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch v-model:checked="cfg.browser" />
+                          </div>
+                        </div>
 
-          <section v-else-if="settingsSection === 'index'" class="settings-card">
-            <div class="settings-card-head">
-              <h3>文件索引</h3>
-              <p>指定源文件夹后重建索引。</p>
-            </div>
-            <a-form layout="vertical">
-              <a-form-item label="文件源文件夹">
-                <a-input v-model:value="cfg.src_root" size="large" />
-              </a-form-item>
-              <a-form-item label="当前索引">
-                <div class="index-row">
-                  <span class="hint">{{ stats.docs }} 份文件 · {{ stats.chunks }} 条</span>
-                  <a-button :loading="stats.rebuilding" @click="rebuild">重建索引</a-button>
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">本机命令行终端 (PowerShell)</div>
+                            <div class="oc-row-desc">允许 AI 调用 pwsh 查看本机文件目录、环境状态或运行数据处理脚本</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch v-model:checked="cfg.shell" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">外部 API 连接器调用</div>
+                            <div class="oc-row-desc">允许 AI 根据「外部 API」中登记的接口说明自动发起 REST / GraphQL / JSON-RPC 请求</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch v-model:checked="cfg.api_call" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">批量导入与性能加速</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">批量文件导入并发通道数</div>
+                            <div class="oc-row-desc">批量拖入多份文件或整个文件夹时的并行解析与入库 Worker 数量（3~4 路兼顾速度与接口配额）</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.batch_concurrency" style="width: 170px">
+                              <a-select-option :value="1">1 路（串行队列）</a-select-option>
+                              <a-select-option :value="2">2 路并发</a-select-option>
+                              <a-select-option :value="3">3 路并发（推荐）</a-select-option>
+                              <a-select-option :value="4">4 路并发</a-select-option>
+                              <a-select-option :value="6">6 路极速并发</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">批量导入快速规则识别模式</div>
+                            <div class="oc-row-desc">开启后跳过远程大模型元数据调用，直接使用本地高速规则引擎提取文号、日期与摘要，实现毫秒级入库</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch v-model:checked="cfg.batch_fast_meta" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 2. 外观与参数 (appearance) -->
+                  <template v-if="showSettingsSec('appearance')">
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">主题模式</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">界面明暗主题</div>
+                            <div class="oc-row-desc">支持在清爽浅色工作台与 Fincept 风格深色金融终端之间一键切换</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.ui_theme" style="width: 170px">
+                              <a-select-option value="light">浅色模式 (Light)</a-select-option>
+                              <a-select-option value="dark">深色终端 (Terminal Dark)</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">问答与检索生成参数</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">默认思考推理强度 (Reasoning Effort)</div>
+                            <div class="oc-row-desc">控制支持深度思考的模型（如 DeepSeek-R1、Claude、o3 等）在回答前的推理深度</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.effort" style="width: 170px">
+                              <a-select-option v-for="e in EFFORTS" :key="e.id" :value="e.id">{{ e.label }}</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">生成温度 (Temperature)</div>
+                            <div class="oc-row-desc">数值越低回答越严谨稳定；制度条文、合同与财报核对建议保持 0.0 ~ 0.1</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.temperature" style="width: 170px">
+                              <a-select-option :value="0">0.0（最严谨精确）</a-select-option>
+                              <a-select-option :value="0.1">0.1（制度核对推荐）</a-select-option>
+                              <a-select-option :value="0.3">0.3（标准均衡）</a-select-option>
+                              <a-select-option :value="0.7">0.7（发散撰写）</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">单次检索召回片段数 (Top-K)</div>
+                            <div class="oc-row-desc">每次检索向模型上下文注入的高相关性文档切片或数据表格数量</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.top_k" style="width: 170px">
+                              <a-select-option :value="6">6 条切片</a-select-option>
+                              <a-select-option :value="8">8 条切片（推荐）</a-select-option>
+                              <a-select-option :value="12">12 条切片</a-select-option>
+                              <a-select-option :value="16">16 条切片（长上下文）</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">画布与交互体验</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">双指与 Ctrl + 滚轮无级缩放</div>
+                            <div class="oc-row-desc">允许在文档原文抽屉中通过触控板捏合或按住 Ctrl + 鼠标滚轮缩放 PDF 原页与图纸</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch :checked="true" disabled />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 3. 快捷键 (shortcuts) -->
+                  <template v-if="showSettingsSec('shortcuts')">
+                    <div class="oc-group">
+                      <div class="oc-group-head">
+                        <h4 class="oc-group-title">快捷键自定义（右键点击任意可编辑项即可录制新键位）</h4>
+                        <a-button size="small" :disabled="!hasCustomShortcuts" @click="resetAllShortcuts">恢复全部默认</a-button>
+                      </div>
+                    </div>
+
+                    <div v-for="grp in shortcutGroups" :key="grp.key" class="oc-group">
+                      <h4 class="oc-group-title">{{ grp.title }}</h4>
+                      <div class="oc-card">
+                        <div v-for="s in grp.items" :key="s.id"
+                             :class="['oc-row', s.editable ? 'oc-kbd-editable' : '']"
+                             :title="s.editable ? '右键点击录制新的快捷键' : '鼠标手势（不支持重绑定）'"
+                             @contextmenu="s.editable && onShortcutContext($event, s)">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">{{ s.title }}</div>
+                            <div class="oc-row-desc">{{ s.desc }}</div>
+                          </div>
+                          <div class="oc-row-ctrl" style="display:flex;align-items:center;gap:8px">
+                            <button v-if="s.editable && isShortcutModified(s.id) && recordingShortcutId !== s.id"
+                                    type="button" class="oc-kbd-reset-btn" @click.stop="resetShortcut(s.id)">重置</button>
+                            <span v-if="recordingShortcutId === s.id" class="oc-kbd-recording">
+                              <span>请按下新快捷键… (Esc 取消)</span>
+                            </span>
+                            <span v-else class="oc-kbd-group">
+                              <template v-for="(tok, idx) in shortcutTokens(getShortcutCombo(s.id))" :key="idx">
+                                <span v-if="idx > 0">+</span>
+                                <kbd class="oc-kbd">{{ tok }}</kbd>
+                              </template>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 4. 提供商 (llm) -->
+                  <template v-if="showSettingsSec('llm')">
+                    <div class="oc-group">
+                      <div class="oc-group-head">
+                        <h4 class="oc-group-title">已接入服务商渠道</h4>
+                        <a-button size="small" type="primary" @click="openAddProvider">+ 添加渠道</a-button>
+                      </div>
+                      <div class="oc-chip-bar" style="padding:2px 0 4px">
+                        <button type="button" v-for="p in cfg.providers" :key="p.id"
+                                :class="['oc-chip', settingsPid === p.id ? 'on' : '']"
+                                @click="settingsPid = p.id">
+                          <span :class="['oc-chip-dot', p.api_key_set ? 'ok' : '']"></span>
+                          <span>{{ p.name }}</span>
+                        </button>
+                      </div>
+
+                      <div class="oc-card" v-if="currentProvider">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>{{ currentProvider.name }}</span>
+                              <span :class="['oc-stat-badge', currentProvider.api_key_set ? 'ok' : '']">
+                                {{ currentProvider.api_key_set ? '已配置密钥' : '未配置密钥' }}
+                              </span>
+                            </div>
+                            <div class="oc-row-desc">配置该渠道的接口地址、协议标准与访问密钥</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button size="small" danger @click="removeProvider(currentProvider)">删除渠道</a-button>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">Base URL</div>
+                            <div class="oc-row-desc">服务端接口根地址（留空则使用官方默认地址）</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <a-input v-model:value="currentProvider.base_url"
+                                     :placeholder="urlPlaceholder(currentProvider)" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">API 协议格式</div>
+                            <div class="oc-row-desc">与该提供商通信所使用的请求与流式解析标准</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <a-select v-model:value="currentProvider.protocol" style="width: 100%">
+                              <a-select-option v-for="o in protocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">API Key</div>
+                            <div class="oc-row-desc">输入后按回车或移开焦点即自动加密保存至本地配置</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <div class="field-with-action" style="width:100%">
+                              <a-input-password v-model:value="currentProvider.api_key"
+                                :placeholder="currentProvider.api_key_set ? '已保存，留空则不修改' : '输入 API Key'"
+                                @blur="saveProviderKey(currentProvider)" @pressEnter="saveProviderKey(currentProvider)" />
+                              <a-button v-if="currentProvider.api_key_set" danger @click="clearProviderKey(currentProvider)">清除</a-button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="oc-row oc-row-stack">
+                          <div class="model-list-head" style="margin-bottom:4px">
+                            <div>
+                              <div class="oc-row-title">渠道可用模型列表</div>
+                              <div class="oc-row-desc">添加或同步模型后，即可在对话顶部或「模型」设置中选用</div>
+                            </div>
+                            <div class="model-list-actions">
+                              <a-button size="small" v-if="currentProvider.api_key_set" @click="syncProviderModels(currentProvider)">从接口同步</a-button>
+                              <a-button size="small" type="primary" @click="openAddModel">+ 添加模型</a-button>
+                            </div>
+                          </div>
+                          <div v-if="!(currentProvider.models && currentProvider.models.length)" class="model-empty">
+                            <span class="model-empty-ico" v-html="ICO.info"></span>
+                            <span>当前渠道还没有登记模型，点击「从接口同步」或「+ 添加模型」后可在问答中使用。</span>
+                          </div>
+                          <div v-else class="model-rows">
+                            <div v-for="m in currentProvider.models" :key="m.id" class="model-row">
+                              <div class="model-row-main">
+                                <b>{{ m.label || m.id }}</b>
+                                <span v-if="m.label && m.label !== m.id" class="hint">{{ m.id }}</span>
+                              </div>
+                              <div style="display:flex;align-items:center;gap:10px">
+                                <span v-if="cfg.model === m.id && cfg.provider_id === currentProvider.id" class="oc-stat-badge ok">当前默认</span>
+                                <button v-else-if="currentProvider.api_key_set" type="button" class="op-link" style="border:0;background:none"
+                                        @click="cfg.provider_id = currentProvider.id; cfg.model = m.id; loadModels()">设为默认</button>
+                                <button type="button" class="model-row-del" @click="removeProviderModel(currentProvider, m.id)">删除</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 5. 模型 (models) -->
+                  <template v-if="showSettingsSec('models')">
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">默认对话与入库识别模型</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">当前主力问答模型</div>
+                            <div class="oc-row-desc">用于智能问答、多轮工具调用及新文档入库时的结构化属性抽取</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <a-select v-if="modelList.length" :value="cfg.provider_id + '::' + cfg.model"
+                                      style="width: 100%" @change="onSettingsModelPick">
+                              <a-select-option v-for="m in modelList" :key="m.provider_id + '::' + m.id" :value="m.provider_id + '::' + m.id">
+                                {{ m.provider }} · {{ m.label || m.id }}
+                              </a-select-option>
+                            </a-select>
+                            <a-button v-else size="small" type="primary" @click="selectSettingsNav('llm')">前往配置提供商密钥</a-button>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">默认推理强度</div>
+                            <div class="oc-row-desc">新建对话时的默认思考深度档位（也可在输入框左下角随时切换）</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.effort" style="width: 170px">
+                              <a-select-option v-for="e in EFFORTS" :key="e.id" :value="e.id">{{ e.label }}</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group" v-if="modelList.length">
+                      <h4 class="oc-group-title">已启用模型列表 ({{ modelList.length }})</h4>
+                      <div class="oc-card">
+                        <div v-for="m in modelList" :key="m.provider_id + '::' + m.id" class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>{{ m.label || m.id }}</span>
+                              <span class="oc-stat-badge">{{ m.provider }}</span>
+                              <span v-if="m.reasoning" class="oc-stat-badge">推理</span>
+                              <span v-if="m.image" class="oc-stat-badge">视觉多模态</span>
+                              <span v-if="m.context_label" class="oc-stat-badge">{{ m.context_label }}</span>
+                            </div>
+                            <div class="oc-row-desc">{{ m.id }}</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <span v-if="cfg.model === m.id && cfg.provider_id === m.provider_id" class="oc-stat-badge ok">正在使用</span>
+                            <a-button v-else size="small" @click="cfg.provider_id = m.provider_id; cfg.model = m.id">设为默认</a-button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 6. 向量引擎 (embed) -->
+                  <template v-if="showSettingsSec('embed')">
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">语义向量化开关与任务</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">在搜索和回答中使用语义向量</div>
+                            <div class="oc-row-desc">结合 FTS5 关键词匹配与 Embedding 语义向量进行混合检索，提升跨表述召回率</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch v-model:checked="cfg.embed_use" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">运行后台向量化引擎</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch :checked="cfg.embed_running" @change="toggleEmbedRun" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <div class="oc-group-head">
+                        <h4 class="oc-group-title">Embedding 渠道与模型配置</h4>
+                        <a-button size="small" type="primary" @click="openAddEmbedProvider">+ 添加向量渠道</a-button>
+                      </div>
+                      <div class="oc-chip-bar" style="padding:2px 0 4px">
+                        <button type="button" v-for="p in cfg.embed_providers" :key="p.id"
+                                :class="['oc-chip', settingsEmbedPid === p.id ? 'on' : '']"
+                                @click="selectEmbedChannel(p)">
+                          <span>{{ p.name }}</span>
+                        </button>
+                      </div>
+
+                      <div class="oc-card" v-if="currentEmbedProvider">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>{{ currentEmbedProvider.name }}</span>
+                              <span :class="['oc-stat-badge', currentEmbedProvider.api_key_set ? 'ok' : '']">
+                                {{ currentEmbedProvider.api_key_set ? '已启用' : '未配置' }}
+                              </span>
+                            </div>
+                            <div class="oc-row-desc">用于对知识库切片进行批量向量编码</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button size="small" danger @click="removeEmbedProvider(currentEmbedProvider)">删除渠道</a-button>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">Base URL</div>
+                            <div class="oc-row-desc">向量化接口根地址</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <a-input v-model:value="currentEmbedProvider.base_url"
+                                     :placeholder="embedUrlPlaceholder(currentEmbedProvider)" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">API 格式</div>
+                            <div class="oc-row-desc">支持 OpenAI 兼容 (v1/embeddings) 与通义 DashScope 原生格式</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <a-select v-model:value="currentEmbedProvider.protocol" style="width: 100%">
+                              <a-select-option v-for="o in embedProtocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">API Key</div>
+                            <div class="oc-row-desc">该向量渠道的访问密钥</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <div class="field-with-action" style="width:100%">
+                              <a-input-password v-model:value="currentEmbedProvider.api_key"
+                                :placeholder="currentEmbedProvider.api_key_set ? '已保存，留空则不修改' : '输入 API Key'"
+                                @blur="saveEmbedKey(currentEmbedProvider)" @pressEnter="saveEmbedKey(currentEmbedProvider)" />
+                              <a-button v-if="currentEmbedProvider.api_key_set" danger @click="clearEmbedKey(currentEmbedProvider)">清除</a-button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="oc-row" v-if="currentEmbedProvider.models && currentEmbedProvider.models.length">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">当前生效向量模型</div>
+                            <div class="oc-row-desc">切换模型后建议重新运行向量化以保持维度一致</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <a-select v-model:value="cfg.embed_model" style="width: 100%"
+                                      @change="cfg.embed_provider_id = currentEmbedProvider.id">
+                              <a-select-option v-for="m in currentEmbedProvider.models" :key="m.id" :value="m.id">
+                                {{ m.label || m.id }}
+                              </a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+
+                        <div class="oc-row oc-row-stack">
+                          <div class="model-list-head" style="margin-bottom:4px">
+                            <div>
+                              <div class="oc-row-title">向量模型列表</div>
+                              <div class="oc-row-desc">点击任意一行即可选为当前生效向量模型</div>
+                            </div>
+                            <div class="model-list-actions">
+                              <a-button size="small" v-if="currentEmbedProvider.api_key_set" @click="syncEmbedModels(currentEmbedProvider)">从接口同步</a-button>
+                              <a-button size="small" type="primary" @click="openAddEmbedModel">+ 添加模型</a-button>
+                            </div>
+                          </div>
+                          <div v-if="!(currentEmbedProvider.models && currentEmbedProvider.models.length)" class="model-empty">
+                            <span class="model-empty-ico" v-html="ICO.info"></span>
+                            <span>当前没有配置模型，添加后可用于向量化。</span>
+                          </div>
+                          <div v-else class="model-rows">
+                            <div v-for="m in currentEmbedProvider.models" :key="m.id"
+                                 :class="['model-row', 'is-pick', cfg.embed_model === m.id ? 'on' : '']"
+                                 @click="cfg.embed_model = m.id; cfg.embed_provider_id = currentEmbedProvider.id">
+                              <div class="model-row-main">
+                                <b>{{ m.label || m.id }}</b>
+                                <span v-if="m.label && m.label !== m.id" class="hint">{{ m.id }}</span>
+                              </div>
+                              <div style="display:flex;align-items:center;gap:10px">
+                                <span v-if="cfg.embed_model === m.id" class="oc-stat-badge ok">当前选用</span>
+                                <button type="button" class="model-row-del" @click.stop="removeEmbedModel(currentEmbedProvider, m.id)">删除</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 7. 外部 API (api) -->
+                  <template v-if="showSettingsSec('api')">
+                    <div class="oc-group">
+                      <div class="oc-group-head">
+                        <h4 class="oc-group-title">外部 API 连接器目录 ({{ (cfg.api_connectors || []).length }})</h4>
+                        <a-button size="small" type="primary" @click="openAddApiConnector">+ 添加连接</a-button>
+                      </div>
+                      <div class="oc-card oc-card-pad settings-llm" style="padding:0;overflow:hidden">
+                        <div class="provider-layout" style="border:0;border-radius:0">
+                          <div class="provider-nav" style="background:#f4f4f3">
+                            <div class="provider-list api-provider-list">
+                              <span class="slide-pill" :style="apiPillStyle"></span>
+                              <section v-for="g in apiConnectorGroups" :key="g.id" class="provider-group">
+                                <div class="provider-group-label">{{ g.label }}</div>
+                                <div class="provider-group-items">
+                                  <button type="button" v-for="c in g.items" :key="c.id"
+                                          :ref="(el) => bindApiConnector(c.id, el)"
+                                          :class="['provider-item', settingsApiId === c.id ? 'on' : '']"
+                                          @click="settingsApiId = c.id">
+                                    <span class="provider-item-name">{{ c.name }}</span>
+                                    <span class="provider-item-state">{{ apiConnectorStateText(c) }}</span>
+                                  </button>
+                                </div>
+                              </section>
+                            </div>
+                          </div>
+                          <div class="provider-form" v-if="currentApiConnector">
+                            <a-form layout="vertical">
+                              <div class="form-grid-2">
+                                <a-form-item label="连接名称">
+                                  <a-input v-model:value="currentApiConnector.name" placeholder="如 FRED、高德天气、企业ERP" />
+                                </a-form-item>
+                                <a-form-item label="API 协议">
+                                  <a-select v-model:value="currentApiConnector.protocol">
+                                    <a-select-option v-for="o in apiProtocols" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
+                                  </a-select>
+                                </a-form-item>
+                              </div>
+                              <a-form-item label="Base URL">
+                                <div class="field-with-action">
+                                  <a-input v-model:value="currentApiConnector.base_url" placeholder="https://api.example.com" />
+                                  <a-button :loading="apiDiscovering" @click="discoverIntoConnector(currentApiConnector)">解析 OpenAPI</a-button>
+                                </div>
+                              </a-form-item>
+                              <div class="form-grid-2">
+                                <a-form-item label="鉴权方式">
+                                  <a-select v-model:value="currentApiConnector.auth_type">
+                                    <a-select-option v-for="o in apiAuthTypes" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
+                                  </a-select>
+                                </a-form-item>
+                                <a-form-item v-if="currentApiConnector.auth_type === 'bearer'" label="Authorization 前缀">
+                                  <a-input v-model:value="currentApiConnector.auth_prefix" placeholder="Bearer" />
+                                </a-form-item>
+                                <a-form-item v-else-if="currentApiConnector.auth_type === 'header' || currentApiConnector.auth_type === 'hmac_sha256'" label="密钥 Header 名">
+                                  <a-input v-model:value="currentApiConnector.header_name" placeholder="X-Api-Key" />
+                                </a-form-item>
+                                <a-form-item v-else-if="currentApiConnector.auth_type === 'query'" label="密钥 Query 参数名">
+                                  <a-input v-model:value="currentApiConnector.query_name" placeholder="api_key" />
+                                </a-form-item>
+                                <a-form-item v-else-if="currentApiConnector.auth_type === 'oauth2_client_credentials'" label="OAuth2 Token URL">
+                                  <a-input v-model:value="currentApiConnector.token_url" placeholder="https://example.com/oauth/token" />
+                                </a-form-item>
+                              </div>
+                              <a-form-item v-if="currentApiConnector.auth_type !== 'none'" :label="apiKeyLabel(currentApiConnector.auth_type)">
+                                <div class="field-with-action">
+                                  <a-input-password v-model:value="currentApiConnector.api_key"
+                                    :placeholder="currentApiConnector.api_key_set ? '已保存，留空保持不变' : '填入密钥（运行时自动注入，不回显给模型）'"
+                                    @blur="saveApiConnectorKey(currentApiConnector)" @pressEnter="saveApiConnectorKey(currentApiConnector)" />
+                                  <a-button v-if="currentApiConnector.api_key_set" danger @click="clearApiConnectorKey(currentApiConnector)">清除</a-button>
+                                </div>
+                              </a-form-item>
+                              <a-form-item v-if="needsApiSecret(currentApiConnector.auth_type)" :label="apiSecretLabel(currentApiConnector.auth_type)">
+                                <div class="field-with-action">
+                                  <a-input-password v-model:value="currentApiConnector.api_secret"
+                                    :placeholder="currentApiConnector.api_secret_set ? '已保存，留空保持不变' : '填入 Secret / 密码'"
+                                    @blur="saveApiConnectorSecret(currentApiConnector)" @pressEnter="saveApiConnectorSecret(currentApiConnector)" />
+                                  <a-button v-if="currentApiConnector.api_secret_set" danger @click="clearApiConnectorSecret(currentApiConnector)">清除</a-button>
+                                </div>
+                              </a-form-item>
+                              <div v-if="currentApiConnector.auth_type === 'hmac_sha256'" class="form-grid-2">
+                                <a-form-item label="签名参数 / 头名称">
+                                  <a-input v-model:value="currentApiConnector.signature_param" placeholder="signature" />
+                                </a-form-item>
+                                <a-form-item label="签名位置与编码">
+                                  <a-input-group compact>
+                                    <a-select v-model:value="currentApiConnector.signature_in" style="width: 50%">
+                                      <a-select-option value="query">Query 参数</a-select-option>
+                                      <a-select-option value="header">HTTP Header</a-select-option>
+                                    </a-select>
+                                    <a-select v-model:value="currentApiConnector.signature_encoding" style="width: 50%">
+                                      <a-select-option value="hex">Hex</a-select-option>
+                                      <a-select-option value="base64">Base64</a-select-option>
+                                    </a-select>
+                                  </a-input-group>
+                                </a-form-item>
+                              </div>
+                              <div class="form-grid-2">
+                                <a-form-item label="数据分类">
+                                  <a-select v-model:value="currentApiConnector.category">
+                                    <a-select-option v-for="o in apiCategories" :key="o.id" :value="o.id">{{ o.label }}</a-select-option>
+                                  </a-select>
+                                </a-form-item>
+                                <a-form-item label="连接策略">
+                                  <div style="display:flex;gap:16px;padding-top:5px">
+                                    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                                      <a-switch size="small" v-model:checked="currentApiConnector.preferred" />
+                                      <span>优先使用</span>
+                                    </label>
+                                    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                                      <a-switch size="small" v-model:checked="currentApiConnector.allow_write" />
+                                      <span>允许写入</span>
+                                    </label>
+                                  </div>
+                                </a-form-item>
+                              </div>
+                              <a-form-item label="给 AI 的使用说明">
+                                <a-textarea v-model:value="currentApiConnector.notes" :auto-size="{ minRows: 3, maxRows: 8 }"
+                                  placeholder="写明接口用途、路径、必填/选填参数及示例。" />
+                              </a-form-item>
+                              <a-form-item v-if="currentApiConnector.endpoints && currentApiConnector.endpoints.length" label="已登记端点">
+                                <div class="model-rows">
+                                  <div v-for="(ep, ei) in currentApiConnector.endpoints" :key="ei" class="model-row">
+                                    <div class="model-row-main">
+                                      <b>{{ ep.method }} {{ ep.path }}</b>
+                                      <span v-if="ep.summary || ep.params" class="hint">{{ [ep.summary, ep.params ? ('参数: ' + ep.params) : ''].filter(Boolean).join(' · ') }}</span>
+                                    </div>
+                                    <button type="button" class="model-row-del" @click="removeApiEndpoint(currentApiConnector, ei)">移除</button>
+                                  </div>
+                                </div>
+                              </a-form-item>
+                            </a-form>
+                            <div class="provider-form-foot">
+                              <div class="model-list-actions">
+                                <a-button :loading="apiTesting" @click="testApiConnector(currentApiConnector)">测试连接</a-button>
+                                <span v-if="apiTestHint" class="hint">{{ apiTestHint }}</span>
+                              </div>
+                              <a-button danger @click="removeApiConnector(currentApiConnector)">删除连接</a-button>
+                            </div>
+                          </div>
+                          <div class="provider-form" v-else>
+                            <div class="model-empty">
+                              <span class="model-empty-ico" v-html="ICO.info"></span>
+                              <span>暂无连接，点击右上角「+ 添加连接」开始。</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 7.5 新闻流与情报终端 (news) -->
+                  <template v-if="showSettingsSec('news')">
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">情报终端总开关与抓取策略</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>启用新闻流与情报金融分析终端</span>
+                              <span :class="['oc-stat-badge', cfg.news_enabled ? 'ok' : '']">
+                                {{ cfg.news_enabled ? '已启用' : '已关闭' }}
+                              </span>
+                            </div>
+                            <div class="oc-row-desc">开启后侧边栏解锁「终端看板」「新闻流」，对话页可唤出新闻浮动窗；关闭时后台零拉取零开销</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch v-model:checked="cfg.news_enabled" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">入库自动 L1 翻译与情绪评分</div>
+                            <div class="oc-row-desc">抓取到英/俄文新闻时自动翻译标题、核心导语并评估情绪与冲击烈度（中文源零消耗直通）</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch v-model:checked="cfg.news_auto_translate" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">后台定时抓取频率</div>
+                            <div class="oc-row-desc">启用新闻流后，每隔指定分钟在后台并发增量拉取（支持 ETag/304 省流）</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.news_refresh_minutes" style="width: 170px">
+                              <a-select-option :value="5">每 5 分钟</a-select-option>
+                              <a-select-option :value="15">每 15 分钟（推荐）</a-select-option>
+                              <a-select-option :value="30">每 30 分钟</a-select-option>
+                              <a-select-option :value="60">每 60 分钟</a-select-option>
+                              <a-select-option :value="0">仅手动刷新</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">RSSHub 路由网关地址</div>
+                            <div class="oc-row-desc">填写公共或自建 RSSHub 地址，订阅 rsshub:// 开头的路径时会自动展开</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <a-input v-model:value="cfg.news_rsshub_base" placeholder="https://rsshub.app" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">本地 GPU 跨语种去重与向量引擎 (BGE-M3 + USearch)</div>
+                            <div class="oc-row-desc">抓取后在调用 LLM 翻译前自动对中/英/俄/日同题报道做语义归簇与代表稿竞选，零 API 费用</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch v-model:checked="cfg.news_local_embed" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">本地 GPU 混合检索精排 (BGE-Reranker-v2-m3)</div>
+                            <div class="oc-row-desc">USearch 向量 + Tantivy 全文融合召回后使用本地跨语种 Reranker 精排</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch v-model:checked="cfg.news_local_rerank" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">全库去重与索引维护</div>
+                            <div class="oc-row-desc">当前代表稿 {{ newsStatus.items_total || 0 }} 条（已去重折叠 {{ newsStatus.dedup_saved || 0 }} 条）· USearch {{ (newsStatus.engine && newsStatus.engine.vec_docs) || 0 }} · Tantivy {{ (newsStatus.engine && newsStatus.engine.fts_docs) || 0 }}</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button size="small" :loading="newsReindexing" @click="reindexNewsAll">全库去重并重建索引</a-button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">行情数据源与代理</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">行情主源分工</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <a-select v-model:value="cfg.market_source_mode" style="width: 100%">
+                              <a-select-option value="auto">全球 yfinance + A股/回测 Tushare（推荐）</a-select-option>
+                              <a-select-option value="yfinance">全局 yfinance 优先</a-select-option>
+                              <a-select-option value="tushare">全局 Tushare 优先</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>行情代理地址</span>
+                              <span v-if="cfg.detected_system_proxy" class="oc-stat-badge ok">{{ cfg.detected_system_proxy }}</span>
+                            </div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <div class="field-with-action" style="width:100%">
+                              <a-input v-model:value="cfg.market_proxy"
+                                       :placeholder="cfg.detected_system_proxy ? ('自动: ' + cfg.detected_system_proxy) : '留空自动读取系统代理（如 http://127.0.0.1:7890）'" />
+                              <button type="button" :class="['ft-icon-btn', mktProxyTesting ? 'on' : '']"
+                                      style="width:32px;height:32px" title="测试 Yahoo Finance 代理连通"
+                                      @click="testMarketProxy()" v-html="ICO.shortcut"></button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">翻译与情报抽取专用模型（独立于主对话）</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">后台新闻处理模型</div>
+                            <div class="oc-row-desc">推荐单独选用 Flash 等低成本、高并发小模型处理海量中/英/俄 RSS 翻译与抽取；留空则跟随主对话模型</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <a-select :value="newsModelSelectVal" style="width:100%" show-search @change="onNewsModelPick">
+                              <a-select-option value="">跟随主对话模型（{{ modelLabel || '未设置' }}）</a-select-option>
+                              <a-select-opt-group v-for="g in groupedModels" :key="'nm-' + g.id" :label="g.name">
+                                <a-select-option v-for="m in g.models" :key="g.id + '::' + m.id" :value="g.id + '::' + m.id">
+                                  {{ m.label }}
+                                </a-select-option>
+                              </a-select-opt-group>
+                            </a-select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <div class="oc-group-head">
+                        <h4 class="oc-group-title">RSS 订阅源管理（共 {{ newsFeeds.length }} 个）</h4>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                          <a-button size="small" @click="importPresetFeeds()">导入推荐信息源</a-button>
+                          <a-button size="small" @click="triggerOpmlImport">导入 OPML</a-button>
+                          <a-button size="small" @click="exportOpml">导出 OPML</a-button>
+                          <a-button size="small" type="primary" :loading="newsFetching" @click="fetchNewsNow()">立即抓取全部</a-button>
+                          <input ref="opmlInput" type="file" accept=".opml,.xml" style="display:none" @change="onOpmlFilePicked" />
+                        </div>
+                      </div>
+                      <div class="oc-card oc-card-pad" style="display:flex;flex-direction:column;gap:12px">
+                        <div style="display:grid;grid-template-columns:1.1fr 1.8fr 110px 95px auto;gap:8px;align-items:center">
+                          <a-input v-model:value="newFeedForm.name" placeholder="源名称（如 TASS）" />
+                          <a-input v-model:value="newFeedForm.url" placeholder="RSS / Atom URL 或 rsshub://..." @pressEnter="saveNewFeed" />
+                          <a-input v-model:value="newFeedForm.category" placeholder="分类" />
+                          <a-select v-model:value="newFeedForm.lang">
+                            <a-select-option value="auto">自动</a-select-option>
+                            <a-select-option value="zh">中文</a-select-option>
+                            <a-select-option value="en">英文</a-select-option>
+                            <a-select-option value="ru">俄文</a-select-option>
+                            <a-select-option value="ja">日文</a-select-option>
+                          </a-select>
+                          <a-button type="primary" @click="saveNewFeed">添加</a-button>
+                        </div>
+
+                        <o2-empty v-if="!newsFeeds.length" description="暂无订阅源" />
+                        <div v-else style="display:flex;flex-direction:column;gap:6px;max-height:360px;overflow-y:auto">
+                          <div v-for="fd in newsFeeds" :key="fd.id" class="news-feed-row">
+                            <span :class="['news-status-dot', !fd.enabled ? 'off' : (fd.fail_count > 0 ? 'err' : '')]"
+                                  :title="fd.last_error || '正常'"></span>
+                            <div style="min-width:0;flex:1">
+                              <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500">
+                                <span>{{ fd.name }}</span>
+                                <span :class="['news-lang-badge', fd.lang === 'auto' ? 'en' : fd.lang]">{{ fd.lang }}</span>
+                                <a-tag>{{ fd.category }}</a-tag>
+                                <span class="hint">{{ fd.item_count || 0 }} 条</span>
+                              </div>
+                              <div class="hint" style="font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                {{ fd.url }}
+                                <span v-if="fd.last_error" style="color:var(--down)"> · 失败({{ fd.fail_count }}): {{ fd.last_error }}</span>
+                              </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;flex:none">
+                              <a-switch size="small" :checked="!!fd.enabled" @change="(v) => toggleFeedEnabled(fd, v)" />
+                              <a-button size="small" @click="fetchNewsNow(fd.id)">抓取</a-button>
+                              <a-button size="small" danger @click="deleteNewsFeed(fd)">删除</a-button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <div class="oc-group-head">
+                        <h4 class="oc-group-title">中/英/俄专有术语表 (Glossary)</h4>
+                        <a-button size="small" @click="loadDefaultGlossary">加载常用财经/俄语术语</a-button>
+                      </div>
+                      <div class="oc-card oc-card-pad" style="display:flex;flex-direction:column;gap:10px">
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px">
+                          <a-input v-model:value="newGlossaryForm.term" placeholder="外文原文（如 ОАО РЖД）" />
+                          <a-input v-model:value="newGlossaryForm.zh" placeholder="标准中文译名（如 俄铁）" />
+                          <a-input v-model:value="newGlossaryForm.note" placeholder="备注（可选）" @pressEnter="addGlossaryTerm" />
+                          <a-button type="primary" @click="addGlossaryTerm">添加术语</a-button>
+                        </div>
+                        <div v-if="(cfg.news_glossary || []).length" style="display:flex;flex-wrap:wrap;gap:6px">
+                          <a-tag v-for="(g, gi) in cfg.news_glossary" :key="gi" closable @close="removeGlossaryTerm(gi)">
+                            {{ g.term }} → {{ g.zh }}
+                          </a-tag>
+                        </div>
+                        <div v-else class="hint">当前未自定义术语，后台翻译将自动使用内置默认术语表（俄铁、美联储、俄罗斯央行、Brent、OPEC+ 等）。</div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 8. 文档与识别 (ocr / index) -->
+                  <template v-if="showSettingsSec('ocr')">
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">版面与文字识别 (PaddleOCR-VL)</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>PaddleOCR-VL Token</span>
+                              <span :class="['oc-stat-badge', cfg.paddle_token_set ? 'ok' : '']">
+                                {{ cfg.paddle_token_set ? '已配置' : '未配置' }}
+                              </span>
+                            </div>
+                            <div class="oc-row-desc">用于识别无内置文本层的扫描件 PDF 以及图片中的复杂表格与文字</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <div class="field-with-action" style="width:100%">
+                              <a-input-password v-model:value="cfg.paddle_token"
+                                :placeholder="cfg.paddle_token_set ? '已保存，留空则不修改' : '填入 Token 后按回车保存'"
+                                @blur="savePaddle" @pressEnter="savePaddle" />
+                              <a-button v-if="cfg.paddle_token_set" danger @click="clearPaddle">清除</a-button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">PDF 解析与 OCR 调度策略</div>
+                            <div class="oc-row-desc">「智能加速」下，自带文本层的原生 PDF 直接本地毫秒级提取正文与表格，仅扫描件调用云端 OCR（大幅提升批量导入速度）</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.pdf_ocr_mode" style="width: 240px">
+                              <a-select-option value="smart">智能加速（原生文本免云端 OCR）</a-select-option>
+                              <a-select-option value="always">全部走云端版面识别（慢）</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">文件源目录与索引重建</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">文件源文件夹</div>
+                            <div class="oc-row-desc">所有入库文档与多级项目子目录的本地物理存储根路径</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <div class="field-with-action" style="width:100%">
+                              <a-input v-model:value="cfg.src_root" />
+                              <a-button @click="openCacheDir('src_root')">打开目录</a-button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">全库索引状态</div>
+                            <div class="oc-row-desc">当前已索引 {{ stats.docs }} 份文件 · {{ stats.chunks }} 个知识切片{{ stats.built_at ? (' · 上次构建: ' + stats.built_at) : '' }}</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button :loading="stats.rebuilding" @click="rebuild">重建全库索引</a-button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 9. 浏览器与存储 (storage) -->
+                  <template v-if="showSettingsSec('storage')">
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">AI 浏览器下载处理策略</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">浏览器下载文件存放位置</div>
+                            <div class="oc-row-desc">选择 AI 或用户在内置浏览器中下载文件时的落盘目录（推荐独立沙箱目录，避免弄乱系统个人下载夹）</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.browser_download_mode" style="width: 240px">
+                              <a-select-option value="sandbox">O2 专属下载沙箱目录（推荐）</a-select-option>
+                              <a-select-option value="system">系统默认「下载」文件夹</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">当前生效下载路径</div>
+                            <div class="oc-row-desc">{{ cacheReport.active_download_dir || '加载中…' }}</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button size="small" @click="openCacheDir('downloads')">打开下载目录</a-button>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">启动时自动回收过期临时文件</div>
+                            <div class="oc-row-desc">每次启动自动清理超过 12 小时的未提交上传暂存、AI 浏览器临时截图与命令行溢出日志</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-switch v-model:checked="cfg.auto_clean_temp" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <div class="oc-group-head">
+                        <h4 class="oc-group-title">临时文件与缓存空间管理</h4>
+                        <a-button size="small" @click="loadCacheStatus">刷新统计</a-button>
+                      </div>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>上传暂存与运行临时文件</span>
+                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.temp_logs.bytes) }} · {{ cacheReport.temp_logs.files }} 个文件</span>
+                            </div>
+                            <div class="oc-row-desc">包含未确认入库的上传孤儿文件 (build/uploads)、AI 浏览器截图 (%TEMP%\o2-browser-shots) 与工具溢出日志</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button size="small" :loading="cacheClearing === 'temp'"
+                                      :disabled="!cacheReport.temp_logs.files"
+                                      @click="clearCacheTarget('temp', '上传暂存与临时文件')">立即清理</a-button>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>AI 浏览器沙箱下载文件</span>
+                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.downloads.bytes) }} · {{ cacheReport.downloads.files }} 个文件</span>
+                            </div>
+                            <div class="oc-row-desc">存放在 O2 专属下载沙箱目录 (%LOCALAPPDATA%\O2\downloads) 中的下载附件</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button size="small" :loading="cacheClearing === 'downloads'"
+                                      :disabled="!cacheReport.downloads.files"
+                                      @click="clearCacheTarget('downloads', '沙箱下载文件')">清空下载文件</a-button>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>内置浏览器网页缓存</span>
+                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.browser_cache.bytes) }}</span>
+                            </div>
+                            <div class="oc-row-desc">Chromium 静态资源与脚本缓存（清理后可释放空间，不会清除 Cookie 与已登录网站状态）</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button size="small" :loading="cacheClearing === 'browser_cache'"
+                                      @click="clearCacheTarget('browser_cache', '浏览器网页缓存')">清理网页缓存</a-button>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>云端 OCR 版面识别缓存</span>
+                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.ocr_cache.bytes) }} · {{ cacheReport.ocr_cache.files }} 个文件</span>
+                            </div>
+                            <div class="oc-row-desc">build/ocr_cloud 下已缓存的 PDF 版面与表格 JSON，保留可避免重建索引时重复调用云端识别</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button size="small" :loading="cacheClearing === 'ocr_cache'"
+                                      :disabled="!cacheReport.ocr_cache.files"
+                                      @click="clearCacheTarget('ocr_cache', '云端 OCR 缓存')">清空 OCR 缓存</a-button>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">重置内置浏览器登录态与 Cookie</div>
+                            <div class="oc-row-desc">清除内置浏览器中所有网站的 Cookie、LocalStorage 与会话数据（需重新登录各网站）</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button size="small" danger :loading="cacheClearing === 'browser_cookies'"
+                                      @click="clearCacheTarget('browser_cookies', '所有网站登录态与 Cookie', true)">重置登录态</a-button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 10. 关于 (about) -->
+                  <template v-if="showSettingsSec('about')">
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">系统与数据库</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">O2 多模态知识与智能分析工作台</div>
+                            <div class="oc-row-desc">集成多模态文档库、混合向量检索、持久化 AI 协同浏览器、本机 PowerShell 与外部 API 连接器</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <span class="oc-stat-badge ok">v2.4 Desktop</span>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>本地 SQLite 知识库数据库</span>
+                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.database.bytes) }}</span>
+                            </div>
+                            <div class="oc-row-desc">{{ cfg.db_path || cacheReport.database.path || 'data/zdl.sqlite' }}</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-button size="small" @click="openCacheDir('data')">打开数据目录</a-button>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">内置浏览器 Profile 目录</div>
+                            <div class="oc-row-desc">{{ cacheReport.browser_cache.path || '%LOCALAPPDATA%\\O2\\browser-profile' }}（总占用 {{ formatBytes(cacheReport.browser_cache.profile_bytes) }}）</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <span class="oc-stat-badge">persist:o2-browser</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
                 </div>
-              </a-form-item>
-            </a-form>
-          </section>
+              </main>
+            </div>
           </div>
         </div>
       </template>
@@ -1261,9 +3328,16 @@ const App = {
   <a-modal v-model:open="ingest.open" :width="640" wrap-class-name="ingest-modal"
            :title="ingest.doc_id ? '更新文件' : '导入文件'"
            :confirm-loading="ingest.saving"
-           :ok-text="ingest.batchMode ? (ingest.batchRunning ? '正在批量入库…' : '完成') : '确认入库'"
-           :ok-button-props="{ disabled: ingest.parsing || ingest.batchRunning || (!ingest.batchMode && !ingest.tmp_id) }"
-           @ok="onIngestOk" @cancel="resetIngest">
+           @cancel="onIngestDismiss">
+    <template #footer>
+      <a-button @click="onIngestCancel">取消</a-button>
+      <a-button v-if="batchHasGap" type="primary" @click="retryBatchFromBreak">重试</a-button>
+      <a-button type="primary" :loading="ingest.saving"
+                :disabled="ingest.parsing || ingest.batchRunning || (!ingest.batchMode && !ingest.tmp_id)"
+                @click="onIngestOk">
+        {{ ingest.batchMode ? (ingest.batchRunning ? '正在批量入库…' : '完成') : '确认入库' }}
+      </a-button>
+    </template>
     <div class="ingest-dest">
       <a-form-item label="项目">
         <a-auto-complete v-model:value="ingest.project" :options="projectOptions"
@@ -1286,7 +3360,7 @@ const App = {
         <span class="ingest-drop-ico" v-html="ICO.filePlus"></span>
         <div class="ingest-drop-copy">
           <p class="ingest-title">{{ ingest.filename || (ingest.doc_id ? '拖入新文件，或点击选择' : '拖入文件，或点击选择') }}</p>
-          <p class="ingest-hint">{{ ingest.doc_id ? '替换当前文件，入库前可以改字段。' : '可多选。单个文件会先核对，再入库。' }}</p>
+          <p v-if="ingest.doc_id" class="ingest-hint">替换当前文件，入库前可以改字段。</p>
         </div>
       </div>
       <div v-if="!ingest.filename" class="ingest-chips">
@@ -1294,20 +3368,30 @@ const App = {
       </div>
     </a-upload-dragger>
 
-    <div v-if="ingest.parsing || ingest.batchRunning" class="ingest-progress">
-      <a-progress :percent="ingest.percent" status="active" :show-info="true" />
-      <div class="ingest-status">{{ ingest.progressText || '正在识别…' }}</div>
+    <div v-if="ingest.parsing || ingest.batchRunning || (ingest.batchMode && ingest.percent > 0)" class="ingest-progress">
+      <a-progress :percent="ingest.percent" :status="ingest.batchRunning || ingest.parsing ? 'active' : (batchHasGap ? 'exception' : 'success')" :show-info="true" />
+      <div v-if="ingest.parsing || ingest.batchRunning" class="ingest-status">{{ ingest.progressText || '正在识别…' }}</div>
     </div>
 
     <!-- 批量队列展示 -->
     <div v-if="ingest.batchMode && ingest.batchItems.length" class="batch-queue">
       <div v-for="(bi, idx) in ingest.batchItems" :key="idx" class="batch-row">
         <span class="batch-row-name" :title="bi.name">{{ bi.name }}</span>
-        <a-tag v-if="bi.doc_type" :color="docTypeColor(bi.doc_type)">{{ docTypeLabel(bi.doc_type) }}</a-tag>
-        <span class="batch-row-meta">{{ bi.folder || '' }}</span>
-        <a-tag :color="bi.state === 'done' ? 'green' : (bi.state === 'error' ? 'red' : (bi.state === 'running' ? 'blue' : 'default'))">
-          {{ bi.statusText }}
-        </a-tag>
+        <span class="batch-row-type">
+          <a-tag v-if="bi.doc_type" :color="docTypeColor(bi.doc_type)">{{ docTypeLabel(bi.doc_type) }}</a-tag>
+        </span>
+        <span class="batch-row-meta" :title="bi.folder || ''">{{ bi.folder || '' }}</span>
+        <span class="batch-row-retry">
+          <button v-if="(bi.state === 'error' || bi.state === 'pending') && !ingest.batchRunning" type="button" class="batch-retry"
+                  title="重试这一份" @click="retryBatchItem(bi)">
+            <span class="icon-svg" v-html="ICO.reload"></span>
+          </button>
+        </span>
+        <span class="batch-row-status">
+          <a-tag :title="bi.statusText" :color="bi.state === 'done' ? 'green' : (bi.state === 'skipped' ? 'gold' : (bi.state === 'error' ? 'red' : (bi.state === 'running' ? 'blue' : 'default')))">
+            {{ shortBatchStatus(bi) }}
+          </a-tag>
+        </span>
       </div>
     </div>
 
@@ -1646,6 +3730,178 @@ const App = {
     </a-form>
   </a-modal>
 
+  <a-drawer v-model:open="dashCustomizeOpen" title="看板工作区与自由布局" :width="440" placement="right">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div v-if="activeWorkspaceObj" style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--muted);display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-size:12px;font-weight:600;color:var(--foreground)">当前工作区</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <a-button size="small" @click="createDashboardWorkspace()">新建</a-button>
+            <a-button size="small" @click="duplicateDashboardWorkspace()">复制</a-button>
+            <a-button size="small" danger :disabled="(dashboardLayout.workspaces || []).length <= 1" @click="deleteDashboardWorkspace()">删除</a-button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <a-input v-model:value="activeWorkspaceObj.name" size="small" placeholder="工作区名称" @blur="saveDashboardLayout()" @pressEnter="saveDashboardLayout()" />
+          <a-button size="small" @click="toggleDashboardLock()">{{ dashboardLayout.locked ? '解锁拖拽' : '锁定布局' }}</a-button>
+          <a-button size="small" @click="compactWorkspaceWidgets(activeWorkspaceObj); saveDashboardLayout()">紧凑对齐</a-button>
+        </div>
+        <div class="hint" style="font-size:11.5px">提示：解锁后可直接在画布按住标题栏拖拽位置，拉住左右/底边或边角无级缩放（24 列网格）。</div>
+      </div>
+
+      <div v-if="activeWorkspaceObj" style="display:flex;flex-direction:column;gap:8px">
+        <div v-for="w in activeWorkspaceObj.widgets" :key="w.id"
+             style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--card)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <b style="font-size:12.5px">{{ w.title }}</b>
+            <a-switch size="small" :checked="w.enabled !== false"
+                      @change="(v) => { w.enabled = !!v; saveDashboardLayout() }" />
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:11.5px">
+            <span class="hint ft-mono">宽(列)</span>
+            <a-input-number size="small" :min="w.minW || 4" :max="24" :value="w.w || 8" style="width:62px"
+                            @change="(v) => { if (v) { w.w = Math.max(w.minW || 4, Math.min(24, Number(v))); if (w.x + w.w > 24) w.x = 24 - w.w; saveDashboardLayoutDebounced() } }" />
+            <span class="hint ft-mono">高(行)</span>
+            <a-input-number size="small" :min="w.minH || 5" :max="40" :value="w.h || 10" style="width:62px"
+                            @change="(v) => { if (v) { w.h = Math.max(w.minH || 5, Math.min(40, Number(v))); saveDashboardLayoutDebounced() } }" />
+            <span class="spacer"></span>
+            <span class="hint ft-mono">({{ w.x || 0 }},{{ w.y || 0 }})</span>
+          </div>
+        </div>
+      </div>
+      <div v-if="missingDashboardWidgets.length" style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px;border-top:1px solid var(--border)">
+        <button v-for="mw in missingDashboardWidgets" :key="'add-' + mw.type" type="button" class="ft-btn"
+                @click="addDashboardWidget(mw.type)">
+          <span>+ {{ mw.title }}</span>
+        </button>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <a-button size="small" @click="resetDashboardLayout">恢复默认</a-button>
+        <a-button size="small" type="primary" @click="dashCustomizeOpen = false">完成</a-button>
+      </div>
+    </div>
+  </a-drawer>
+
+  <a-drawer v-model:open="mktCustomizeOpen" title="行情工作区与自由布局" :width="440" placement="right">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div v-if="activeMarketWorkspaceObj" style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--muted);display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-size:12px;font-weight:600;color:var(--foreground)">当前工作区</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <a-button size="small" @click="createMarketWorkspace()">新建</a-button>
+            <a-button size="small" @click="duplicateMarketWorkspace()">复制</a-button>
+            <a-button size="small" danger :disabled="(marketLayout.workspaces || []).length <= 1" @click="deleteMarketWorkspace()">删除</a-button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <a-input v-model:value="activeMarketWorkspaceObj.name" size="small" placeholder="工作区名称" @blur="saveMarketLayout()" @pressEnter="saveMarketLayout()" />
+          <a-button size="small" @click="toggleMarketLock()">{{ marketLayout.locked ? '解锁拖拽' : '锁定布局' }}</a-button>
+          <a-button size="small" @click="compactWorkspaceWidgets(activeMarketWorkspaceObj); saveMarketLayout()">紧凑对齐</a-button>
+        </div>
+        <div class="hint" style="font-size:11.5px">支持自由组合任意市场面板、K线终端、热力图、涨跌异动与自选，拖拽边缘即可无级缩放。</div>
+      </div>
+
+      <div v-if="activeMarketWorkspaceObj" style="display:flex;flex-direction:column;gap:8px">
+        <div v-for="w in activeMarketWorkspaceObj.widgets" :key="w.id"
+             style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--card)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <b style="font-size:12.5px">{{ w.title }}</b>
+            <a-switch size="small" :checked="w.enabled !== false"
+                      @change="(v) => { w.enabled = !!v; saveMarketLayout() }" />
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:11.5px">
+            <span class="hint ft-mono">宽(列)</span>
+            <a-input-number size="small" :min="w.minW || 4" :max="24" :value="w.w || 8" style="width:62px"
+                            @change="(v) => { if (v) { w.w = Math.max(w.minW || 4, Math.min(24, Number(v))); if (w.x + w.w > 24) w.x = 24 - w.w; saveMarketLayoutDebounced() } }" />
+            <span class="hint ft-mono">高(行)</span>
+            <a-input-number size="small" :min="w.minH || 5" :max="40" :value="w.h || 10" style="width:62px"
+                            @change="(v) => { if (v) { w.h = Math.max(w.minH || 5, Math.min(40, Number(v))); saveMarketLayoutDebounced() } }" />
+            <span class="spacer"></span>
+            <span class="hint ft-mono">({{ w.x || 0 }},{{ w.y || 0 }})</span>
+          </div>
+        </div>
+      </div>
+      <div v-if="missingMarketWidgets.length" style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px;border-top:1px solid var(--border)">
+        <button v-for="mw in missingMarketWidgets" :key="'madd-' + mw.type" type="button" class="ft-btn"
+                @click="addMarketWidget(mw.type)">
+          <span>+ {{ mw.title }}</span>
+        </button>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <a-button size="small" @click="resetMarketLayout">恢复默认</a-button>
+        <a-button size="small" type="primary" @click="mktCustomizeOpen = false">完成</a-button>
+      </div>
+    </div>
+  </a-drawer>
+
+  <!-- 实体情报画像抽屉 -->
+  <a-drawer v-model:open="entityDrawerOpen" :title="entityProfile ? (entityProfile.canonical_name + ' · 实体情报画像') : '实体情报画像'" :width="520" placement="right">
+    <a-spin :spinning="entityLoading">
+      <div v-if="entityProfile" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <a-tag color="blue">{{ entityProfile.entity_type }}</a-tag>
+          <span class="hint ft-mono">7日提及 {{ entityProfile.mentions }} 次 · 历史 {{ entityProfile.total_mentions }} 次</span>
+          <span class="ft-mono" :style="{ color: entityProfile.net_sentiment > 0 ? 'var(--up)' : (entityProfile.net_sentiment < 0 ? 'var(--down)' : 'var(--muted-foreground)') }">
+            净情绪 {{ entityProfile.net_sentiment >= 0 ? '+' : '' }}{{ entityProfile.net_sentiment }}
+          </span>
+        </div>
+        <div v-if="entityProfile.aliases && entityProfile.aliases.length" class="hint" style="font-size:12px">
+          多语种别名：{{ entityProfile.aliases.join(' / ') }}
+        </div>
+        <div style="display:flex;gap:8px">
+          <a-button type="primary" size="small" @click="askAiAboutEntity()">让 AI 结合本地制度库研判该实体</a-button>
+          <a-button size="small" @click="filterNewsByEntity(entityProfile.canonical_name)">在新闻流中仅看该实体</a-button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--foreground)">情绪构成（利多 {{ entityProfile.bullish }} / 中性 {{ entityProfile.neutral }} / 利空 {{ entityProfile.bearish }}）</div>
+          <div class="ft-breadth-bar" style="height:8px">
+            <div :style="{ width: Math.round((entityProfile.bullish / Math.max(1, entityProfile.bullish + entityProfile.neutral + entityProfile.bearish)) * 100) + '%', background: 'var(--up)' }"></div>
+            <div :style="{ width: Math.round((entityProfile.neutral / Math.max(1, entityProfile.bullish + entityProfile.neutral + entityProfile.bearish)) * 100) + '%', background: '#94a3b8' }"></div>
+            <div :style="{ width: Math.round((entityProfile.bearish / Math.max(1, entityProfile.bullish + entityProfile.neutral + entityProfile.bearish)) * 100) + '%', background: 'var(--down)' }"></div>
+          </div>
+        </div>
+
+        <div v-if="entityProfile.co_entities && entityProfile.co_entities.length" style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--foreground)">高频共现关联实体</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span v-for="ce in entityProfile.co_entities" :key="ce.id" class="ft-ent-pill"
+                  @click="openEntityDossier(ce.canonical_name)">
+              {{ ce.canonical_name }} ({{ ce.co_count }})
+            </span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--foreground)">近期关联多语种新闻 ({{ (entityProfile.items || []).length }})</div>
+          <div v-for="nit in (entityProfile.items || [])" :key="'ep-' + nit.id"
+               class="news-card" style="padding:8px 10px"
+               @click="entityDrawerOpen = false; tab = 'news'; selectNewsItem(nit)">
+            <div class="news-card-meta">
+              <span :class="['news-lang-badge', nit.lang]">{{ nit.lang }}</span>
+              <span>{{ nit.feed_name }}</span>
+              <span style="margin-left:auto" class="ft-mono">{{ formatNewsTime(nit.published_at) }}</span>
+            </div>
+            <div class="news-card-title" style="font-size:12.5px">{{ nit.title_zh || nit.title_orig }}</div>
+          </div>
+        </div>
+      </div>
+    </a-spin>
+  </a-drawer>
+
+  <!-- AI 情报简报弹窗 -->
+  <a-modal v-model:open="briefModalOpen" title="DESK NOTE · 近 24 小时多语种情报简报" :width="640" :footer="null">
+    <a-spin :spinning="newsBriefLoading">
+      <div v-if="newsBriefText" class="answer-text" style="font-size:13.5px;line-height:1.65"
+           v-html="renderAnswer(newsBriefText, { sources: [] })"></div>
+      <o2-empty v-else description="暂无简报内容" />
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+        <a-button @click="loadNewsBrief(true)">重新生成</a-button>
+        <a-button type="primary" :disabled="!newsBriefText" @click="briefModalOpen = false; question = '请结合以下今日情报简报与本地文档库做深度研判：\\n\\n' + newsBriefText; tab = 'ask'">带入对话深挖</a-button>
+      </div>
+    </a-spin>
+  </a-modal>
+
 </div>
 </a-config-provider>
 `,
@@ -1697,26 +3953,51 @@ const App = {
       categories: [],
     })
     const stats = reactive({ docs: 0, chunks: 0, built_at: '', llm: false, rebuilding: false })
-    const theme = {
-      token: {
-        colorPrimary: '#1d4ed8',
-        colorText: '#020617',
-        colorTextSecondary: '#64748b',
-        colorBorder: '#e2e8f0',
-        colorBgContainer: '#ffffff',
-        colorBgLayout: '#fafafa',
-        borderRadius: 6,
-        fontFamily: '"PingFang SC", "Microsoft YaHei", "Noto Sans SC", Inter, sans-serif',
-        controlHeight: 36,
-        controlHeightLG: 40,
-      },
-    }
-    const navs = [
-      { key: 'ask', label: '问答', icon: ICO.ask },
-      { key: 'browser', label: '浏览器', icon: ICO.globe },
-      { key: 'search', label: '检索', icon: ICO.search },
-      { key: 'catalog', label: '文件', icon: ICO.catalog },
-    ]
+    const theme = computed(() => {
+      const dark = cfg.ui_theme === 'dark'
+      return {
+        algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+        token: dark ? {
+          colorPrimary: '#3b82f6',
+          colorText: '#e5e7eb',
+          colorTextSecondary: '#94a3b8',
+          colorBorder: '#1e293b',
+          colorBgContainer: '#111827',
+          colorBgLayout: '#0b0f17',
+          borderRadius: 6,
+          fontFamily: '"PingFang SC", "Microsoft YaHei", "Noto Sans SC", Inter, sans-serif',
+          controlHeight: 36,
+          controlHeightLG: 40,
+        } : {
+          colorPrimary: '#1d4ed8',
+          colorText: '#020617',
+          colorTextSecondary: '#64748b',
+          colorBorder: '#e2e8f0',
+          colorBgContainer: '#ffffff',
+          colorBgLayout: '#fafafa',
+          borderRadius: 6,
+          fontFamily: '"PingFang SC", "Microsoft YaHei", "Noto Sans SC", Inter, sans-serif',
+          controlHeight: 36,
+          controlHeightLG: 40,
+        },
+      }
+    })
+    const navs = computed(() => {
+      const list = [
+        { key: 'ask', label: '问答', icon: ICO.ask },
+      ]
+      if (cfg.news_enabled) {
+        list.push({ key: 'dashboard', label: '看板', icon: ICO.dashboard })
+        list.push({ key: 'markets', label: '行情', icon: ICO.chart })
+        list.push({ key: 'news', label: '新闻流', icon: ICO.rss })
+      }
+      list.push(
+        { key: 'browser', label: '浏览器', icon: ICO.globe },
+        { key: 'search', label: '检索', icon: ICO.search },
+        { key: 'catalog', label: '文件', icon: ICO.catalog },
+      )
+      return list
+    })
     const RECENT_KEY = 'o2-recent-q'
     const recent = ref(loadRecent())
     function loadRecent() {
@@ -1741,7 +4022,7 @@ const App = {
       '检索本地文档库中与当前主题相关的资料',
     ]
     const pageTitle = computed(() => (
-      { search: '检索', ask: '问答', browser: '浏览器', catalog: '文件', settings: '设置' }[tab.value] || 'O2'
+      { search: '检索', ask: '问答', dashboard: '看板', markets: '行情', news: '新闻流', browser: '浏览器', catalog: '文件', settings: '设置' }[tab.value] || 'O2'
     ))
 
     function pageUrl(docId, page, chunkId, zoom) {
@@ -1872,7 +4153,11 @@ const App = {
     }
     function computeHasBody(list) {
       return (list || []).some((m) => (
-        m && m.role === 'user' && ((m.content || '').trim() || (m.packed || '').trim() || (m.files || []).length)
+        m && (
+          ((m.content || '').trim() || (m.packed || '').trim())
+          || (m.files && m.files.length)
+          || (m.tools && m.tools.length)
+        )
       ))
     }
     function convFullStamp(list) {
@@ -1903,10 +4188,8 @@ const App = {
     }
     function chatHasBody(c) {
       if (!c) return false
-      if (c._live) return computeHasBody(c._live)
-      if (typeof c._hasBody === 'boolean') return c._hasBody
-      c._hasBody = computeHasBody(c.messages)
-      return c._hasBody
+      if (c._isDraft) return true
+      return computeHasBody(c._live) || computeHasBody(c.messages)
     }
     function loadStoredChats() {
       try {
@@ -1968,18 +4251,39 @@ const App = {
     const conversations = ref(seeded)
     let storedId = ''
     try { storedId = localStorage.getItem(CHAT_ID_KEY) || localStorage.getItem('zdk-chat-id') || '' } catch (e) { storedId = '' }
-    let opened = seeded.find((c) => c.id === storedId)
-    if (!opened && migrated) opened = seeded[0]
+    let opened = conversations.value.find((c) => c.id === storedId)
+    if (!opened && conversations.value.length) opened = conversations.value[0]
     const chatId = ref(opened ? opened.id : '')
     const messages = ref(opened ? liveOf(opened) : [])
     const histMode = ref('')
     const histPicked = reactive({})
+    const histSearchQuery = ref('')
 
     let persistTimer = 0
     let persistIdleId = 0
     let persistPending = false
 
-    function flushPersistConversations() {
+    function serializeAllConversations(replaceFlag) {
+      return conversations.value
+        .filter((c) => c && c.id && (computeHasBody(c._live) || computeHasBody(c.messages)))
+        .map((c) => {
+          const liveMsgs = (c._live && c._live.length) ? dumpChat(c._live) : (c.messages || [])
+          c.messages = liveMsgs
+          return {
+            id: c.id,
+            title: c.title || '新对话',
+            titleReady: !!c.titleReady,
+            createdAt: c.createdAt || 0,
+            updatedAt: c.updatedAt || 0,
+            activeAt: c.activeAt || c.createdAt || 0,
+            pinned: !!c.pinned,
+            pinnedAt: c.pinnedAt || 0,
+            messages: liveMsgs,
+          }
+        })
+    }
+
+    function flushPersistConversations(replaceBackend = false) {
       if (persistTimer) {
         clearTimeout(persistTimer)
         persistTimer = 0
@@ -1996,30 +4300,83 @@ const App = {
         const keep = new Set(pinned.concat(rest).slice(0, 80).map((c) => c.id))
         conversations.value = conversations.value.filter((c) => keep.has(c.id))
       }
-      const data = conversations.value.map((c) => ({
-        id: c.id,
-        title: c.title || '新对话',
-        titleReady: !!c.titleReady,
-        createdAt: c.createdAt || 0,
-        updatedAt: c.updatedAt || 0,
-        activeAt: c.activeAt || c.createdAt || 0,
-        pinned: !!c.pinned,
-        pinnedAt: c.pinnedAt || 0,
-        messages: c.messages || [],
-      }))
+      const data = serializeAllConversations()
       try {
         localStorage.setItem(CHATS_KEY, JSON.stringify(data))
       } catch (e) {
         const slim = data.map((c) => ({
           ...c,
           messages: (c.messages || []).map((m) => ({
-            role: m.role, content: m.content || '', files: m.files || [],
-            sources: [], tools: [], showSrc: false, stopped: !!m.stopped,
+            id: m.id || '', role: m.role, content: m.content || '', files: m.files || [],
+            sources: [], tools: m.tools || [], showSrc: false, stopped: !!m.stopped,
             error: m.error || '', ask: m.ask || null,
           })),
         }))
         try { localStorage.setItem(CHATS_KEY, JSON.stringify(slim)) } catch (e2) { /* 配额满则忽略 */ }
       }
+      api.post('/api/chats', {
+        chats: data,
+        active_id: chatId.value || '',
+        replace: !!replaceBackend,
+      }).catch(() => {})
+    }
+
+    async function syncBackendChats() {
+      try {
+        const res = await api.get('/api/chats')
+        const remote = (res && Array.isArray(res.chats)) ? res.chats : []
+        if (!remote.length) {
+          if (conversations.value.length) flushPersistConversations(false)
+          return
+        }
+        const byId = new Map()
+        for (const c of conversations.value) {
+          if (c && c.id) byId.set(c.id, c)
+        }
+        let changed = false
+        for (const rc of remote) {
+          if (!rc || !rc.id || !Array.isArray(rc.messages)) continue
+          const existing = byId.get(rc.id)
+          if (!existing) {
+            const norm = {
+              id: rc.id,
+              title: rc.title || '新对话',
+              titleReady: !!rc.titleReady,
+              createdAt: rc.createdAt || Date.now(),
+              updatedAt: rc.updatedAt || rc.createdAt || Date.now(),
+              activeAt: rc.activeAt || rc.createdAt || Date.now(),
+              pinned: !!rc.pinned,
+              pinnedAt: rc.pinnedAt || 0,
+              messages: rc.messages,
+              _hasBody: computeHasBody(rc.messages),
+            }
+            conversations.value.push(norm)
+            byId.set(norm.id, norm)
+            changed = true
+          } else {
+            const curMsgs = (existing._live && existing._live.length) ? existing._live : (existing.messages || [])
+            if (rc.messages.length > curMsgs.length && !runs.has(rc.id)) {
+              existing.messages = rc.messages
+              existing._live = null
+              if (chatId.value === existing.id) {
+                messages.value = liveOf(existing)
+              }
+              changed = true
+            }
+          }
+        }
+        if (changed) {
+          conversations.value.sort((a, b) => (b.activeAt || b.createdAt || 0) - (a.activeAt || a.createdAt || 0))
+          if (!chatId.value && conversations.value.length) {
+            const first = conversations.value[0]
+            chatId.value = first.id
+            messages.value = liveOf(first)
+          }
+          try {
+            localStorage.setItem(CHATS_KEY, JSON.stringify(serializeAllConversations()))
+          } catch (e) { /* ignore */ }
+        }
+      } catch (e) { /* ignore */ }
     }
 
     function persistConversations() {
@@ -2101,6 +4458,12 @@ const App = {
     const asking = ref(false)
     const runningIds = reactive({})
     const runs = new Map()
+    const pendingFollowups = reactive({})
+    const currentQueued = computed(() => (chatId.value && pendingFollowups[chatId.value]) || [])
+    function removeQueuedFollowup(idx) {
+      const q = chatId.value && pendingFollowups[chatId.value]
+      if (q && idx >= 0 && idx < q.length) q.splice(idx, 1)
+    }
     let arming = false
     const chatlog = ref(null)
     const turns = computed(() => messages.value.filter((m) => m.role === 'user').length)
@@ -2152,13 +4515,17 @@ const App = {
         const q = String(t.query || '').replace(/\s+/g, ' ')
         return '终端 ' + (q.length > 72 ? q.slice(0, 72) + '…' : q)
       }
+      if (t.kind === 'news') {
+        const q = String(t.query || '').replace(/\s+/g, ' ')
+        return '新闻情报 · ' + (q.length > 72 ? q.slice(0, 72) + '…' : (q || '检索'))
+      }
       return '检索「' + (t.query || '') + '」'
     }
     function toolMeta(t) {
       if (!t || t.kind === 'think') return ''
-      if (t.kind === 'api') {
-        if (t.state !== 'done') return '调用中…'
-        return t.note || '完成'
+      if (t.kind === 'api' || t.kind === 'news') {
+        if (t.state !== 'done') return '检索中…'
+        return t.note || ((Number(t.count) || 0) + ' 条')
       }
       if (t.kind === 'browser') {
         if (t.state !== 'done') return '操作中…'
@@ -2913,7 +5280,7 @@ const App = {
 
     function paintAnswer(m) {
       const st = answerHosts.get(m)
-      if (!st || !st.el || !st.el.isConnected) return
+      if (!st || !st.el) return
       const el = st.el
       const live = !!(m.streaming && !m.ask)
       const rawContent = m.content || ''
@@ -3010,6 +5377,195 @@ const App = {
       }
     }
 
+    const searchInputEl = ref(null)
+    const askInputEl = ref(null)
+    const SHORTCUTS_KEY = 'o2_shortcuts_v1'
+    const SHORTCUT_SPECS = [
+      { id: 'send_message', group: 'chat', groupTitle: '问答与检索', title: '发送提问 / 提交搜索', desc: '在问答输入框或检索框中立即提交当前内容', default: 'Enter', editable: true },
+      { id: 'newline', group: 'chat', groupTitle: '问答与检索', title: '输入框换行', desc: '在问答多行输入框中插入换行符而不直接发送', default: 'Shift+Enter', editable: true },
+      { id: 'new_chat', group: 'chat', groupTitle: '问答与检索', title: '新建会话', desc: '在任意页面快速创建并切换到新对话', default: 'Ctrl+N', editable: true },
+      { id: 'stop_generation', group: 'chat', groupTitle: '问答与检索', title: '停止当前生成', desc: '当 AI 正在回答时立即中止当前生成轮次', default: 'Escape', editable: true },
+      { id: 'focus_input', group: 'chat', groupTitle: '问答与检索', title: '聚焦输入框', desc: '将光标定位到当前问答或检索输入框', default: 'Ctrl+K', editable: true },
+      { id: 'open_settings', group: 'nav', groupTitle: '界面与视图', title: '打开 / 退出设置', desc: '快速切换设置页面与工作区视图', default: 'Ctrl+,', editable: true },
+      { id: 'toggle_theme', group: 'nav', groupTitle: '界面与视图', title: '切换明暗主题', desc: '在浅色工作台与深色终端主题之间一键切换', default: 'Ctrl+Shift+L', editable: true },
+      { id: 'toggle_history', group: 'nav', groupTitle: '界面与视图', title: '打开历史会话', desc: '展开或收起历史会话浏览面板', default: 'Ctrl+H', editable: true },
+      { id: 'canvas_zoom', group: 'doc', groupTitle: '文档查阅与导航', title: '原文画布无级缩放', desc: '在文档详情抽屉「原文视图」下放大或缩小原页画布（60% ~ 300%）', default: 'Ctrl+滚轮', editable: false },
+      { id: 'canvas_pan', group: 'doc', groupTitle: '文档查阅与导航', title: '原文画布抓手平移', desc: '放大 PDF 或工程图纸后，按住鼠标左键拖拽即可任意方向平移画布', default: '鼠标左键拖拽', editable: false },
+    ]
+    const SHORTCUT_SPEC_MAP = Object.fromEntries(SHORTCUT_SPECS.map((s) => [s.id, s]))
+    function loadShortcutOverrides() {
+      try {
+        const raw = localStorage.getItem(SHORTCUTS_KEY)
+        const obj = raw ? JSON.parse(raw) : {}
+        return (obj && typeof obj === 'object') ? obj : {}
+      } catch (e) {
+        return {}
+      }
+    }
+    const shortcutOverrides = reactive(loadShortcutOverrides())
+    const recordingShortcutId = ref('')
+    function saveShortcutOverrides() {
+      try {
+        localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(shortcutOverrides))
+      } catch (e) {}
+    }
+    function getShortcutCombo(id) {
+      const spec = SHORTCUT_SPEC_MAP[id]
+      if (!spec) return ''
+      return shortcutOverrides[id] || spec.default
+    }
+    function isShortcutModified(id) {
+      const spec = SHORTCUT_SPEC_MAP[id]
+      return !!(spec && shortcutOverrides[id] && shortcutOverrides[id] !== spec.default)
+    }
+    const hasCustomShortcuts = computed(() => SHORTCUT_SPECS.some((s) => s.editable && isShortcutModified(s.id)))
+    const shortcutGroups = computed(() => {
+      const groups = []
+      const byKey = {}
+      for (const s of SHORTCUT_SPECS) {
+        if (!byKey[s.group]) {
+          byKey[s.group] = { key: s.group, title: s.groupTitle, items: [] }
+          groups.push(byKey[s.group])
+        }
+        byKey[s.group].items.push(s)
+      }
+      return groups
+    })
+    function shortcutTokens(combo) {
+      if (!combo) return []
+      if (combo === '+') return ['+']
+      return combo.split('+').filter(Boolean)
+    }
+    function formatKeyEvent(e) {
+      if (!e || !e.key) return ''
+      const k = e.key
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(k)) return ''
+      const parts = []
+      if (e.ctrlKey || e.metaKey) parts.push('Ctrl')
+      if (e.altKey) parts.push('Alt')
+      if (e.shiftKey) parts.push('Shift')
+      let keyLabel = k
+      if (k === ' ') keyLabel = 'Space'
+      else if (k.length === 1) keyLabel = k.toUpperCase()
+      else if (k === 'ArrowUp') keyLabel = 'Up'
+      else if (k === 'ArrowDown') keyLabel = 'Down'
+      else if (k === 'ArrowLeft') keyLabel = 'Left'
+      else if (k === 'ArrowRight') keyLabel = 'Right'
+      parts.push(keyLabel)
+      return parts.join('+')
+    }
+    function onShortcutContext(e, spec) {
+      if (!spec || !spec.editable) return
+      e.preventDefault()
+      recordingShortcutId.value = spec.id
+    }
+    function resetShortcut(id) {
+      delete shortcutOverrides[id]
+      saveShortcutOverrides()
+      if (recordingShortcutId.value === id) recordingShortcutId.value = ''
+      message.success('已恢复默认快捷键')
+    }
+    function resetAllShortcuts() {
+      for (const k of Object.keys(shortcutOverrides)) delete shortcutOverrides[k]
+      saveShortcutOverrides()
+      recordingShortcutId.value = ''
+      message.success('已恢复全部默认快捷键')
+    }
+    function focusActiveInput() {
+      if (tab.value === 'search') {
+        searchInputEl.value && searchInputEl.value.focus && searchInputEl.value.focus()
+        return
+      }
+      if (tab.value !== 'ask') tab.value = 'ask'
+      nextTick(() => {
+        askInputEl.value && askInputEl.value.focus && askInputEl.value.focus()
+      })
+    }
+    function onAskKeydown(e) {
+      if (e.isComposing || e.keyCode === 229) return
+      const combo = formatKeyEvent(e)
+      if (!combo) return
+      if (combo === getShortcutCombo('newline')) {
+        if (combo !== 'Shift+Enter') {
+          e.preventDefault()
+          question.value = (question.value || '') + '\n'
+        }
+        return
+      }
+      if (combo === getShortcutCombo('send_message')) {
+        e.preventDefault()
+        send()
+      }
+    }
+    function onSearchKeydown(e) {
+      if (e.isComposing || e.keyCode === 229) return
+      const combo = formatKeyEvent(e)
+      if (combo && combo === getShortcutCombo('send_message')) {
+        e.preventDefault()
+        doSearch()
+      }
+    }
+    function onGlobalKeyDown(e) {
+      if (recordingShortcutId.value) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.key === 'Escape') {
+          recordingShortcutId.value = ''
+          return
+        }
+        const combo = formatKeyEvent(e)
+        if (!combo) return
+        const conflict = SHORTCUT_SPECS.find((s) => s.editable && s.id !== recordingShortcutId.value && getShortcutCombo(s.id) === combo)
+        if (conflict) {
+          message.warning(`快捷键 ${combo} 已被「${conflict.title}」占用`)
+          return
+        }
+        const targetId = recordingShortcutId.value
+        const spec = SHORTCUT_SPEC_MAP[targetId]
+        if (spec && combo === spec.default) delete shortcutOverrides[targetId]
+        else shortcutOverrides[targetId] = combo
+        saveShortcutOverrides()
+        recordingShortcutId.value = ''
+        message.success(`已设置「${spec ? spec.title : targetId}」为 ${combo}`)
+        return
+      }
+      if (e.isComposing || e.keyCode === 229) return
+      const combo = formatKeyEvent(e)
+      if (!combo) return
+      if (combo === getShortcutCombo('stop_generation') && asking.value) {
+        e.preventDefault()
+        stopAsk()
+        return
+      }
+      if (combo === getShortcutCombo('new_chat')) {
+        e.preventDefault()
+        newChat()
+        return
+      }
+      if (combo === getShortcutCombo('focus_input')) {
+        e.preventDefault()
+        focusActiveInput()
+        return
+      }
+      if (combo === getShortcutCombo('open_settings')) {
+        e.preventDefault()
+        tab.value = tab.value === 'settings' ? (lastAppTab.value || 'ask') : 'settings'
+        return
+      }
+      if (combo === getShortcutCombo('toggle_theme')) {
+        e.preventDefault()
+        toggleTheme()
+        return
+      }
+      if (combo === getShortcutCombo('toggle_history')) {
+        e.preventDefault()
+        if (histMode.value) closeHistManage()
+        else openHistBrowse()
+      }
+    }
+    onMounted(() => window.addEventListener('keydown', onGlobalKeyDown, true))
+    onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeyDown, true))
+
     function onEnter(e) {
       if (e.shiftKey) return
       e.preventDefault()
@@ -3027,13 +5583,59 @@ const App = {
 
     function newChat() {
       saveChat()
-      chatId.value = ''
-      messages.value = []
+      flushPersistConversations(false)
+      // 若顶部已经存在一个空白的新对话草稿，直接切过去；否则新建一个会话项保留在会话列表中
+      const existingDraft = conversations.value.find((c) => c && c._isDraft && !computeHasBody(c._live) && !computeHasBody(c.messages))
+      if (existingDraft) {
+        chatId.value = existingDraft.id
+        messages.value = liveOf(existingDraft)
+      } else {
+        const c = {
+          id: newChatId(),
+          title: '新对话',
+          titleReady: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          activeAt: Date.now(),
+          pinned: false,
+          pinnedAt: 0,
+          messages: [],
+          _isDraft: true,
+        }
+        conversations.value.unshift(c)
+        const inserted = conversations.value[0]
+        chatId.value = inserted.id
+        messages.value = liveOf(inserted)
+      }
       question.value = ''
       attachments.value = []
       asking.value = false
-      try { localStorage.removeItem(CHAT_ID_KEY) } catch (e) { /* ignore */ }
+      try { localStorage.setItem(CHAT_ID_KEY, chatId.value) } catch (e) { /* ignore */ }
       tab.value = 'ask'
+    }
+
+    function closeSessionTab(c) {
+      if (!c) return
+      if (c._isDraft && !computeHasBody(c._live) && !computeHasBody(c.messages)) {
+        conversations.value = conversations.value.filter((x) => x.id !== c.id)
+        if (chatId.value === c.id) {
+          const next = conversations.value[0]
+          chatId.value = next ? next.id : ''
+          messages.value = next ? liveOf(next) : []
+        }
+        return
+      }
+      stopRun(c.id)
+      delete runningIds[c.id]
+      conversations.value = conversations.value.filter((x) => x.id !== c.id)
+      delete histPicked[c.id]
+      flushPersistConversations(true)
+      if (chatId.value === c.id) {
+        const next = conversations.value[0]
+        chatId.value = next ? next.id : ''
+        messages.value = next ? liveOf(next) : []
+        asking.value = next ? runs.has(next.id) : false
+      }
     }
 
     function clearChat() {
@@ -3044,17 +5646,52 @@ const App = {
       if (id) {
         conversations.value = conversations.value.filter((c) => c.id !== id)
         delete histPicked[id]
-        persistConversations()
+        flushPersistConversations(true)
       }
-      messages.value = []
+      const next = conversations.value[0]
+      chatId.value = next ? next.id : ''
+      messages.value = next ? liveOf(next) : []
       question.value = ''
       attachments.value = []
       asking.value = false
       try {
-        localStorage.removeItem(CHAT_ID_KEY)
+        if (chatId.value) localStorage.setItem(CHAT_ID_KEY, chatId.value)
+        else localStorage.removeItem(CHAT_ID_KEY)
         sessionStorage.removeItem(CHAT_KEY)
         sessionStorage.removeItem(CHAT_DRAFT_KEY)
       } catch (e) { /* ignore */ }
+    }
+
+    const allSessionChats = computed(() => {
+      const rows = conversations.value.filter(chatHasBody)
+      const pinned = rows.filter((c) => c.pinned).sort((a, b) => (b.pinnedAt || 0) - (a.pinnedAt || 0))
+      const rest = rows.filter((c) => !c.pinned).sort((a, b) => (b.activeAt || b.createdAt || 0) - (a.activeAt || a.createdAt || 0))
+      return pinned.concat(rest)
+    })
+    const filteredSessionChats = computed(() => {
+      const qStr = (histSearchQuery.value || '').trim().toLowerCase()
+      if (!qStr) return allSessionChats.value
+      return allSessionChats.value.filter((c) => {
+        if ((c.title || '').toLowerCase().includes(qStr)) return true
+        const list = c._live || c.messages || []
+        return list.some((m) => (m.content || '').toLowerCase().includes(qStr))
+      })
+    })
+    function convTurnCount(c) {
+      if (!c) return 0
+      const list = c._live || c.messages || []
+      return Math.max(1, list.filter((m) => m && m.role === 'user').length)
+    }
+    function convRelTime(ts) {
+      if (!ts) return '刚刚'
+      const diffSec = Math.max(0, Math.floor((Date.now() - Number(ts)) / 1000))
+      if (diffSec < 60) return '刚刚'
+      const mins = Math.floor(diffSec / 60)
+      if (mins < 60) return mins + '分钟'
+      const hrs = Math.floor(mins / 60)
+      if (hrs < 24) return hrs + '小时'
+      const days = Math.floor(hrs / 24)
+      return days + '天'
     }
 
     const histGroups = computed(() => {
@@ -3104,6 +5741,7 @@ const App = {
       if (!c) return
       if (c.id !== chatId.value) {
         saveChat()
+        flushPersistConversations(false)
         chatId.value = c.id
         messages.value = liveOf(c)
         asking.value = runs.has(c.id)
@@ -3164,7 +5802,7 @@ const App = {
     function ensureChat(text) {
       let c = conversations.value.find((x) => x.id === chatId.value)
       if (!c) {
-        c = {
+        const raw = {
           id: newChatId(),
           title: fallbackTitle(text) || '新对话',
           titleReady: false,
@@ -3175,11 +5813,18 @@ const App = {
           pinnedAt: 0,
           messages: [],
         }
-        conversations.value.unshift(c)
+        conversations.value.unshift(raw)
+        c = conversations.value[0]
         chatId.value = c.id
-      } else if (!c.titleReady && (!c.title || c.title === '新对话')) {
-        const t = fallbackTitle(text)
-        if (t) c.title = t
+        messages.value = liveOf(c)
+      } else {
+        c._isDraft = false
+        if (!c._live) messages.value = liveOf(c)
+        else if (messages.value !== c._live) messages.value = c._live
+        if (!c.titleReady && (!c.title || c.title === '新对话')) {
+          const t = fallbackTitle(text)
+          if (t) c.title = t
+        }
       }
       try { localStorage.setItem(CHAT_ID_KEY, c.id) } catch (e) { /* ignore */ }
     }
@@ -3328,8 +5973,35 @@ const App = {
 
     async function send(preset) {
       if (arming) return
-      const homeId = chatId.value
-      if (homeId && runs.has(homeId)) return
+      const isQueuedObj = preset && typeof preset === 'object' && preset._queued
+      const homeId = (isQueuedObj && preset.convId) || chatId.value
+      if (homeId && runs.has(homeId)) {
+        if (isQueuedObj) return
+        const rawFollow = (typeof preset === 'string' ? preset : (question.value || '')).trim()
+        const hasAttach = attachments.value.length > 0
+        const hasCited = citedNews.value.length > 0
+        if (!rawFollow && !hasAttach && !hasCited) return
+        if (!pendingFollowups[homeId]) pendingFollowups[homeId] = []
+        const item = {
+          _queued: true,
+          id: newChatId(),
+          convId: homeId,
+          text: rawFollow,
+          attachments: attachments.value.slice(),
+          citedNews: citedNews.value.slice(),
+        }
+        question.value = ''
+        attachments.value = []
+        citedNews.value = []
+        if (cfg.followup_mode === 'queue') {
+          pendingFollowups[homeId].push(item)
+          message.info('已加入等待队列')
+        } else {
+          pendingFollowups[homeId].unshift(item)
+          stopRun(homeId)
+        }
+        return
+      }
       arming = true
       let convId = ''
       let cur = null
@@ -3337,9 +6009,10 @@ const App = {
       let hist = null
       let priorSources = null
       try {
-      if (attachments.value.some((a) => a.state === 'parsing')) return
+      const activeAttachments = isQueuedObj ? (preset.attachments || []) : attachments.value
+      if (activeAttachments.some((a) => a.state === 'parsing')) return
       const vision = modelHasVision.value
-      for (const a of attachments.value) {
+      for (const a of activeAttachments) {
         if (a.state !== 'ready' || a.kind !== 'image' || vision || !a.file) continue
         a.state = 'parsing'
         a.percent = 2
@@ -3347,22 +6020,45 @@ const App = {
         a.data = ''
         await parseAttach(a.file, a, false)
       }
-      if (chatId.value !== homeId) return
-      if (attachments.value.some((a) => a.state === 'parsing')) return
-      if (attachments.value.some((a) => a.state === 'error')) {
+      if (!isQueuedObj && chatId.value !== homeId) return
+      if (activeAttachments.some((a) => a.state === 'parsing')) return
+      if (activeAttachments.some((a) => a.state === 'error')) {
         message.warning('有附件未能处理')
         return
       }
-      const ready = attachments.value.filter((a) => a.state === 'ready' && ((a.text || '').trim() || a.kind === 'image'))
-      const text = (typeof preset === 'string' ? preset : (question.value || '')).trim()
-      if (!text && !ready.length) return
-      question.value = ''
+      const ready = activeAttachments.filter((a) => a.state === 'ready' && ((a.text || '').trim() || a.kind === 'image'))
+      const citedSnapshot = isQueuedObj ? (preset.citedNews || []).slice() : citedNews.value.slice()
+      const rawText = isQueuedObj
+        ? (preset.text || '').trim()
+        : (typeof preset === 'string' ? preset : (question.value || '')).trim()
+      if (!rawText && !ready.length && !citedSnapshot.length) return
+      const text = rawText || ('请结合以下 ' + citedSnapshot.length + ' 条新闻进行综合研判：')
+      if (!isQueuedObj) {
+        question.value = ''
+        citedNews.value = []
+      }
       const textFiles = ready.filter((a) => a.kind !== 'image')
       const images = ready.filter((a) => a.kind === 'image').slice(0, 4).map((a) => ({
         name: a.name, mime: a.mime || 'image/jpeg', data: a.data,
       }))
       const files = ready.map((a) => ({ name: a.name, source: a.source || '', text: a.text || '', kind: a.kind || 'text' }))
-      attachments.value = []
+      if (citedSnapshot.length) {
+        files.push(...citedSnapshot.map((cn) => ({ name: `[新闻:${cn.lang}] ${cn.title_zh || cn.title_orig}`, source: cn.url || '' })))
+      }
+      const newsCtx = citedSnapshot.length
+        ? citedSnapshot.map((cn, idx) => (
+            `[引用新闻 ${idx + 1}] (${cn.lang} · ${cn.feed_name} · ${formatNewsTime(cn.published_at)})\n` +
+            `中文标题：${cn.title_zh || cn.title_orig}\n` +
+            (cn.title_zh && cn.title_zh !== cn.title_orig ? `原标题：${cn.title_orig}\n` : '') +
+            `摘要/正文：${cn.content_zh || cn.summary_zh || cn.summary_orig || ''}\n` +
+            (cn.url ? `链接：${cn.url}` : '')
+          )).join('\n\n')
+        : ''
+      if (!isQueuedObj) attachments.value = []
+      if (isQueuedObj && homeId && chatId.value !== homeId) {
+        const target = conversations.value.find((x) => x.id === homeId)
+        if (target) openHistChat(target)
+      }
       ensureChat(text || (files[0] && files[0].name) || '')
       convId = chatId.value
       const conv = conversations.value.find((x) => x.id === convId)
@@ -3370,13 +6066,16 @@ const App = {
         if (!conv._live) conv._live = messages.value
         else if (messages.value !== conv._live) messages.value = conv._live
       }
+      const packedPrompt = newsCtx
+        ? `${packUser(text, textFiles)}\n\n【用户引用的外部新闻情报】\n${newsCtx}`
+        : packUser(text, textFiles)
       messages.value.push({
         id: newChatId(),
         role: 'user',
         content: text,
         files: files.map((f) => ({ name: f.name, source: f.source })),
         images,
-        packed: packUser(text, textFiles),
+        packed: packedPrompt,
       })
       cur = reactive({
         id: newChatId(),
@@ -3454,6 +6153,9 @@ const App = {
           ok = false
         }
       } finally {
+        if (!cur.content && cur._stashedContent) {
+          cur.content = cur._stashedContent
+        }
         cur.streaming = false
         scheduleAnswer(cur)
         runs.delete(convId)
@@ -3461,10 +6163,16 @@ const App = {
         const own = conversations.value.find((x) => x.id === convId)
         attachCitedSources(cur, collectSources((own && own._live) || []))
         saveConv(convId)
+        flushPersistConversations(false)
         scheduleTitle(convId)
         if (chatId.value === convId) {
           asking.value = false
           scrollChat()
+        }
+        const qList = pendingFollowups[convId]
+        if (qList && qList.length) {
+          const nextItem = qList.shift()
+          nextTick(() => send(nextItem))
         }
       }
       if (!ok && !cur.content) cur.showSrc = true
@@ -3517,7 +6225,12 @@ const App = {
         if (ev.text) cur.reasoning = ev.text
         finishThink(cur)
       } else if (ev.type === 'reset') {
-        cur.content = ''
+        if ((cur.content || '').trim().length >= 60) {
+          cur.content = cur.content.trimEnd() + '\n\n'
+        } else {
+          if ((cur.content || '').trim()) cur._stashedContent = cur.content
+          cur.content = ''
+        }
         scheduleAnswer(cur)
       } else if (ev.type === 'tool') {
         finishThink(cur)
@@ -3530,7 +6243,9 @@ const App = {
               ? 'browser'
               : ev.name === 'call_api'
                 ? 'api'
-                : 'search'
+                : ['search_news', 'entity_brief', 'news_digest'].includes(ev.name)
+                  ? 'news'
+                  : 'search'
         cur.tools.push({
           kind,
           action: a.action || '',
@@ -3592,6 +6307,7 @@ const App = {
     const catDocType = ref('')
     const catQuery = ref('')
     const expandedProjs = reactive({})
+    const kbOff = reactive({})
     const treeExpanded = reactive({})
     const activeTreeDocId = ref(null)
     const dropTargetKey = ref('')
@@ -3758,6 +6474,60 @@ const App = {
       return scopeDocs.value.filter((d) => (d.doc_type || 'general') === dt)
     })
 
+    function shortBatchStatus(bi) {
+      const s = String((bi && bi.statusText) || '')
+      const page = s.match(/(\d+)\s*\/\s*(\d+)/)
+      if (page) return page[1] + '/' + page[2]
+      if (!bi) return ''
+      if (bi.state === 'done') return '已入库'
+      if (bi.state === 'skipped') return '已在库'
+      if (bi.state === 'pending') return '等待'
+      if (bi.state === 'error') {
+        if (s.indexOf('中断') >= 0) return '中断'
+        if (/fetch|network|网络/i.test(s)) return '网络'
+        return '失败'
+      }
+      if (s.indexOf('入库') >= 0) return '入库'
+      return '识别'
+    }
+    function batchPlaceholderItems() {
+      if (ingest.open || !ingest.batchMode) return []
+      return ingest.batchItems
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => item.state !== 'done' && item.state !== 'skipped')
+    }
+    function placeholderFileName(item) {
+      return String((item && item.name) || '').split('/').pop() || '未命名文件'
+    }
+    const catalogRows = computed(() => {
+      const real = filteredDocs.value
+      const pending = batchPlaceholderItems()
+      if (!pending.length) return real
+      const proj = catProject.value
+      const folder = catFolder.value || ''
+      const targetProj = ingest.project || ''
+      if (proj && proj !== targetProj) return real
+      const extras = []
+      for (const { item, idx } of pending) {
+        const itemFolder = item.folder || ingest.folder || ''
+        if (folder && itemFolder !== folder && !itemFolder.startsWith(folder + '/')) continue
+        const base = placeholderFileName(item)
+        const ext = (base.match(/(\.[a-z0-9]+)$/i) || [, ''])[1].toLowerCase()
+        extras.push({
+          id: 'ph-' + idx,
+          _placeholder: true,
+          _loading: !!ingest.batchRunning && (item.state === 'running' || item.state === 'pending'),
+          _status: shortBatchStatus(item),
+          title: base,
+          file_ext: ext,
+          project: targetProj,
+          folder: itemFolder,
+          doc_type: item.doc_type || '',
+        })
+      }
+      return extras.concat(real)
+    })
+
     const treeDocsIndex = computed(() => {
       const map = new Map()
       for (const d of docs.value || []) {
@@ -3796,6 +6566,30 @@ const App = {
           hasChildren: false,
           isSelected: selDoc === d.id,
         })
+      }
+      const pendingPh = batchPlaceholderItems()
+      const phUsed = new Set()
+      const pushPlaceholders = (project, folder, depth) => {
+        for (const { item, idx } of pendingPh) {
+          const folderOf = item.folder || ingest.folder || ''
+          if ((ingest.project || '') !== project || folderOf !== (folder || '')) continue
+          phUsed.add(idx)
+          const base = placeholderFileName(item)
+          rows.push({
+            key: 'ph::' + idx,
+            kind: 'placeholder',
+            depth,
+            project,
+            folder: folderOf,
+            name: base,
+            tooltip: base,
+            status: shortBatchStatus(item),
+            loading: !!ingest.batchRunning && (item.state === 'running' || item.state === 'pending'),
+            open: false,
+            hasChildren: false,
+            isSelected: false,
+          })
+        }
       }
 
       for (const proj of projs) {
@@ -3853,12 +6647,39 @@ const App = {
             if (!fOpen) continue
             walk(path)
             for (const d of fFiles) pushFile(d, fDepth + 1)
+            pushPlaceholders(name, path, fDepth + 1)
           }
           if (!parentPath) {
             for (const d of rootFiles) pushFile(d, 1)
+            pushPlaceholders(name, '', 1)
           }
         }
         walk('')
+      }
+      if (phUsed.size < pendingPh.length && ingest.project) {
+        const at = rows.findIndex((r) => r.kind === 'project' && r.project === ingest.project && r.open)
+        if (at >= 0) {
+          const extra = []
+          for (const { item, idx } of pendingPh) {
+            if (phUsed.has(idx)) continue
+            const base = placeholderFileName(item)
+            extra.push({
+              key: 'ph::' + idx,
+              kind: 'placeholder',
+              depth: 1,
+              project: ingest.project,
+              folder: item.folder || ingest.folder || '',
+              name: base,
+              tooltip: base,
+              status: shortBatchStatus(item),
+              loading: !!ingest.batchRunning && (item.state === 'running' || item.state === 'pending'),
+              open: false,
+              hasChildren: false,
+              isSelected: false,
+            })
+          }
+          rows.splice(at + 1, 0, ...extra)
+        }
       }
       return rows
     })
@@ -3869,6 +6690,10 @@ const App = {
     }
     function onTreeRowClick(row) {
       if (!row) return
+      if (row.kind === 'placeholder') {
+        ingest.open = true
+        return
+      }
       if (row.kind === 'file') {
         activeTreeDocId.value = row.doc.id
         catProject.value = row.project || ''
@@ -3917,6 +6742,10 @@ const App = {
       }
     }
     function openIngestInScope(proj, folder) {
+      if (ingest.batchMode && ingest.batchItems.length) {
+        ingest.open = true
+        return
+      }
       openIngest()
       if (proj) ingest.project = proj
       if (folder) ingest.folder = folder
@@ -4392,6 +7221,35 @@ const App = {
     async function loadDocs() {
       docs.value = await api.get('/api/docs')
     }
+    function applyKbOff(names) {
+      const off = {}
+      for (const name of names || []) off[name] = true
+      for (const key of Object.keys(kbOff)) {
+        if (!off[key]) delete kbOff[key]
+      }
+      Object.assign(kbOff, off)
+    }
+    async function loadKb() {
+      try {
+        const data = await api.get('/api/kb')
+        applyKbOff(data && data.disabled)
+      } catch (e) { /* 旧进程还没有这个接口时，开关保持打开 */ }
+    }
+    async function toggleProjectKb(row) {
+      const name = (row && (row.project || row.name)) || ''
+      if (!name) return
+      const enabled = !!kbOff[name]
+      try {
+        const data = await api.post('/api/kb', { project: name, enabled })
+        if (data && data.error) {
+          message.error(data.error)
+          return
+        }
+        applyKbOff(data && data.disabled)
+      } catch (e) {
+        message.error('没能切换文库，请重启 O2 后再试')
+      }
+    }
     function isProjExpanded(projName) {
       return expandedProjs[projName] !== false
     }
@@ -4414,6 +7272,7 @@ const App = {
     const cfg = reactive({
       base_url: '', api_key: '', model: '', src_root: '', effort: 'high',
       provider_id: '', context: '',
+      temperature: 0.1, top_k: 8,
       providers: [],
       embed_providers: [],
       embed_provider_id: '',
@@ -4422,6 +7281,30 @@ const App = {
       embed_running: false,
       api_connectors: [],
       api_key_set: false, paddle_token: '', paddle_token_set: false,
+      shell: true, browser: true, api_call: true,
+      pdf_ocr_mode: 'smart',
+      batch_concurrency: 3,
+      batch_fast_meta: false,
+      browser_download_mode: 'sandbox',
+      auto_clean_temp: true,
+      ui_density: 'default',
+      ui_theme: 'light',
+      default_tab: 'ask',
+      followup_mode: 'steer',
+      news_enabled: false,
+      news_auto_translate: true,
+      news_refresh_minutes: 15,
+      news_llm_provider_id: '',
+      news_llm_model: '',
+      news_rsshub_base: 'https://rsshub.app',
+      news_glossary: [],
+      news_local_embed: true,
+      news_local_rerank: true,
+      dashboard_layout: null,
+      market_proxy: '',
+      market_source_mode: 'auto',
+      detected_system_proxy: '',
+      db_path: '',
     })
     const protocols = ref([
       { id: 'openai', label: 'OpenAI 兼容 (v1/chat/completions)' },
@@ -4450,6 +7333,66 @@ const App = {
       { id: 'oauth2_client_credentials', label: 'OAuth2 / 企业令牌 (自动换取 access_token)' },
       { id: 'cookie', label: 'Cookie 凭证' },
     ])
+    const apiCategories = [
+      { id: 'macro', label: '宏观与汇率' },
+      { id: 'market', label: '行情与公司' },
+      { id: 'filings', label: '披露与主体' },
+      { id: 'trade', label: '贸易与航运' },
+      { id: 'news', label: '新闻与事件' },
+      { id: 'reference', label: '文献资料' },
+      { id: 'geo', label: '天气与地理' },
+      { id: 'dev', label: '开发' },
+      { id: 'other', label: '其他' },
+    ]
+    const apiCategoryByName = {
+      fred: 'macro', eia: 'macro', treasuryfiscaldata: 'macro', bls: 'macro',
+      ecb: 'macro', worldbank: 'macro', frankfurter: 'macro',
+      yahoofinance: 'market', fmp: 'market', finnhub: 'market', eastmoney: 'market',
+      eastmoneyhistory: 'market', coingecko: 'market', '山西证券tushare网关': 'market',
+      gleif: 'filings', secedgar: 'filings',
+      comtrade: 'trade', comtradepreview: 'trade', imfportwatch: 'trade',
+      vesselapi: 'trade', digitrafficais: 'trade',
+      gdelt: 'news', hackernews: 'news',
+      wikipedia: 'reference', openalex: 'reference', crossref: 'reference',
+      openmeteo: 'geo', nws: 'geo', usgs: 'geo',
+      github: 'dev', pypi: 'dev',
+    }
+    const apiCategoryKeywords = {
+      macro: ['fred', 'stlouisfed', 'eia', 'treasury', 'fiscaldata', 'bls', 'ecb', 'worldbank', 'frankfurter', 'imf', 'oecd', 'pbc', 'gdp', 'cpi', 'ppi', 'inflation', 'forex', 'currency', 'fx', 'macro', '宏观', '汇率', '利率', '央行', '统计局', '通胀', '国债', '外汇'],
+      market: ['yahoofinance', 'fmp', 'finnhub', 'eastmoney', 'coingecko', 'tushare', 'akshare', 'binance', 'okx', 'stock', 'quote', 'ticker', 'kline', 'equity', 'etf', 'fund', 'crypto', 'futures', 'market', '行情', '股票', '证券', '基金', '期货', 'k线', '股价', '市值', '交易所'],
+      filings: ['gleif', 'secedgar', 'sec.gov', 'edgar', 'cninfo', 'qichacha', 'tianyancha', 'lei', '10-k', '10-q', 'filing', 'disclosure', '披露', '公告', '巨潮', '企查查', '天眼查', '工商', '主体', '招股书', '年报'],
+      trade: ['comtrade', 'portwatch', 'vessel', 'digitraffic', 'ais', 'customs', 'tariff', 'freight', 'shipping', 'container', 'port', 'logistics', 'bdi', 'scfi', 'cargo', '贸易', '航运', '船舶', '港口', '海关', '进出口', '关税', '物流', '货运', '运价', '集装箱', '供应链'],
+      news: ['gdelt', 'hackernews', 'newsapi', 'rss', 'feed', 'headline', 'reuters', 'bloomberg', 'tass', 'sentiment', '新闻', '资讯', '快讯', '舆情', '事件', '头条', '情报'],
+      reference: ['wikipedia', 'openalex', 'crossref', 'arxiv', 'pubmed', 'doi', 'scholar', 'paper', 'journal', '文献', '百科', '论文', '期刊', '学术', '专利'],
+      geo: ['openmeteo', 'open-meteo', 'nws', 'weather', 'usgs', 'qweather', 'amap', 'mapbox', 'climate', 'earthquake', 'geocode', '天气', '气象', '预报', '地理', '地图', '高德', '经纬度', '地震'],
+      dev: ['github', 'gitlab', 'pypi', 'npmjs', 'docker', 'cloudflare', 'dns', 'ipinfo', 'repos', '开发', '代码', '仓库', '镜像', '域名'],
+    }
+    function inferApiCategory(name, baseUrl, notes, endpoints) {
+      const key = String(name || '').trim().toLowerCase().replace(/\s+/g, '')
+      if (apiCategoryByName[key]) return apiCategoryByName[key]
+      const epStr = Array.isArray(endpoints)
+        ? endpoints.slice(0, 20).map((e) => `${e.path || ''} ${e.summary || ''}`).join(' ').toLowerCase()
+        : ''
+      const nLow = String(name || '').toLowerCase()
+      const uLow = String(baseUrl || '').toLowerCase()
+      const descLow = String(notes || '').toLowerCase()
+      let best = 'other'
+      let bestScore = 0
+      for (const [catId, kws] of Object.entries(apiCategoryKeywords)) {
+        let sc = 0
+        for (const kw of kws) {
+          if (nLow.includes(kw) || key.includes(kw)) sc += 6
+          if (uLow.includes(kw)) sc += 5
+          if (descLow.includes(kw)) sc += 3
+          if (epStr.includes(kw)) sc += 2
+        }
+        if (sc > bestScore) {
+          bestScore = sc
+          best = catId
+        }
+      }
+      return bestScore >= 3 ? best : 'other'
+    }
     const apiPresets = ref([
       { id: 'public', name: '公开 REST API', protocol: 'rest', base_url: 'https://', auth_type: 'none', allow_write: false, notes: '免费、无需 Key 的公开接口。保存后会出现在「已接入 API」目录中，提醒 AI 优先走这条渠道。' },
       { id: 'rest_bearer', name: 'Bearer REST API', protocol: 'rest', base_url: 'https://', auth_type: 'bearer', auth_prefix: 'Bearer', allow_write: false, notes: '通用 Bearer 鉴权 REST / 数据库接口。' },
@@ -4492,15 +7435,225 @@ const App = {
     const settingsPid = ref('')
     const settingsEmbedPid = ref('')
     const settingsApiId = ref('')
+    const lastAppTab = ref('ask')
+    const settingsSearch = ref('')
     const settingsPrimary = [
-      { key: 'llm', label: '智能问答' },
+      { key: 'general', label: '偏好设置' },
+      { key: 'appearance', label: '外观' },
+      { key: 'shortcuts', label: '快捷键' },
+      { key: 'llm', label: '提供商' },
+      { key: 'models', label: '模型' },
+      { key: 'embed', label: '向量引擎' },
       { key: 'api', label: '外部 API' },
-      { key: 'embed', label: 'Embedding' },
-      { key: 'ocr', label: '文字识别' },
-      { key: 'index', label: '高级' },
+      { key: 'news', label: '新闻流' },
+      { key: 'ocr', label: '文档与识别' },
+      { key: 'storage', label: '浏览器与存储' },
+      { key: 'about', label: '关于' },
     ]
-    const settingsSection = ref('llm')
-    watch(settingsSection, pulseSettings)
+    const ocSettingsGroups = [
+      [
+        { key: 'general', label: '偏好设置', icon: ICO.manage },
+        { key: 'appearance', label: '外观', icon: ICO.appearance },
+        { key: 'shortcuts', label: '快捷键', icon: ICO.shortcut },
+      ],
+      [
+        { key: 'llm', label: '提供商', icon: ICO.provider },
+        { key: 'models', label: '模型', icon: ICO.sparkle },
+        { key: 'embed', label: '向量引擎', icon: ICO.embed },
+        { key: 'api', label: '外部 API', icon: ICO.globe },
+        { key: 'news', label: '新闻流', icon: ICO.rss },
+      ],
+      [
+        { key: 'ocr', label: '文档与识别', icon: ICO.library },
+        { key: 'storage', label: '浏览器与存储', icon: ICO.storage },
+      ],
+      [
+        { key: 'about', label: '关于', icon: ICO.info },
+      ],
+    ]
+    const OC_SECTION_META = {
+      general: {
+        title: '偏好设置',
+        desc: '自定义偏好、界面布局密度、工具权限和批量导入加速行为',
+        keywords: '偏好 常规 界面 布局 密度 默认 启动 消息 队列 引导 浏览器 powershell 终端 批量 导入 并发 速度 规则',
+      },
+      appearance: {
+        title: '外观与参数',
+        desc: '调整思考推理深度、生成温度、检索片段召回量与画布阅读交互',
+        keywords: '外观 推理 强度 effort 温度 temperature top_k 召回 切片 缩放 画布 双指 滚轮',
+      },
+      shortcuts: {
+        title: '快捷键',
+        desc: '问答对话、多模态检索与原文画布的键盘快捷操作一览',
+        keywords: '快捷键 键盘 回车 enter shift 缩放 平移 拖拽',
+      },
+      llm: {
+        title: '提供商',
+        desc: '管理大模型服务商渠道、Base URL、通信协议与 API Key 密钥',
+        keywords: '提供商 渠道 大模型 llm api key 密钥 base url deepseek openai anthropic claude gemini 千问 智谱 硅基流动',
+      },
+      models: {
+        title: '模型',
+        desc: '选择默认问答与属性抽取模型，查看已启用模型的多模态与推理能力',
+        keywords: '模型 默认 推理 视觉 多模态 上下文 模型列表',
+      },
+      embed: {
+        title: '向量引擎',
+        desc: '配置 Embedding 语义向量化渠道与模型，管理后台向量索引任务',
+        keywords: 'embedding 向量 语义 检索 bge 千问 硅基流动 向量化',
+      },
+      api: {
+        title: '外部 API',
+        desc: '管理外部数据源连接器（REST / GraphQL / JSON-RPC），密钥在运行时安全注入',
+        keywords: '外部 api 连接器 openapi swagger fred 汇率 行情 鉴权 bearer oauth2 hmac',
+      },
+      news: {
+        title: '新闻流与情报终端',
+        desc: '管理中/英/俄 RSS 订阅源、OPML 导入导出、独立高速翻译小模型与专有术语表',
+        keywords: '新闻 rss opml 翻译 俄文 英文 中文 情报 终端 术语表 rsshub dashboard 看板',
+      },
+      ocr: {
+        title: '文档与识别',
+        desc: '配置 PaddleOCR-VL 版面识别策略、文件源目录与全库索引重建',
+        keywords: '文档 文字识别 ocr paddle token 扫描件 pdf 智能加速 文件源 文件夹 索引 重建 src_root',
+      },
+      storage: {
+        title: '浏览器与存储',
+        desc: '管理 AI 浏览器文件下载存放目录、临时文件自动回收与各类缓存清理',
+        keywords: '浏览器 存储 缓存 下载 临时文件 暂存 uploads 截图 cookie 登录态 清理 空间',
+      },
+      about: {
+        title: '关于',
+        desc: '查看版本信息、SQLite 本地知识库数据库体积与运行环境路径',
+        keywords: '关于 版本 数据库 sqlite 路径 profile',
+      },
+    }
+    const settingsSection = ref('general')
+    const ocActiveMeta = computed(() => OC_SECTION_META[settingsSection.value] || OC_SECTION_META.general)
+    function isNavMatched(key) {
+      const qStr = (settingsSearch.value || '').trim().toLowerCase()
+      if (!qStr) return settingsSection.value === key
+      const m = OC_SECTION_META[key]
+      if (!m) return false
+      return m.title.toLowerCase().includes(qStr)
+        || m.desc.toLowerCase().includes(qStr)
+        || m.keywords.toLowerCase().includes(qStr)
+    }
+    function showSettingsSec(key) {
+      const qStr = (settingsSearch.value || '').trim().toLowerCase()
+      if (!qStr) return settingsSection.value === key
+      return isNavMatched(key)
+    }
+    function selectSettingsNav(key) {
+      const norm = key === 'index' ? 'ocr' : key
+      settingsSearch.value = ''
+      settingsSection.value = norm
+      if (norm === 'storage' || norm === 'about') loadCacheStatus()
+      if (norm === 'news') { loadNewsFeeds(); loadNewsStatus() }
+    }
+    function exitSettings() {
+      tab.value = lastAppTab.value && lastAppTab.value !== 'settings' ? lastAppTab.value : 'ask'
+    }
+    function onSettingsModelPick(val) {
+      const parts = String(val || '').split('::')
+      if (parts.length === 2) {
+        cfg.provider_id = parts[0]
+        cfg.model = parts[1]
+      }
+    }
+    const cacheReport = reactive({
+      uploads: { bytes: 0, files: 0, path: '' },
+      temp_logs: { bytes: 0, files: 0 },
+      downloads: { bytes: 0, files: 0, path: '' },
+      browser_cache: { bytes: 0, profile_bytes: 0, path: '' },
+      ocr_cache: { bytes: 0, files: 0, path: '' },
+      database: { bytes: 0, path: '' },
+      active_download_dir: '',
+    })
+    const cacheClearing = ref('')
+    function formatBytes(bytes) {
+      const n = Number(bytes) || 0
+      if (n < 1024) return n + ' B'
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB'
+      if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB'
+      return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+    }
+    async function loadCacheStatus() {
+      try {
+        const res = await api.get('/api/cache/status')
+        if (res && res.ok) {
+          if (res.uploads) Object.assign(cacheReport.uploads, res.uploads)
+          if (res.temp_logs) Object.assign(cacheReport.temp_logs, res.temp_logs)
+          if (res.downloads) Object.assign(cacheReport.downloads, res.downloads)
+          if (res.browser_cache) Object.assign(cacheReport.browser_cache, res.browser_cache)
+          if (res.ocr_cache) Object.assign(cacheReport.ocr_cache, res.ocr_cache)
+          if (res.database) Object.assign(cacheReport.database, res.database)
+          cacheReport.active_download_dir = res.active_download_dir || ''
+        }
+      } catch (e) { /* ignore */ }
+    }
+    async function runClearCache(target, label) {
+      cacheClearing.value = target
+      try {
+        const res = await api.post('/api/cache/clear', { target })
+        if (!res || !res.ok) {
+          message.error((res && res.error) || '清理失败')
+          return
+        }
+        if (res.uploads) Object.assign(cacheReport.uploads, res.uploads)
+        if (res.temp_logs) Object.assign(cacheReport.temp_logs, res.temp_logs)
+        if (res.downloads) Object.assign(cacheReport.downloads, res.downloads)
+        if (res.browser_cache) Object.assign(cacheReport.browser_cache, res.browser_cache)
+        if (res.ocr_cache) Object.assign(cacheReport.ocr_cache, res.ocr_cache)
+        const freed = formatBytes(res.freed_bytes || 0)
+        message.success(`已清理${label}（释放 ${freed}）`)
+      } catch (e) {
+        message.error(String(e))
+      } finally {
+        cacheClearing.value = ''
+      }
+    }
+    function clearCacheTarget(target, label, needConfirm) {
+      if (needConfirm) {
+        Modal.confirm({
+          title: `确认清理${label}？`,
+          content: '清理后内置浏览器中已登录的网站会话将被注销，需要重新登录。',
+          okText: '确认重置',
+          okType: 'danger',
+          cancelText: '取消',
+          onOk: () => runClearCache(target, label),
+        })
+        return
+      }
+      runClearCache(target, label)
+    }
+    async function openCacheDir(kind) {
+      try {
+        const res = await api.post('/api/cache/open', { kind })
+        if (!res || !res.ok) message.error((res && res.error) || '打开目录失败')
+      } catch (e) {
+        message.error(String(e))
+      }
+    }
+    watch(tab, (next, prev) => {
+      if (prev && prev !== 'settings') lastAppTab.value = prev
+      if (next === 'settings') loadCacheStatus()
+      else nextTick(() => navSlide.schedule(next))
+    })
+    watch(() => cfg.ui_density, () => {
+      nextTick(() => navSlide.schedule(tab.value))
+    })
+    watch(() => cfg.browser_download_mode, () => {
+      if (cfgReady) setTimeout(loadCacheStatus, 600)
+    })
+    watch(settingsSection, (sec) => {
+      if (sec === 'index') {
+        settingsSection.value = 'ocr'
+        return
+      }
+      pulseSettings()
+      if (sec === 'storage' || sec === 'about') loadCacheStatus()
+    })
     const settingsNavMap = {}
     const settingsPill = reactive({ x: 6, y: 6, w: 0, h: 36, on: false })
     function bindSettingsNav(key, el) {
@@ -4538,7 +7691,8 @@ const App = {
         if (!el || !el.parentElement) return
         const br = el.getBoundingClientRect()
         if (br.width < 1 || br.height < 1) return
-        const nr = el.parentElement.getBoundingClientRect()
+        const root = el.closest('.provider-list, .nav-switch') || el.parentElement
+        const nr = root.getBoundingClientRect()
         box.x = br.left - nr.left
         box.y = br.top - nr.top
         box.w = br.width
@@ -4621,6 +7775,8 @@ const App = {
       signature_encoding: 'hex',
       token_url: '',
       allow_write: false,
+      preferred: false,
+      category: 'other',
       notes: '',
       endpoints: [],
     })
@@ -4710,6 +7866,8 @@ const App = {
           default_headers: c.default_headers || {},
           default_query: c.default_query || {},
           allow_write: !!c.allow_write,
+          preferred: !!c.preferred,
+          category: c.category || inferApiCategory(c.name),
           notes: c.notes || '',
           endpoints: (c.endpoints || []).map((ep) => ({ ...ep })),
         }
@@ -4738,6 +7896,8 @@ const App = {
         ...x,
         api_key: '',
         api_secret: '',
+        preferred: !!x.preferred,
+        category: x.category || inferApiCategory(x.name),
         endpoints: (x.endpoints || []).map((ep) => ({ ...ep })),
       }))
       if (c.protocols && c.protocols.length) protocols.value = c.protocols
@@ -4753,6 +7913,40 @@ const App = {
       cfg.api_connectors = apiConnectors
       cfg.embed_use = !!c.embed_use
       cfg.embed_running = !!c.embed_running
+      cfg.shell = c.shell !== false
+      cfg.browser = c.browser !== false
+      cfg.api_call = c.api_call !== false
+      cfg.pdf_ocr_mode = c.pdf_ocr_mode || 'smart'
+      cfg.batch_concurrency = Math.max(1, Math.min(6, Number(c.batch_concurrency) || 3))
+      cfg.batch_fast_meta = !!c.batch_fast_meta
+      cfg.browser_download_mode = c.browser_download_mode || 'sandbox'
+      cfg.auto_clean_temp = c.auto_clean_temp !== false
+      cfg.ui_density = c.ui_density || 'default'
+      cfg.ui_theme = c.ui_theme === 'dark' ? 'dark' : 'light'
+      document.documentElement.dataset.theme = cfg.ui_theme
+      cfg.default_tab = c.default_tab || 'ask'
+      cfg.followup_mode = c.followup_mode || 'steer'
+      cfg.news_enabled = !!c.news_enabled
+      cfg.news_auto_translate = c.news_auto_translate !== false
+      cfg.news_refresh_minutes = c.news_refresh_minutes != null ? Number(c.news_refresh_minutes) : 15
+      cfg.news_llm_provider_id = c.news_llm_provider_id || ''
+      cfg.news_llm_model = c.news_llm_model || ''
+      cfg.news_rsshub_base = c.news_rsshub_base || 'https://rsshub.app'
+      cfg.news_glossary = Array.isArray(c.news_glossary) ? c.news_glossary.map((g) => ({ ...g })) : []
+      cfg.news_local_embed = c.news_local_embed !== false
+      cfg.news_local_rerank = c.news_local_rerank !== false
+      cfg.dashboard_layout = c.dashboard_layout || null
+      cfg.market_proxy = c.market_proxy || ''
+      cfg.market_source_mode = c.market_source_mode || 'auto'
+      cfg.detected_system_proxy = c.detected_system_proxy || ''
+      if (cfg.news_enabled) {
+        loadNewsStatus()
+        loadNewsFeeds()
+        loadDashboardLayout()
+        loadMarketLayout()
+      }
+      cfg.temperature = c.temperature != null ? Number(c.temperature) : 0.1
+      cfg.top_k = c.top_k != null ? Number(c.top_k) : 8
       if (!settingsPid.value || !providers.some((p) => p.id === settingsPid.value)) {
         settingsPid.value = cfg.provider_id || (providers[0] && providers[0].id) || ''
       }
@@ -4774,6 +7968,32 @@ const App = {
         provider_id: cfg.provider_id,
         src_root: cfg.src_root,
         effort: cfg.effort,
+        temperature: cfg.temperature,
+        top_k: cfg.top_k,
+        shell: !!cfg.shell,
+        browser: !!cfg.browser,
+        api_call: !!cfg.api_call,
+        pdf_ocr_mode: cfg.pdf_ocr_mode || 'smart',
+        batch_concurrency: Number(cfg.batch_concurrency) || 3,
+        batch_fast_meta: !!cfg.batch_fast_meta,
+        browser_download_mode: cfg.browser_download_mode || 'sandbox',
+        auto_clean_temp: !!cfg.auto_clean_temp,
+        ui_density: cfg.ui_density || 'default',
+        ui_theme: cfg.ui_theme === 'dark' ? 'dark' : 'light',
+        default_tab: cfg.default_tab || 'ask',
+        followup_mode: cfg.followup_mode || 'steer',
+        news_enabled: !!cfg.news_enabled,
+        news_auto_translate: !!cfg.news_auto_translate,
+        news_refresh_minutes: Number(cfg.news_refresh_minutes ?? 15),
+        news_llm_provider_id: cfg.news_llm_provider_id || '',
+        news_llm_model: cfg.news_llm_model || '',
+        news_rsshub_base: cfg.news_rsshub_base || 'https://rsshub.app',
+        news_glossary: (cfg.news_glossary || []).map((g) => ({ term: g.term, zh: g.zh, note: g.note || '' })),
+        news_local_embed: !!cfg.news_local_embed,
+        news_local_rerank: !!cfg.news_local_rerank,
+        dashboard_layout: cfg.dashboard_layout || null,
+        market_proxy: cfg.market_proxy || '',
+        market_source_mode: cfg.market_source_mode || 'auto',
         providers: providersPayload(extra),
         embed_provider_id: cfg.embed_provider_id,
         embed_model: cfg.embed_model,
@@ -4861,22 +8081,47 @@ const App = {
     }
     watch(() => [
       cfg.model, cfg.src_root, cfg.effort, cfg.provider_id,
+      cfg.temperature, cfg.top_k, cfg.shell, cfg.browser, cfg.api_call,
+      cfg.pdf_ocr_mode, cfg.batch_concurrency, cfg.batch_fast_meta,
+      cfg.browser_download_mode, cfg.auto_clean_temp,
+      cfg.ui_density, cfg.ui_theme, cfg.default_tab, cfg.followup_mode,
+      cfg.news_enabled, cfg.news_auto_translate, cfg.news_refresh_minutes,
+      cfg.news_llm_provider_id, cfg.news_llm_model, cfg.news_rsshub_base,
+      cfg.news_local_embed, cfg.news_local_rerank,
+      cfg.market_proxy, cfg.market_source_mode,
+      JSON.stringify(cfg.news_glossary || []),
       (cfg.providers || []).map((p) => [p.id, p.name, p.protocol, p.base_url, JSON.stringify(p.models)]),
       cfg.embed_use, cfg.embed_provider_id, cfg.embed_model,
       (cfg.embed_providers || []).map((p) => [p.id, p.name, p.protocol, p.base_url, JSON.stringify(p.models)]),
       (cfg.api_connectors || []).map((c) => [
         c.id, c.name, c.protocol, c.base_url, c.auth_type, c.auth_prefix,
         c.header_name, c.query_name, c.signature_param, c.signature_in,
-        c.signature_encoding, c.token_url, c.allow_write, c.notes,
+        c.signature_encoding, c.token_url, c.allow_write, c.preferred, c.category, c.notes,
         JSON.stringify(c.endpoints || []),
       ]),
     ], scheduleSave)
 
+    const apiConnectorGroups = computed(() => {
+      const buckets = new Map()
+      for (const c of cfg.api_connectors || []) {
+        const id = c.category || inferApiCategory(c.name)
+        if (!buckets.has(id)) buckets.set(id, [])
+        buckets.get(id).push(c)
+      }
+      const groups = []
+      for (const cat of apiCategories) {
+        const items = buckets.get(cat.id)
+        if (!items || !items.length) continue
+        items.sort((a, b) => Number(!!b.preferred) - Number(!!a.preferred))
+        groups.push({ id: cat.id, label: cat.label, items })
+      }
+      return groups
+    })
     function apiConnectorStateText(c) {
       if (!c) return ''
       const proto = String(c.protocol || 'rest').toUpperCase()
       const auth = c.auth_type === 'none' ? '免费' : (c.api_key_set || c.api_secret_set ? '已配密钥' : '待配密钥')
-      return `${proto} · ${auth}${c.allow_write ? ' · 可写' : ''}`
+      return `${c.preferred ? '优先 · ' : ''}${proto} · ${auth}${c.allow_write ? ' · 可写' : ''}`
     }
     function apiKeyLabel(authType) {
       if (authType === 'basic') return 'HTTP Basic 用户名'
@@ -4948,6 +8193,8 @@ const App = {
         default_headers: {},
         default_query: {},
         allow_write: !!addApiConnector.allow_write,
+        preferred: false,
+        category: inferApiCategory(name, base_url, addApiConnector.notes, addApiConnector.endpoints),
         notes: (addApiConnector.notes || '').trim(),
         endpoints: (addApiConnector.endpoints || []).map((ep) => ({ ...ep })),
         api_key: '',
@@ -5059,7 +8306,10 @@ const App = {
         if (res.token_url) c.token_url = res.token_url
         if (res.notes) c.notes = c.notes ? (c.notes + '\n' + res.notes) : res.notes
         if (Array.isArray(res.endpoints) && res.endpoints.length) c.endpoints = res.endpoints
-        message.success(`已解析 ${res.endpoints ? res.endpoints.length : 0} 个端点并填入使用说明`)
+        if (!c.category || c.category === 'other') {
+          c.category = res.category || inferApiCategory(c.name, c.base_url, c.notes, c.endpoints)
+        }
+        message.success(`已解析 ${res.endpoints ? res.endpoints.length : 0} 个端点并自动归类`)
         scheduleSave()
       } catch (e) {
         message.error(String(e))
@@ -5444,6 +8694,9 @@ const App = {
     }
 
     function rowClick(record) {
+      if (record && record._placeholder) {
+        return { onClick: () => { ingest.open = true } }
+      }
       return {
         draggable: true,
         onClick: (e) => {
@@ -5508,6 +8761,11 @@ const App = {
     let ingestAbort = null
     let batchQueueTimer = 0
     let pendingBatchFiles = []
+    const batchHasGap = computed(() => (
+      ingest.batchMode
+      && !ingest.batchRunning
+      && ingest.batchItems.some((x) => x.state !== 'done' && x.state !== 'skipped')
+    ))
 
     const projectOptions = computed(() => (facets.projects || []).map((p) => ({ value: p })))
     const folderOptions = computed(() => {
@@ -5762,6 +9020,10 @@ const App = {
     }
 
     function openIngest(docId) {
+      if (!docId && ingest.batchMode && ingest.batchItems.length) {
+        ingest.open = true
+        return
+      }
       resetIngest()
       ingest.doc_id = docId || null
       ingest.open = true
@@ -5840,12 +9102,14 @@ const App = {
       ingest.filename = j.filename || (file && file.name) || ingest.filename
     }
 
-    async function parseSingleFileUpload(file, relPath, onProg) {
+    async function parseSingleFileUpload(file, relPath, onProg, opts) {
       const fd = new FormData()
       fd.append('file', file)
       fd.append('project', ingest.project || '')
       fd.append('folder', ingest.folder || '')
       if (relPath) fd.append('rel_path', relPath)
+      if (ingest.doc_id) fd.append('skip_existing', '0')
+      if (opts && opts.autoCommit) fd.append('auto_commit', '1')
       const r = await fetch('/api/docs/parse', {
         method: 'POST',
         body: fd,
@@ -5869,6 +9133,7 @@ const App = {
         }
       })
       if (errMsg) throw new Error(errMsg)
+      if (result && result.skipped) return result
       if (!result || !result.tmp_id) throw new Error('识别中断')
       return result
     }
@@ -5886,6 +9151,13 @@ const App = {
           ingest.percent = ev.percent || 0
           ingest.progressText = ev.message || ingest.progressText
         })
+        if (j.skipped) {
+          ingest.percent = 100
+          ingest.progressText = '这份文件已在库，已跳过'
+          ingest.filename = j.filename || file.name
+          message.info('这份文件已在库，已跳过')
+          return
+        }
         applyIngestMeta(j, file)
         ingest.percent = 100
         ingest.progressText = '识别完成'
@@ -5899,11 +9171,211 @@ const App = {
       }
     }
 
-    async function runBatchIngest(files) {
+    function onIngestDismiss() {
+      ingest.open = false
+      const keep = ingest.batchMode && ingest.batchItems.some((x) => x.state !== 'done' && x.state !== 'skipped')
+      if (!keep && !ingest.batchRunning && !ingest.parsing) {
+        resetIngest()
+        return
+      }
+      if (tab.value !== 'catalog') tab.value = 'catalog'
+      const proj = ingest.project || ''
+      if (proj) {
+        treeExpanded[treeKeyProject(proj)] = true
+        const folders = new Set()
+        if (ingest.folder) folders.add(ingest.folder)
+        for (const it of ingest.batchItems) if (it.folder) folders.add(it.folder)
+        for (const f of folders) {
+          const acc = []
+          for (const p of String(f).split('/')) {
+            if (!p) continue
+            acc.push(p)
+            treeExpanded[treeKeyFolder(proj, acc.join('/'))] = true
+          }
+        }
+      }
+    }
+
+    function onIngestCancel() {
+      if (ingestAbort) ingestAbort.abort()
+      resetIngest()
+    }
+
+    let batchBgRefreshTimer = 0
+    function scheduleBatchBgRefresh() {
+      if (batchBgRefreshTimer) return
+      batchBgRefreshTimer = setTimeout(async () => {
+        batchBgRefreshTimer = 0
+        try {
+          await Promise.all([loadFacets(), loadDocs(), loadStats()])
+        } catch (e) { /* ignore */ }
+      }, 2200)
+    }
+
+    async function ingestBatchItem(item) {
+      item.state = 'running'
+      item.statusText = '解析中…'
+      const parsed = await parseSingleFileUpload(item.file, item.file.webkitRelativePath || '', (ev) => {
+        item.statusText = ev.message || '识别中…'
+      }, { autoCommit: true })
+      if (parsed.skipped) {
+        item.state = 'skipped'
+        item.statusText = '已在库'
+        item.doc_type = parsed.doc_type || item.doc_type
+        item.folder = parsed.folder || item.folder
+        return
+      }
+      item.doc_type = parsed.doc_type || 'general'
+      item.folder = parsed.folder || ingest.folder || ''
+      if (!parsed.committed) {
+        item.statusText = '正在入库…'
+        const committed = await api.post('/api/docs/commit', {
+          tmp_id: parsed.tmp_id,
+          project: parsed.project || ingest.project || '集团制度库',
+          folder: parsed.folder || ingest.folder || '',
+          dept: parsed.dept || '',
+          doc_type: parsed.doc_type || 'general',
+          chunk_profile: parsed.chunk_profile || 'auto',
+          title: parsed.title || item.file.name,
+          doc_no: parsed.doc_no || '',
+          issued_date: parsed.issued_date || '',
+          status: parsed.status || '现行',
+          summary: parsed.summary || '',
+          tags: parsed.tags || [],
+          meta: parsed.meta || {},
+        })
+        if (!committed.ok) throw new Error(committed.error || '入库失败')
+      }
+      item.state = 'done'
+      item.statusText = '已入库'
+      if (!ingest.open && ingest.project) {
+        treeExpanded[treeKeyProject(ingest.project)] = true
+        const acc = []
+        for (const p of String(item.folder || ingest.folder || '').split('/')) {
+          if (!p) continue
+          acc.push(p)
+          treeExpanded[treeKeyFolder(ingest.project, acc.join('/'))] = true
+        }
+        scheduleBatchBgRefresh()
+      }
+    }
+
+    function batchFailText(e) {
+      if (e && e.name === 'AbortError') return '已中断'
+      const msg = e && e.message ? e.message : '失败'
+      return msg.slice(0, 26)
+    }
+
+    function batchSettled(item) {
+      return item.state === 'done' || item.state === 'skipped'
+    }
+
+    function batchSummaryText() {
+      const items = ingest.batchItems
+      const done = items.filter((x) => x.state === 'done').length
+      const skipped = items.filter((x) => x.state === 'skipped').length
+      const left = items.length - done - skipped
+      const parts = []
+      if (done) parts.push(`新入库 ${done} 份`)
+      if (skipped) parts.push(`已在库跳过 ${skipped} 份`)
+      if (left) parts.push(`还有 ${left} 份未完成`)
+      return { done, skipped, left, text: parts.join('，') || '没有文件' }
+    }
+
+    async function finishBatchRefresh() {
+      const total = ingest.batchItems.length
+      const sum = batchSummaryText()
+      ingest.percent = total ? Math.round(((total - sum.left) / total) * 100) : 100
+      ingest.progressText = sum.left
+        ? `已停下：${sum.text}`
+        : `批量处理完成：${sum.text}`
+      ingest.batchRunning = false
+      ingestAbort = null
+      await loadFacets()
+      await loadDocs()
+      await loadStats()
+      if (!sum.left && sum.done > 0) message.success(`成功导入 ${sum.done} 份文件`)
+      else if (!sum.left && sum.skipped > 0) message.info(`已在库 ${sum.skipped} 份，已跳过`)
+      if (!sum.left && !ingest.open) {
+        ingest.batchMode = false
+        ingest.batchItems = []
+        ingest.percent = 0
+        ingest.progressText = ''
+      }
+    }
+
+    async function runBatchQueue() {
+      if (ingest.batchRunning) return
       if (ingestAbort) ingestAbort.abort()
       ingestAbort = new AbortController()
-      ingest.batchMode = true
       ingest.batchRunning = true
+      const items = ingest.batchItems
+      const total = items.length
+      const concurrency = Math.max(1, Math.min(6, Number(cfg.batch_concurrency) || 3))
+      let cursor = 0
+      let aborted = false
+
+      function refreshOverallProgress(activeName) {
+        const settledCount = items.filter((x) => batchSettled(x)).length
+        ingest.percent = total ? Math.round((settledCount / total) * 100) : 100
+        if (activeName) {
+          ingest.progressText = `正在并行处理 (${settledCount}/${total} 已完成，${concurrency} 路加速)：${activeName}`
+        }
+      }
+
+      async function worker() {
+        while (!aborted) {
+          const i = cursor++
+          if (i >= total) break
+          const item = items[i]
+          if (batchSettled(item)) continue
+          refreshOverallProgress(item.file.name)
+          try {
+            await ingestBatchItem(item)
+          } catch (e) {
+            item.state = 'error'
+            item.statusText = batchFailText(e)
+            if (e && e.name === 'AbortError') {
+              aborted = true
+              break
+            }
+          }
+          refreshOverallProgress(item.file.name)
+        }
+      }
+
+      const workers = Array.from({ length: Math.min(concurrency, total || 1) }, () => worker())
+      await Promise.all(workers)
+      if (batchBgRefreshTimer) {
+        clearTimeout(batchBgRefreshTimer)
+        batchBgRefreshTimer = 0
+      }
+      await finishBatchRefresh()
+    }
+
+    function retryBatchFromBreak() {
+      return runBatchQueue()
+    }
+
+    async function retryBatchItem(item) {
+      if (!item || batchSettled(item) || ingest.batchRunning) return
+      if (ingestAbort) ingestAbort.abort()
+      ingestAbort = new AbortController()
+      ingest.batchRunning = true
+      ingest.progressText = `正在重试：${item.file.name}`
+      try {
+        await ingestBatchItem(item)
+      } catch (e) {
+        item.state = 'error'
+        item.statusText = batchFailText(e)
+      }
+      await finishBatchRefresh()
+    }
+
+    async function runBatchIngest(files) {
+      if (ingestAbort) ingestAbort.abort()
+      ingestAbort = null
+      ingest.batchMode = true
       ingest.filename = `已选择 ${files.length} 个文件批量入库`
       ingest.batchItems = files.map((f) => ({
         file: f,
@@ -5913,53 +9385,7 @@ const App = {
         state: 'pending',
         statusText: '等待中',
       }))
-      let okCount = 0
-      for (let i = 0; i < ingest.batchItems.length; i++) {
-        const item = ingest.batchItems[i]
-        item.state = 'running'
-        item.statusText = '解析中…'
-        ingest.percent = Math.round((i / ingest.batchItems.length) * 100)
-        ingest.progressText = `正在处理 (${i + 1}/${ingest.batchItems.length})：${item.file.name}`
-        try {
-          const parsed = await parseSingleFileUpload(item.file, item.file.webkitRelativePath || '', (ev) => {
-            item.statusText = ev.message || '识别中…'
-          })
-          item.doc_type = parsed.doc_type || 'general'
-          item.folder = parsed.folder || ingest.folder || ''
-          item.statusText = '正在入库…'
-          const committed = await api.post('/api/docs/commit', {
-            tmp_id: parsed.tmp_id,
-            project: parsed.project || ingest.project || '集团制度库',
-            folder: parsed.folder || ingest.folder || '',
-            dept: parsed.dept || '',
-            doc_type: parsed.doc_type || 'general',
-            chunk_profile: parsed.chunk_profile || 'auto',
-            title: parsed.title || item.file.name,
-            doc_no: parsed.doc_no || '',
-            issued_date: parsed.issued_date || '',
-            status: parsed.status || '现行',
-            summary: parsed.summary || '',
-            tags: parsed.tags || [],
-            meta: parsed.meta || {},
-          })
-          if (!committed.ok) throw new Error(committed.error || '入库失败')
-          item.state = 'done'
-          item.statusText = '已入库'
-          okCount++
-        } catch (e) {
-          if (e && e.name === 'AbortError') break
-          item.state = 'error'
-          item.statusText = (e && e.message) ? e.message.slice(0, 26) : '失败'
-        }
-      }
-      ingest.percent = 100
-      ingest.progressText = `批量处理完成：成功 ${okCount} / ${ingest.batchItems.length} 份`
-      ingest.batchRunning = false
-      ingestAbort = null
-      await loadFacets()
-      await loadDocs()
-      await loadStats()
-      if (okCount > 0) message.success(`成功导入 ${okCount} 份文件`)
+      await runBatchQueue()
     }
 
     async function readSse(res, onEvent) {
@@ -6937,11 +10363,1543 @@ const App = {
       window.removeEventListener('resize', syncBrowserViewport)
     })
 
+    // ============== 主题切换、终端看板与情报大脑 ==============
+    const clockNow = ref(Date.now())
+    let clockTimer = 0
+    onMounted(() => {
+      clockTimer = setInterval(() => { clockNow.value = Date.now() }, 1000)
+    })
+    onBeforeUnmount(() => {
+      clearInterval(clockTimer)
+    })
+    const terminalClock = computed(() => {
+      const d = new Date(clockNow.value)
+      const p = (n) => String(n).padStart(2, '0')
+      return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())} UTC`
+    })
+    const marketHours = computed(() => {
+      const d = new Date(clockNow.value)
+      const day = d.getUTCDay()
+      const mins = d.getUTCHours() * 60 + d.getUTCMinutes()
+      const isWknd = day === 0 || day === 6
+      const specs = [
+        { code: 'SSE', ranges: [[90, 210], [300, 420]], label: '09:30-15:00 CST' },
+        { code: 'HKEX', ranges: [[90, 240], [300, 480]], label: '09:30-16:00 HKT' },
+        { code: 'MOEX', ranges: [[420, 940]], label: '10:00-18:40 MSK' },
+        { code: 'LSE', ranges: [[480, 990]], label: '08:00-16:30 UTC' },
+        { code: 'NYSE', ranges: [[870, 1260]], label: '09:30-16:00 EST' },
+        { code: 'NASDAQ', ranges: [[870, 1260]], label: '09:30-16:00 EST' },
+      ]
+      return specs.map((s) => {
+        const open = !isWknd && s.ranges.some(([a, b]) => mins >= a && mins < b)
+        return { code: s.code, open, detail: s.label }
+      })
+    })
+
+    function toggleTheme() {
+      cfg.ui_theme = cfg.ui_theme === 'dark' ? 'light' : 'dark'
+    }
+    watch(() => cfg.ui_theme, (val) => {
+      document.documentElement.dataset.theme = val === 'dark' ? 'dark' : 'light'
+    }, { immediate: true })
+
+    watch(() => cfg.news_enabled, (enabled) => {
+      if (!enabled && (tab.value === 'news' || tab.value === 'dashboard' || tab.value === 'markets')) {
+        tab.value = 'ask'
+      }
+      if (enabled) {
+        loadNewsStatus()
+        loadNewsFeeds()
+        loadNewsItems(true)
+        loadNewsEntities()
+        loadEntityGraph()
+        loadDashboardLayout()
+        loadMarketLayout()
+        ensureMarketBoot()
+      }
+      nextTick(() => navSlide.schedule(tab.value))
+    })
+
+    const DASHBOARD_WIDGET_REGISTRY = {
+      watchlist_slot: { type: 'watchlist_slot', badge: 'M', title: 'WATCHLIST & K-LINE', defaultW: 16, defaultH: 12, minW: 8, minH: 8 },
+      sector_heatmap: { type: 'sector_heatmap', badge: 'H', title: 'SECTOR HEATMAP', defaultW: 12, defaultH: 10, minW: 6, minH: 7 },
+      macro_curve: { type: 'macro_curve', badge: 'Y', title: 'MACRO YIELDS & FX', defaultW: 12, defaultH: 10, minW: 6, minH: 7 },
+      geo_odds: { type: 'geo_odds', badge: 'G', title: 'GEO & PORTWATCH', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      connector_hub: { type: 'connector_hub', badge: 'A', title: 'DATA BUS', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      entity_pulse: { type: 'entity_pulse', badge: 'E', title: 'ENTITY GRAPH', defaultW: 8, defaultH: 10, minW: 5, minH: 7 },
+      sentiment_gauge: { type: 'sentiment_gauge', badge: 'S', title: 'RISK PULSE', defaultW: 8, defaultH: 10, minW: 5, minH: 7 },
+      live_wire: { type: 'live_wire', badge: 'N', title: 'LIVE WIRE', defaultW: 16, defaultH: 11, minW: 7, minH: 6 },
+      desk_note: { type: 'desk_note', badge: 'D', title: 'DESK NOTE', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
+      backtest_slot: { type: 'backtest_slot', badge: 'Q', title: 'QUANT LAB [M4]', defaultW: 24, defaultH: 6, minW: 6, minH: 5 },
+    }
+
+    const FALLBACK_DASHBOARD_LAYOUT = {
+      version: 2,
+      cols: 24,
+      locked: false,
+      pulseWidth: 268,
+      watchlistSplitWidth: 232,
+      activeWorkspace: 'intel_overview',
+      workspaces: [
+        {
+          id: 'intel_overview',
+          name: '终端总览',
+          widgets: [
+            { id: 'w_watchlist_slot', type: 'watchlist_slot', title: 'WATCHLIST & K-LINE', x: 0, y: 0, w: 16, h: 12, minW: 8, minH: 8, enabled: true, config: {} },
+            { id: 'w_sentiment_gauge', type: 'sentiment_gauge', title: 'RISK PULSE', x: 16, y: 0, w: 8, h: 12, minW: 5, minH: 7, enabled: true, config: {} },
+            { id: 'w_sector_heatmap', type: 'sector_heatmap', title: 'SECTOR HEATMAP', x: 0, y: 12, w: 12, h: 10, minW: 6, minH: 7, enabled: true, config: {} },
+            { id: 'w_macro_curve', type: 'macro_curve', title: 'MACRO YIELDS & FX', x: 12, y: 12, w: 12, h: 10, minW: 6, minH: 7, enabled: true, config: {} },
+            { id: 'w_live_wire', type: 'live_wire', title: 'LIVE WIRE', x: 0, y: 22, w: 16, h: 11, minW: 7, minH: 6, enabled: true, config: { limit: 24 } },
+            { id: 'w_desk_note', type: 'desk_note', title: 'DESK NOTE', x: 16, y: 22, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'w_entity_pulse', type: 'entity_pulse', title: 'ENTITY GRAPH', x: 0, y: 33, w: 8, h: 10, minW: 5, minH: 7, enabled: true, config: {} },
+            { id: 'w_geo_odds', type: 'geo_odds', title: 'GEO & PORTWATCH', x: 8, y: 33, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'w_connector_hub', type: 'connector_hub', title: 'DATA BUS', x: 16, y: 33, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'w_backtest_slot', type: 'backtest_slot', title: 'QUANT LAB [M4]', x: 0, y: 43, w: 24, h: 6, minW: 6, minH: 5, enabled: true, config: {} },
+          ],
+        },
+      ],
+    }
+
+    const MARKET_WIDGET_REGISTRY = {
+      panel_indices: { type: 'panel_indices', badge: 'I', title: 'INDICES', panelId: 'indices', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
+      panel_cn_logistics: { type: 'panel_cn_logistics', badge: 'L', title: 'CN LOGISTICS & CORE', panelId: 'cn_logistics', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
+      panel_us_hk: { type: 'panel_us_hk', badge: 'U', title: 'US & HK EQUITIES', panelId: 'us_hk', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
+      panel_forex: { type: 'panel_forex', badge: 'F', title: 'FOREX', panelId: 'forex', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      panel_commodities: { type: 'panel_commodities', badge: 'C', title: 'COMMODITIES', panelId: 'commodities', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      panel_etf_bonds: { type: 'panel_etf_bonds', badge: 'E', title: 'ETF & BONDS', panelId: 'etf_bonds', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      panel_crypto: { type: 'panel_crypto', badge: 'B', title: 'CRYPTO', panelId: 'crypto', defaultW: 12, defaultH: 10, minW: 5, minH: 6 },
+      watchlist: { type: 'watchlist', badge: 'W', title: 'WATCHLIST', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
+      kline_main: { type: 'kline_main', badge: 'K', title: 'K-LINE TERMINAL', defaultW: 16, defaultH: 14, minW: 8, minH: 8 },
+      sector_heatmap: { type: 'sector_heatmap', badge: 'H', title: 'SECTOR HEATMAP', defaultW: 12, defaultH: 10, minW: 6, minH: 7 },
+      movers_gainers: { type: 'movers_gainers', badge: '▲', title: 'TOP GAINERS', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
+      movers_losers: { type: 'movers_losers', badge: '▼', title: 'TOP LOSERS', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
+      movers_active: { type: 'movers_active', badge: '⚡', title: 'MOST ACTIVE', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
+    }
+
+    const FALLBACK_MARKET_LAYOUT = {
+      version: 2,
+      cols: 24,
+      locked: false,
+      detailWidth: 380,
+      detailChartHeight: 280,
+      activeWorkspace: 'mkt_overview',
+      workspaces: [
+        {
+          id: 'mkt_overview',
+          name: '多市场网格',
+          widgets: [
+            { id: 'mw_indices', type: 'panel_indices', title: 'INDICES', x: 0, y: 0, w: 8, h: 12, minW: 5, minH: 6, enabled: true, config: { panelId: 'indices' } },
+            { id: 'mw_cn_logistics', type: 'panel_cn_logistics', title: 'CN LOGISTICS & CORE', x: 8, y: 0, w: 8, h: 12, minW: 5, minH: 6, enabled: true, config: { panelId: 'cn_logistics' } },
+            { id: 'mw_us_hk', type: 'panel_us_hk', title: 'US & HK EQUITIES', x: 16, y: 0, w: 8, h: 12, minW: 5, minH: 6, enabled: true, config: { panelId: 'us_hk' } },
+            { id: 'mw_forex', type: 'panel_forex', title: 'FOREX', x: 0, y: 12, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'forex' } },
+            { id: 'mw_commodities', type: 'panel_commodities', title: 'COMMODITIES', x: 8, y: 12, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'commodities' } },
+            { id: 'mw_etf_bonds', type: 'panel_etf_bonds', title: 'ETF & BONDS', x: 16, y: 12, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'etf_bonds' } },
+            { id: 'mw_crypto', type: 'panel_crypto', title: 'CRYPTO', x: 0, y: 22, w: 12, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'crypto' } },
+            { id: 'mw_heatmap', type: 'sector_heatmap', title: 'SECTOR HEATMAP', x: 12, y: 22, w: 12, h: 10, minW: 6, minH: 7, enabled: true, config: {} },
+          ],
+        },
+        {
+          id: 'mkt_heatmap',
+          name: '热力图与异动',
+          widgets: [
+            { id: 'mw_hm_full', type: 'sector_heatmap', title: 'SECTOR HEATMAP', x: 0, y: 0, w: 24, h: 13, minW: 6, minH: 7, enabled: true, config: {} },
+            { id: 'mw_mv_gain', type: 'movers_gainers', title: 'TOP GAINERS', x: 0, y: 13, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'mw_mv_lose', type: 'movers_losers', title: 'TOP LOSERS', x: 8, y: 13, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'mw_mv_act', type: 'movers_active', title: 'MOST ACTIVE', x: 16, y: 13, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
+          ],
+        },
+        {
+          id: 'mkt_kline_desk',
+          name: 'K线研判台',
+          widgets: [
+            { id: 'mw_kline_main', type: 'kline_main', title: 'K-LINE TERMINAL', x: 0, y: 0, w: 16, h: 14, minW: 8, minH: 8, enabled: true, config: {} },
+            { id: 'mw_watchlist', type: 'watchlist', title: 'WATCHLIST', x: 16, y: 0, w: 8, h: 14, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'mw_cn_log_2', type: 'panel_cn_logistics', title: 'CN LOGISTICS & CORE', x: 0, y: 14, w: 12, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'cn_logistics' } },
+            { id: 'mw_indices_2', type: 'panel_indices', title: 'INDICES', x: 12, y: 14, w: 12, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'indices' } },
+          ],
+        },
+      ],
+    }
+
+    function normalizeFreeGridLayout(raw, fallback, registry) {
+      if (!raw || typeof raw !== 'object' || !Array.isArray(raw.workspaces) || !raw.workspaces.length) {
+        return JSON.parse(JSON.stringify(fallback))
+      }
+      const out = JSON.parse(JSON.stringify(raw))
+      out.version = 2
+      out.cols = 24
+      if (typeof out.locked !== 'boolean') out.locked = false
+      for (const ws of out.workspaces) {
+        const list = Array.isArray(ws.widgets) ? ws.widgets : []
+        let curX = 0, curY = 0, rowH = 0
+        for (const it of list) {
+          const meta = registry[it.type] || {}
+          it.minW = Number(it.minW) || meta.minW || 5
+          it.minH = Number(it.minH) || meta.minH || 6
+          if (typeof it.x !== 'number' || typeof it.y !== 'number' || typeof it.w !== 'number' || typeof it.h !== 'number') {
+            const span12 = Number(it.colSpan) || 0
+            const gw = span12 ? Math.max(it.minW, Math.min(24, span12 * 2)) : (meta.defaultW || 12)
+            const gh = Number(it.h) || meta.defaultH || 10
+            if (curX + gw > 24) {
+              curX = 0
+              curY += rowH
+              rowH = 0
+            }
+            it.x = curX
+            it.y = curY
+            it.w = gw
+            it.h = Math.max(it.minH, gh)
+            curX += gw
+            rowH = Math.max(rowH, it.h)
+          } else {
+            it.w = Math.max(it.minW, Math.min(24, Math.round(it.w)))
+            it.h = Math.max(it.minH, Math.round(it.h))
+            it.x = Math.max(0, Math.min(24 - it.w, Math.round(it.x)))
+            it.y = Math.max(0, Math.round(it.y))
+          }
+        }
+      }
+      return out
+    }
+
+    function compactWorkspaceWidgets(ws) {
+      if (!ws || !Array.isArray(ws.widgets)) return
+      const active = ws.widgets.filter((w) => w.enabled !== false)
+      const sorted = active.slice().sort((a, b) => ((a.y || 0) - (b.y || 0)) || ((a.x || 0) - (b.x || 0)))
+      const hits = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y)
+      for (const it of sorted) {
+        while (it.y > 0) {
+          it.y -= 1
+          if (sorted.some((o) => o.id !== it.id && hits(it, o))) {
+            it.y += 1
+            break
+          }
+        }
+      }
+    }
+
+    const dashboardLayout = ref(JSON.parse(JSON.stringify(FALLBACK_DASHBOARD_LAYOUT)))
+    const dashCustomizeOpen = ref(false)
+    const dashCompact = ref(false)
+    const dashPulseOpen = ref(true)
+    const dashTickerMode = ref('mkt')
+    const dashMaximizedId = ref('')
+    const editingWsKey = ref('')
+    const editingWsName = ref('')
+    let dashSaveTimer = 0
+
+    function startWsRename(scope, ws) {
+      if (!ws) return
+      editingWsKey.value = scope + ':' + ws.id
+      editingWsName.value = ws.name || ''
+      nextTick(() => {
+        const inp = document.querySelector('.ws-tab-input')
+        if (inp) { inp.focus(); inp.select() }
+      })
+    }
+    function cancelWsRename() {
+      editingWsKey.value = ''
+      editingWsName.value = ''
+    }
+    function commitWsRename(scope, ws) {
+      if (editingWsKey.value !== scope + ':' + ws.id) return
+      const next = (editingWsName.value || '').trim()
+      editingWsKey.value = ''
+      editingWsName.value = ''
+      if (!next || next === ws.name) return
+      ws.name = next
+      if (scope === 'dash') saveDashboardLayout()
+      else saveMarketLayout()
+    }
+    function deleteDashboardWorkspaceById(wsId) {
+      const list = (dashboardLayout.value && dashboardLayout.value.workspaces) || []
+      if (list.length <= 1) return
+      const next = list.filter((w) => w.id !== wsId)
+      dashboardLayout.value.workspaces = next
+      if (dashboardLayout.value.activeWorkspace === wsId) {
+        dashboardLayout.value.activeWorkspace = next[0].id
+      }
+      dashMaximizedId.value = ''
+      saveDashboardLayout()
+      message.success('已删除看板工作区')
+    }
+    function deleteMarketWorkspaceById(wsId) {
+      const list = (marketLayout.value && marketLayout.value.workspaces) || []
+      if (list.length <= 1) return
+      const next = list.filter((w) => w.id !== wsId)
+      marketLayout.value.workspaces = next
+      if (marketLayout.value.activeWorkspace === wsId) {
+        marketLayout.value.activeWorkspace = next[0].id
+      }
+      mktMaximizedId.value = ''
+      saveMarketLayout()
+      message.success('已删除行情工作区')
+    }
+
+    const dashPulseWidth = computed({
+      get: () => Number(dashboardLayout.value && dashboardLayout.value.pulseWidth) || 268,
+      set: (v) => { if (dashboardLayout.value) dashboardLayout.value.pulseWidth = Math.round(v) },
+    })
+    const dashWatchlistWidth = computed({
+      get: () => Number(dashboardLayout.value && dashboardLayout.value.watchlistSplitWidth) || 232,
+      set: (v) => { if (dashboardLayout.value) dashboardLayout.value.watchlistSplitWidth = Math.round(v) },
+    })
+
+    const activeWorkspaceObj = computed(() => {
+      const wsList = (dashboardLayout.value && dashboardLayout.value.workspaces) || []
+      return wsList.find((w) => w.id === dashboardLayout.value.activeWorkspace) || wsList[0] || null
+    })
+    const activeDashboardWidgets = computed(() => {
+      const ws = activeWorkspaceObj.value
+      return ws && Array.isArray(ws.widgets) ? ws.widgets.filter((w) => w.enabled !== false) : []
+    })
+    const missingDashboardWidgets = computed(() => {
+      const ws = activeWorkspaceObj.value
+      const have = new Set(((ws && ws.widgets) || []).map((w) => w.type))
+      return Object.values(DASHBOARD_WIDGET_REGISTRY).filter((r) => !have.has(r.type))
+    })
+    const readyConnectorCount = computed(() => (
+      (cfg.api_connectors || []).filter((c) => c.auth_type === 'none' || c.api_key_set || c.api_secret_set).length
+    ))
+
+    function widgetMeta(type) {
+      return DASHBOARD_WIDGET_REGISTRY[type] || null
+    }
+    function addDashboardWidget(type) {
+      const ws = activeWorkspaceObj.value
+      const meta = DASHBOARD_WIDGET_REGISTRY[type]
+      if (!ws || !meta) return
+      const maxY = (ws.widgets || []).reduce((m, it) => Math.max(m, (Number(it.y) || 0) + (Number(it.h) || 8)), 0)
+      ws.widgets = [...(ws.widgets || []), {
+        id: 'w_' + type + '_' + Date.now().toString(36),
+        type,
+        title: meta.title,
+        x: 0,
+        y: maxY,
+        w: meta.defaultW || 12,
+        h: meta.defaultH || 10,
+        minW: meta.minW || 5,
+        minH: meta.minH || 6,
+        enabled: true,
+        config: {},
+      }]
+      saveDashboardLayout()
+    }
+    async function loadDashboardLayout() {
+      try {
+        const res = await api.get('/api/dashboard/layout')
+        if (res && res.ok && res.layout && Array.isArray(res.layout.workspaces)) {
+          dashboardLayout.value = normalizeFreeGridLayout(res.layout, FALLBACK_DASHBOARD_LAYOUT, DASHBOARD_WIDGET_REGISTRY)
+        }
+      } catch (e) { /* ignore */ }
+    }
+    async function saveDashboardLayout() {
+      try {
+        await api.post('/api/dashboard/layout', { layout: dashboardLayout.value })
+      } catch (e) { /* ignore */ }
+    }
+    function saveDashboardLayoutDebounced() {
+      clearTimeout(dashSaveTimer)
+      dashSaveTimer = setTimeout(saveDashboardLayout, 280)
+    }
+    function switchDashboardWorkspace(wsId) {
+      if (!dashboardLayout.value) return
+      dashMaximizedId.value = ''
+      dashboardLayout.value.activeWorkspace = wsId
+      saveDashboardLayout()
+    }
+    function toggleDashboardLock() {
+      if (!dashboardLayout.value) return
+      dashboardLayout.value.locked = !dashboardLayout.value.locked
+      saveDashboardLayout()
+    }
+    function createDashboardWorkspace() {
+      if (!dashboardLayout.value) return
+      const idx = (dashboardLayout.value.workspaces || []).length + 1
+      const id = 'ws_' + Date.now().toString(36)
+      const ws = {
+        id,
+        name: '工作区 ' + idx,
+        widgets: [
+          { id: 'w_wl_' + id, type: 'watchlist_slot', title: 'WATCHLIST & K-LINE', x: 0, y: 0, w: 16, h: 12, minW: 8, minH: 8, enabled: true, config: {} },
+          { id: 'w_lw_' + id, type: 'live_wire', title: 'LIVE WIRE', x: 16, y: 0, w: 8, h: 12, minW: 7, minH: 6, enabled: true, config: { limit: 24 } },
+        ],
+      }
+      dashboardLayout.value.workspaces.push(ws)
+      dashboardLayout.value.activeWorkspace = id
+      dashMaximizedId.value = ''
+      saveDashboardLayout()
+      message.success('已新建看板工作区')
+    }
+    function duplicateDashboardWorkspace() {
+      const cur = activeWorkspaceObj.value
+      if (!cur || !dashboardLayout.value) return
+      const id = 'ws_' + Date.now().toString(36)
+      const copy = JSON.parse(JSON.stringify(cur))
+      copy.id = id
+      copy.name = (cur.name || '工作区') + ' 副本'
+      copy.widgets = (copy.widgets || []).map((w, i) => ({ ...w, id: w.id + '_' + i + '_' + Date.now().toString(36) }))
+      dashboardLayout.value.workspaces.push(copy)
+      dashboardLayout.value.activeWorkspace = id
+      dashMaximizedId.value = ''
+      saveDashboardLayout()
+      message.success('已复制当前工作区')
+    }
+    function deleteDashboardWorkspace() {
+      const list = (dashboardLayout.value && dashboardLayout.value.workspaces) || []
+      if (list.length <= 1) return
+      const curId = dashboardLayout.value.activeWorkspace
+      const next = list.filter((w) => w.id !== curId)
+      dashboardLayout.value.workspaces = next
+      dashboardLayout.value.activeWorkspace = next[0].id
+      dashMaximizedId.value = ''
+      saveDashboardLayout()
+      message.success('已删除工作区')
+    }
+    function moveDashboardWidget(idx, delta) {
+      const ws = activeWorkspaceObj.value
+      if (!ws || !Array.isArray(ws.widgets)) return
+      const target = idx + delta
+      if (target < 0 || target >= ws.widgets.length) return
+      const arr = ws.widgets.slice()
+      const [moved] = arr.splice(idx, 1)
+      arr.splice(target, 0, moved)
+      ws.widgets = arr
+      saveDashboardLayout()
+    }
+    async function resetDashboardLayout() {
+      try {
+        const res = await api.post('/api/dashboard/layout', { reset: true })
+        if (res && res.ok && res.layout) {
+          dashboardLayout.value = normalizeFreeGridLayout(res.layout, FALLBACK_DASHBOARD_LAYOUT, DASHBOARD_WIDGET_REGISTRY)
+          dashMaximizedId.value = ''
+          message.success('已恢复默认看板布局')
+        }
+      } catch (e) {
+        message.error(String(e))
+      }
+    }
+
+    // ============== 行情终端 24 列自由工作台状态 ==============
+    const marketLayout = ref(JSON.parse(JSON.stringify(FALLBACK_MARKET_LAYOUT)))
+    const mktCustomizeOpen = ref(false)
+    const mktCompact = ref(false)
+    const mktMaximizedId = ref('')
+    let mktSaveTimer = 0
+
+    const mktDetailWidth = computed({
+      get: () => Number(marketLayout.value && marketLayout.value.detailWidth) || 380,
+      set: (v) => { if (marketLayout.value) marketLayout.value.detailWidth = Math.round(v) },
+    })
+    const mktDetailChartHeight = computed({
+      get: () => Number(marketLayout.value && marketLayout.value.detailChartHeight) || 280,
+      set: (v) => { if (marketLayout.value) marketLayout.value.detailChartHeight = Math.round(v) },
+    })
+    const activeMarketWorkspaceObj = computed(() => {
+      const wsList = (marketLayout.value && marketLayout.value.workspaces) || []
+      return wsList.find((w) => w.id === marketLayout.value.activeWorkspace) || wsList[0] || null
+    })
+    const activeMarketWidgets = computed(() => {
+      const ws = activeMarketWorkspaceObj.value
+      return ws && Array.isArray(ws.widgets) ? ws.widgets.filter((w) => w.enabled !== false) : []
+    })
+    const missingMarketWidgets = computed(() => {
+      const ws = activeMarketWorkspaceObj.value
+      const have = new Set(((ws && ws.widgets) || []).map((w) => w.type))
+      return Object.values(MARKET_WIDGET_REGISTRY).filter((r) => !have.has(r.type))
+    })
+
+    function mktWidgetMeta(type) {
+      return MARKET_WIDGET_REGISTRY[type] || null
+    }
+    function marketPanelItems(w) {
+      const pid = (w && w.config && w.config.panelId) || String((w && w.type) || '').replace(/^panel_/, '')
+      const p = (marketOverview.panels || []).find((x) => x.id === pid)
+      return (p && p.items) || []
+    }
+    function marketMoverItems(type) {
+      if (type === 'movers_gainers') return marketMovers.gainers || []
+      if (type === 'movers_losers') return marketMovers.losers || []
+      return marketMovers.active || []
+    }
+    function addMarketWidget(type) {
+      const ws = activeMarketWorkspaceObj.value
+      const meta = MARKET_WIDGET_REGISTRY[type]
+      if (!ws || !meta) return
+      const maxY = (ws.widgets || []).reduce((m, it) => Math.max(m, (Number(it.y) || 0) + (Number(it.h) || 8)), 0)
+      ws.widgets = [...(ws.widgets || []), {
+        id: 'mw_' + type + '_' + Date.now().toString(36),
+        type,
+        title: meta.title,
+        x: 0,
+        y: maxY,
+        w: meta.defaultW || 8,
+        h: meta.defaultH || 10,
+        minW: meta.minW || 5,
+        minH: meta.minH || 6,
+        enabled: true,
+        config: meta.panelId ? { panelId: meta.panelId } : {},
+      }]
+      if (type === 'sector_heatmap') loadMarketSectors(false)
+      if (type.startsWith('movers_')) loadMarketMovers(false)
+      if (type === 'kline_main' && !mktKlineData.value) loadMarketKline(mktSelectedSecid.value, false)
+      saveMarketLayout()
+    }
+    async function loadMarketLayout() {
+      try {
+        const res = await api.get('/api/market/layout')
+        if (res && res.ok && res.layout && Array.isArray(res.layout.workspaces)) {
+          marketLayout.value = normalizeFreeGridLayout(res.layout, FALLBACK_MARKET_LAYOUT, MARKET_WIDGET_REGISTRY)
+        }
+      } catch (e) { /* ignore */ }
+    }
+    async function saveMarketLayout() {
+      try {
+        await api.post('/api/market/layout', { layout: marketLayout.value })
+      } catch (e) { /* ignore */ }
+    }
+    function saveMarketLayoutDebounced() {
+      clearTimeout(mktSaveTimer)
+      mktSaveTimer = setTimeout(saveMarketLayout, 280)
+    }
+    function switchMarketWorkspace(wsId) {
+      if (!marketLayout.value) return
+      const exists = (marketLayout.value.workspaces || []).some((w) => w.id === wsId)
+      if (!exists) return
+      mktMaximizedId.value = ''
+      marketLayout.value.activeWorkspace = wsId
+      const ws = activeMarketWorkspaceObj.value
+      if (ws && Array.isArray(ws.widgets)) {
+        if (ws.widgets.some((w) => w.type === 'sector_heatmap' && w.enabled !== false)) loadMarketSectors(false)
+        if (ws.widgets.some((w) => String(w.type).startsWith('movers_') && w.enabled !== false)) loadMarketMovers(false)
+        if (ws.widgets.some((w) => w.type === 'kline_main' && w.enabled !== false) && !mktKlineData.value) loadMarketKline(mktSelectedSecid.value, false)
+      }
+      saveMarketLayout()
+    }
+    function toggleMarketLock() {
+      if (!marketLayout.value) return
+      marketLayout.value.locked = !marketLayout.value.locked
+      saveMarketLayout()
+    }
+    function createMarketWorkspace() {
+      if (!marketLayout.value) return
+      const idx = (marketLayout.value.workspaces || []).length + 1
+      const id = 'mws_' + Date.now().toString(36)
+      const ws = {
+        id,
+        name: '行情区 ' + idx,
+        widgets: [
+          { id: 'mw_kl_' + id, type: 'kline_main', title: 'K-LINE TERMINAL', x: 0, y: 0, w: 16, h: 13, minW: 8, minH: 8, enabled: true, config: {} },
+          { id: 'mw_wl_' + id, type: 'watchlist', title: 'WATCHLIST', x: 16, y: 0, w: 8, h: 13, minW: 5, minH: 6, enabled: true, config: {} },
+        ],
+      }
+      marketLayout.value.workspaces.push(ws)
+      marketLayout.value.activeWorkspace = id
+      mktMaximizedId.value = ''
+      if (!mktKlineData.value) loadMarketKline(mktSelectedSecid.value, false)
+      saveMarketLayout()
+      message.success('已新建行情工作区')
+    }
+    function duplicateMarketWorkspace() {
+      const cur = activeMarketWorkspaceObj.value
+      if (!cur || !marketLayout.value) return
+      const id = 'mws_' + Date.now().toString(36)
+      const copy = JSON.parse(JSON.stringify(cur))
+      copy.id = id
+      copy.name = (cur.name || '行情区') + ' 副本'
+      copy.widgets = (copy.widgets || []).map((w, i) => ({ ...w, id: w.id + '_' + i + '_' + Date.now().toString(36) }))
+      marketLayout.value.workspaces.push(copy)
+      marketLayout.value.activeWorkspace = id
+      mktMaximizedId.value = ''
+      saveMarketLayout()
+      message.success('已复制当前行情工作区')
+    }
+    function deleteMarketWorkspace() {
+      const list = (marketLayout.value && marketLayout.value.workspaces) || []
+      if (list.length <= 1) return
+      const curId = marketLayout.value.activeWorkspace
+      const next = list.filter((w) => w.id !== curId)
+      marketLayout.value.workspaces = next
+      marketLayout.value.activeWorkspace = next[0].id
+      mktMaximizedId.value = ''
+      saveMarketLayout()
+      message.success('已删除行情工作区')
+    }
+    async function resetMarketLayout() {
+      try {
+        const res = await api.post('/api/market/layout', { reset: true })
+        if (res && res.ok && res.layout) {
+          marketLayout.value = normalizeFreeGridLayout(res.layout, FALLBACK_MARKET_LAYOUT, MARKET_WIDGET_REGISTRY)
+          mktMaximizedId.value = ''
+          message.success('已恢复默认行情布局')
+        }
+      } catch (e) {
+        message.error(String(e))
+      }
+    }
+    function jumpToConnectorSettings(cid) {
+      tab.value = 'settings'
+      settingsSection.value = 'api'
+      if (cid) settingsApiId.value = cid
+    }
+
+    const newsStatus = reactive({
+      enabled: false, fetching: false, translating: false, embedding: false,
+      feeds_total: 0, feeds_enabled: 0, feeds_error: 0,
+      items_total: 0, raw_items_total: 0, dedup_saved: 0, pending_l1: 0, starred: 0,
+      unread: 0, clusters_total: 0, entities_total: 0, embedded_total: 0,
+      net_tone: 0, breaking: [],
+      by_lang: {}, by_category: [], by_sentiment: {},
+    })
+    const newsFeeds = ref([])
+    const newsDefaultGlossary = ref([])
+    const newsItems = ref([])
+    const newsTotal = ref(0)
+    const newsLoading = ref(false)
+    const newsFetching = ref(false)
+    const newsTranslating = ref(false)
+    const newsEmbedding = ref(false)
+    const newsReindexing = ref(false)
+    const newsSelectedItem = ref(null)
+    const newsDetailLoading = ref(false)
+    const newsViewMode = ref('bilingual')
+    const newsSearchMode = ref('keyword')
+    const newsLastSearchMode = ref('keyword')
+    const showBreakingBanner = ref(true)
+    const breakingIdx = ref(0)
+    const currentBreaking = computed(() => {
+      const list = newsStatus.breaking || []
+      if (!list.length) return null
+      return list[breakingIdx.value % list.length] || list[0]
+    })
+    function nextBreaking() {
+      const list = newsStatus.breaking || []
+      if (list.length > 1) breakingIdx.value = (breakingIdx.value + 1) % list.length
+    }
+    const newsFilters = reactive({
+      lang: 'all',
+      category: 'all',
+      sentiment: 'all',
+      starred: false,
+      unread: false,
+      hours: 0,
+      entity: '',
+      q: '',
+    })
+    const newFeedForm = reactive({ name: '', url: '', category: '综合', lang: 'auto' })
+    const newGlossaryForm = reactive({ term: '', zh: '', note: '' })
+    const opmlInput = ref(null)
+
+    const newsEntities = ref([])
+    const entityGraph = ref({ nodes: [], edges: [] })
+    const entityDrawerOpen = ref(false)
+    const entityProfile = ref(null)
+    const entityLoading = ref(false)
+
+    const newsBriefText = ref('')
+    const newsBriefLoading = ref(false)
+    const briefModalOpen = ref(false)
+
+    const askNewsOpen = ref(false)
+    const askNewsMode = ref('dock')
+    const askNewsPos = reactive({ x: 80, y: 80 })
+    const askNewsPicked = ref({})
+    const citedNews = ref([])
+
+    const askNewsPickedCount = computed(() => Object.keys(askNewsPicked.value).filter((k) => askNewsPicked.value[k]).length)
+    const askNewsFloatStyle = computed(() => ({
+      left: askNewsPos.x + 'px',
+      top: askNewsPos.y + 'px',
+    }))
+    const newsCategories = computed(() => {
+      const set = new Set()
+      for (const f of newsFeeds.value) if (f.category) set.add(f.category)
+      for (const c of newsStatus.by_category || []) if (c.category) set.add(c.category)
+      return Array.from(set)
+    })
+    const newsModelSelectVal = computed(() => {
+      if (!cfg.news_llm_provider_id || !cfg.news_llm_model) return ''
+      return cfg.news_llm_provider_id + '::' + cfg.news_llm_model
+    })
+    const sentimentGauge = computed(() => {
+      const tone = Number(newsStatus.net_tone) || 0
+      const score = Math.max(0, Math.min(100, Math.round(50 + tone * 50)))
+      const arc = 282.74
+      const fill = ((score / 100) * arc).toFixed(1)
+      let label = 'NEUTRAL'
+      let color = '#f59e0b'
+      if (score >= 60) { label = 'RISK-ON'; color = '#10b981' }
+      else if (score <= 40) { label = 'RISK-OFF'; color = '#ef4444' }
+      return { score, label, color, dash: `${fill} 300` }
+    })
+    const sentimentSignals = computed(() => {
+      const tot = Math.max(1, Number(newsStatus.items_total) || 0)
+      const embPct = Math.round(((Number(newsStatus.embedded_total) || 0) / tot) * 100)
+      const l1Pct = Math.round(((tot - (Number(newsStatus.pending_l1) || 0)) / tot) * 100)
+      return [
+        { label: '中文情报', pct: langPct('zh'), val: langPct('zh') + '%', color: '#3b82f6' },
+        { label: '英文情报', pct: langPct('en'), val: langPct('en') + '%', color: '#10b981' },
+        { label: '俄文情报', pct: langPct('ru'), val: langPct('ru') + '%', color: '#f59e0b' },
+        { label: 'L1 译文覆盖', pct: Math.min(100, l1Pct), val: l1Pct + '%', color: '#8b5cf6' },
+        { label: '向量化覆盖', pct: Math.min(100, embPct), val: embPct + '%', color: '#06b6d4' },
+      ]
+    })
+    const toneRatio = computed(() => {
+      const bs = newsStatus.by_sentiment || {}
+      const b = Number(bs.bullish || 0)
+      const n = Number(bs.neutral || 0)
+      const r = Number(bs.bearish || 0)
+      const tot = Math.max(1, b + n + r)
+      return {
+        bullish: Math.round((b / tot) * 100),
+        neutral: Math.round((n / tot) * 100),
+        bearish: Math.round((r / tot) * 100),
+      }
+    })
+    const entityGraphLayout = computed(() => {
+      const nodesRaw = (entityGraph.value && entityGraph.value.nodes) || []
+      const edgesRaw = (entityGraph.value && entityGraph.value.edges) || []
+      const top = nodesRaw.slice(0, 14)
+      if (!top.length) return { nodes: [], edges: [] }
+      const cx = 160
+      const cy = 72
+      const posMap = new Map()
+      const nodes = top.map((n, idx) => {
+        const angle = (idx / top.length) * Math.PI * 2 - Math.PI / 2
+        const rx = idx === 0 ? 0 : (idx % 2 === 0 ? 115 : 74)
+        const ry = idx === 0 ? 0 : (idx % 2 === 0 ? 48 : 34)
+        const x = Math.round(cx + Math.cos(angle) * rx)
+        const y = Math.round(cy + Math.sin(angle) * ry)
+        const r = Math.max(5, Math.min(13, 5 + Math.sqrt(Number(n.mentions) || 1) * 1.8))
+        const ns = Number(n.net_sentiment) || 0
+        const color = ns > 0.1 ? '#10b981' : (ns < -0.1 ? '#ef4444' : '#3b82f6')
+        const out = { ...n, x, y, r, color }
+        posMap.set(n.id, out)
+        return out
+      })
+      const edges = edgesRaw
+        .map((e) => {
+          const s = posMap.get(e.source)
+          const t = posMap.get(e.target)
+          if (!s || !t) return null
+          return { x1: s.x, y1: s.y, x2: t.x, y2: t.y, weight: e.weight }
+        })
+        .filter(Boolean)
+      return { nodes, edges }
+    })
+
+    function onNewsModelPick(val) {
+      if (!val) {
+        cfg.news_llm_provider_id = ''
+        cfg.news_llm_model = ''
+        return
+      }
+      const parts = String(val).split('::')
+      if (parts.length === 2) {
+        cfg.news_llm_provider_id = parts[0]
+        cfg.news_llm_model = parts[1]
+      }
+    }
+    function sentimentLabel(s) {
+      return { bullish: '利多', bearish: '利空', neutral: '中性' }[s] || '中性'
+    }
+    function langPct(k) {
+      const tot = Number(newsStatus.items_total) || 0
+      if (!tot) return 0
+      const v = Number((newsStatus.by_lang && newsStatus.by_lang[k]) || 0)
+      return Math.min(100, Math.round((v / tot) * 100))
+    }
+    function formatNewsTime(ts) {
+      const n = Number(ts) || 0
+      if (!n) return ''
+      const d = new Date(n * 1000)
+      const diff = Math.floor((Date.now() - d.getTime()) / 1000)
+      if (diff >= 0 && diff < 60) return '刚刚'
+      if (diff >= 60 && diff < 3600) return Math.floor(diff / 60) + 'm'
+      if (diff >= 3600 && diff < 86400) return Math.floor(diff / 3600) + 'h'
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()).padStart(2, '0')
+      return `${mm}-${dd}`
+    }
+
+    async function loadNewsStatus() {
+      try {
+        const res = await api.get('/api/news/status')
+        if (res && res.ok) Object.assign(newsStatus, res)
+      } catch (e) { /* ignore */ }
+    }
+    async function loadNewsFeeds() {
+      try {
+        const res = await api.get('/api/news/feeds')
+        if (res && res.ok) {
+          newsFeeds.value = res.feeds || []
+          newsDefaultGlossary.value = res.default_glossary || []
+        }
+      } catch (e) { /* ignore */ }
+    }
+    async function loadNewsEntities() {
+      try {
+        const res = await api.get('/api/news/entities?hours=168&limit=30')
+        if (res && res.ok) newsEntities.value = res.entities || []
+      } catch (e) { /* ignore */ }
+    }
+    async function loadEntityGraph() {
+      try {
+        const res = await api.get('/api/news/graph?hours=168&limit=18')
+        if (res && res.ok) entityGraph.value = { nodes: res.nodes || [], edges: res.edges || [] }
+      } catch (e) { /* ignore */ }
+    }
+    async function openEntityDossier(name) {
+      if (!name) return
+      entityDrawerOpen.value = true
+      entityLoading.value = true
+      try {
+        const res = await api.get('/api/news/entity?name=' + encodeURIComponent(name) + '&hours=168')
+        if (res && res.ok) entityProfile.value = res.profile
+        else message.warning((res && res.error) || '暂无该实体详情')
+      } catch (e) {
+        message.error(String(e))
+      } finally {
+        entityLoading.value = false
+      }
+    }
+    function filterNewsByEntity(name) {
+      entityDrawerOpen.value = false
+      newsFilters.entity = name || ''
+      tab.value = 'news'
+      runNewsSearch(true)
+    }
+    function askAiAboutEntity() {
+      const p = entityProfile.value
+      if (!p) return
+      entityDrawerOpen.value = false
+      const co = (p.co_entities || []).slice(0, 6).map((c) => c.canonical_name).join('、')
+      question.value = `请调用 entity_brief 与 search_docs 对实体「${p.canonical_name}」进行深度研判：结合近7天多语种外部新闻态势（当前共提及 ${p.mentions} 次，净情绪 ${p.net_sentiment}，共现实体：${co || '无'}）以及我方本地文档库/制度规范，分析潜在机遇与风险。`
+      tab.value = 'ask'
+    }
+    const newsListEl = ref(null)
+    const newsLoadingMore = ref(false)
+    const newsHasMore = ref(false)
+    const newsScrollTop = ref(0)
+    const newsListH = ref(680)
+    let newsScrollRaf = 0
+    const NEWS_ROW_H = 31
+    const NEWS_OVERSCAN = 16
+    const newsVirtStart = computed(() => Math.max(0, Math.floor(newsScrollTop.value / NEWS_ROW_H) - NEWS_OVERSCAN))
+    const newsVirtRows = computed(() => {
+      const start = newsVirtStart.value
+      const count = Math.ceil((newsListH.value || 680) / NEWS_ROW_H) + NEWS_OVERSCAN * 2
+      return (newsItems.value || []).slice(start, start + count)
+    })
+
+    function onNewsListScroll(e) {
+      const el = e && e.target
+      if (!el) return
+      if (!newsScrollRaf) {
+        newsScrollRaf = requestAnimationFrame(() => {
+          newsScrollRaf = 0
+          newsScrollTop.value = el.scrollTop
+          if (el.clientHeight > 0) newsListH.value = el.clientHeight
+          if (el.scrollHeight - el.scrollTop - el.clientHeight < 360) {
+            loadMoreNews()
+          }
+        })
+      }
+    }
+
+    async function loadNewsItems(keepSelection, append) {
+      const isAppend = !!append
+      if (isAppend) {
+        if (newsLoadingMore.value || newsLoading.value || !newsHasMore.value || newsLastSearchMode.value === 'hybrid') return
+        newsLoadingMore.value = true
+      } else {
+        newsLoading.value = true
+        newsLastSearchMode.value = 'keyword'
+        newsScrollTop.value = 0
+        if (newsListEl.value) newsListEl.value.scrollTop = 0
+      }
+      try {
+        const off = isAppend ? newsItems.value.length : 0
+        const qs = new URLSearchParams({
+          lang: newsFilters.lang || 'all',
+          category: newsFilters.category || 'all',
+          sentiment: newsFilters.sentiment || 'all',
+          starred: newsFilters.starred ? '1' : '0',
+          unread: newsFilters.unread ? '1' : '0',
+          hours: String(newsFilters.hours || 0),
+          entity: (newsFilters.entity || '').trim(),
+          q: (newsFilters.q || '').trim(),
+          limit: '80',
+          offset: String(off),
+        })
+        const res = await api.get('/api/news/items?' + qs.toString())
+        if (res && res.ok) {
+          const batch = res.items || []
+          newsTotal.value = res.total || 0
+          if (isAppend) {
+            const seen = new Set(newsItems.value.map((x) => x.id))
+            const fresh = batch.filter((x) => !seen.has(x.id))
+            if (fresh.length) newsItems.value = newsItems.value.concat(fresh)
+            newsHasMore.value = batch.length >= 80 && newsItems.value.length < newsTotal.value
+          } else {
+            newsItems.value = batch
+            newsHasMore.value = batch.length >= 80 && batch.length < newsTotal.value
+          }
+        }
+      } catch (e) { /* ignore */ } finally {
+        if (isAppend) newsLoadingMore.value = false
+        else newsLoading.value = false
+      }
+    }
+    function loadMoreNews() {
+      return loadNewsItems(true, true)
+    }
+    async function runNewsSearch(keepSelection) {
+      const qStr = (newsFilters.q || '').trim()
+      if (!qStr || newsSearchMode.value !== 'semantic') {
+        return loadNewsItems(keepSelection, false)
+      }
+      newsLoading.value = true
+      newsHasMore.value = false
+      newsScrollTop.value = 0
+      if (newsListEl.value) newsListEl.value.scrollTop = 0
+      try {
+        const qs = new URLSearchParams({
+          q: qStr,
+          lang: newsFilters.lang || 'all',
+          category: newsFilters.category || 'all',
+          hours: String(newsFilters.hours || 0),
+          limit: '30',
+        })
+        const res = await api.get('/api/news/search?' + qs.toString())
+        if (res && res.ok) {
+          newsItems.value = res.items || []
+          newsTotal.value = newsItems.value.length
+          newsLastSearchMode.value = res.mode || 'keyword'
+        }
+      } catch (e) {
+        message.error(String(e))
+      } finally {
+        newsLoading.value = false
+      }
+    }
+    async function markAllNewsRead() {
+      const res = await api.post('/api/news/mark_read', {})
+      if (res && res.ok) {
+        newsItems.value.forEach((it) => { it.read = 1 })
+        newsStatus.unread = 0
+        message.success('已全部标为已读')
+      }
+    }
+    async function embedNewsNow() {
+      newsEmbedding.value = true
+      try {
+        const res = await api.post('/api/news/embed', { limit: 500 })
+        if (!res || !res.ok) {
+          message.warning((res && res.error) || '向量化失败')
+          return
+        }
+        const dedupMsg = res.semantic_deduped ? `，跨语种语义去重 ${res.semantic_deduped} 条` : ''
+        message.success(`已完成 ${res.embedded || 0} 条代表稿向量索引${dedupMsg}`)
+        loadNewsStatus()
+        loadNewsItems(true)
+      } catch (e) {
+        message.error(String(e))
+      } finally {
+        newsEmbedding.value = false
+      }
+    }
+    async function reindexNewsAll() {
+      if (newsReindexing.value) return
+      newsReindexing.value = true
+      try {
+        const res = await api.post('/api/news/reindex', {})
+        if (!res || !res.ok) {
+          message.warning((res && res.error) || '重建索引失败')
+          return
+        }
+        message.success(`重建完成：代表稿 ${res.canonical_total || 0} 条，去重 ${(res.l1_deduped || 0) + (res.l2_deduped || 0)} 条（耗时 ${res.elapsed_sec || 0}s）`)
+        loadNewsStatus()
+        loadNewsItems(true)
+      } catch (e) {
+        message.error(String(e))
+      } finally {
+        newsReindexing.value = false
+      }
+    }
+    async function loadNewsBrief(force) {
+      newsBriefLoading.value = true
+      try {
+        const res = await api.post('/api/news/brief', { hours: 24, force: !!force })
+        if (res && res.ok) newsBriefText.value = res.brief || ''
+        else message.error((res && res.error) || '简报生成失败')
+      } catch (e) {
+        message.error(String(e))
+      } finally {
+        newsBriefLoading.value = false
+      }
+    }
+    function openBriefModal() {
+      briefModalOpen.value = true
+      if (!newsBriefText.value) loadNewsBrief(false)
+    }
+    async function selectNewsItem(it) {
+      if (!it || !it.id) return
+      it.read = 1
+      newsDetailLoading.value = true
+      try {
+        const res = await api.get('/api/news/item/' + it.id)
+        if (res && res.ok && res.item) {
+          newsSelectedItem.value = res.item
+          loadNewsStatus()
+        }
+      } catch (e) {
+        newsSelectedItem.value = it
+      } finally {
+        newsDetailLoading.value = false
+      }
+    }
+    async function fetchNewsNow(feedId) {
+      newsFetching.value = true
+      try {
+        const res = await api.post('/api/news/fetch', {
+          feed_id: feedId || '',
+          translate: !!cfg.news_auto_translate,
+        })
+        if (!res || !res.ok) {
+          message.error((res && res.error) || '抓取失败')
+          return
+        }
+        if (res.busy) {
+          message.info('后台正在抓取中，请稍候')
+        } else {
+          message.success(`抓取完成：新增 ${res.inserted || 0} 条，译文处理 ${res.translated || 0} 条${res.errors ? `（${res.errors} 个源异常）` : ''}`)
+        }
+        await Promise.all([loadNewsStatus(), loadNewsFeeds(), loadNewsItems(true), loadNewsEntities(), loadEntityGraph()])
+      } catch (e) {
+        message.error(String(e))
+      } finally {
+        newsFetching.value = false
+      }
+    }
+    async function translatePendingNews() {
+      newsTranslating.value = true
+      try {
+        const res = await api.post('/api/news/translate_pending', { limit: 24 })
+        if (!res || !res.ok) {
+          message.error((res && res.error) || '翻译失败')
+          return
+        }
+        message.success(`已完成 ${res.translated || 0} 条待处理新闻翻译与实体抽取`)
+        await Promise.all([loadNewsStatus(), loadNewsItems(true), loadNewsEntities(), loadEntityGraph()])
+        if (newsSelectedItem.value) await selectNewsItem(newsSelectedItem.value)
+      } catch (e) {
+        message.error(String(e))
+      } finally {
+        newsTranslating.value = false
+      }
+    }
+    async function translateNewsFull(itemId, fetchFull) {
+      newsDetailLoading.value = true
+      try {
+        const res = await api.post('/api/news/translate', { id: itemId, fetch_full: !!fetchFull })
+        if (!res || !res.ok) {
+          message.error((res && res.error) || '正文精翻失败')
+          return
+        }
+        if (res.item) {
+          newsSelectedItem.value = res.item
+          const idx = newsItems.value.findIndex((x) => x.id === res.item.id)
+          if (idx >= 0) Object.assign(newsItems.value[idx], res.item)
+        }
+        message.success('已完成正文精翻并缓存')
+        loadNewsStatus()
+      } catch (e) {
+        message.error(String(e))
+      } finally {
+        newsDetailLoading.value = false
+      }
+    }
+    async function toggleNewsStar(it) {
+      if (!it || !it.id) return
+      const res = await api.post('/api/news/star', { id: it.id })
+      if (res && res.ok) {
+        it.starred = res.starred ? 1 : 0
+        const row = newsItems.value.find((x) => x.id === it.id)
+        if (row) row.starred = it.starred
+        if (newsSelectedItem.value && newsSelectedItem.value.id === it.id) {
+          newsSelectedItem.value.starred = it.starred
+        }
+        loadNewsStatus()
+      }
+    }
+    async function saveNewFeed() {
+      if (!(newFeedForm.url || '').trim()) {
+        message.warning('请输入 RSS 源地址')
+        return
+      }
+      const res = await api.post('/api/news/feeds/save', { ...newFeedForm, enabled: true })
+      if (!res || !res.ok) {
+        message.error((res && res.error) || '添加失败')
+        return
+      }
+      newFeedForm.name = ''
+      newFeedForm.url = ''
+      message.success('已添加订阅源')
+      await Promise.all([loadNewsFeeds(), loadNewsStatus()])
+    }
+    async function toggleFeedEnabled(fd, enabled) {
+      const res = await api.post('/api/news/feeds/save', { ...fd, enabled: !!enabled })
+      if (res && res.ok && res.feed) {
+        Object.assign(fd, res.feed)
+        loadNewsStatus()
+      }
+    }
+    async function deleteNewsFeed(fd) {
+      const res = await api.post('/api/news/feeds/delete', { id: fd.id })
+      if (res && res.ok) {
+        message.success('已删除订阅源：' + fd.name)
+        await Promise.all([loadNewsFeeds(), loadNewsStatus()])
+      }
+    }
+    async function importPresetFeeds() {
+      const res = await api.post('/api/news/feeds/import_presets', {})
+      if (res && res.ok) {
+        message.success(`已导入 ${res.added || 0} 个中/英/俄预设源（跳过已存在 ${res.skipped || 0} 个）`)
+        await Promise.all([loadNewsFeeds(), loadNewsStatus()])
+      }
+    }
+    function triggerOpmlImport() {
+      if (opmlInput.value) {
+        opmlInput.value.value = ''
+        opmlInput.value.click()
+      }
+    }
+    async function onOpmlFilePicked(e) {
+      const f = e && e.target && e.target.files && e.target.files[0]
+      if (!f) return
+      const xml = await f.text()
+      const res = await api.post('/api/news/feeds/import_opml', { xml })
+      if (!res || !res.ok) {
+        message.error((res && res.error) || 'OPML 导入失败')
+        return
+      }
+      message.success(`OPML 解析 ${res.total || 0} 个源：新增 ${res.added || 0}，跳过 ${res.skipped || 0}`)
+      await Promise.all([loadNewsFeeds(), loadNewsStatus()])
+    }
+    function exportOpml() {
+      window.open('/api/news/feeds/export_opml', '_blank')
+    }
+    function loadDefaultGlossary() {
+      const exist = new Set((cfg.news_glossary || []).map((x) => x.term))
+      const merged = (cfg.news_glossary || []).slice()
+      for (const g of newsDefaultGlossary.value || []) {
+        if (!exist.has(g.term)) {
+          merged.push({ ...g })
+          exist.add(g.term)
+        }
+      }
+      cfg.news_glossary = merged
+      message.success('已合并常用中/英/俄财经及航运术语')
+    }
+    function addGlossaryTerm() {
+      const term = (newGlossaryForm.term || '').trim()
+      const zh = (newGlossaryForm.zh || '').trim()
+      if (!term || !zh) {
+        message.warning('请填写外文原文与标准中文译名')
+        return
+      }
+      cfg.news_glossary = [...(cfg.news_glossary || []), { term, zh, note: (newGlossaryForm.note || '').trim() }]
+      newGlossaryForm.term = ''
+      newGlossaryForm.zh = ''
+      newGlossaryForm.note = ''
+    }
+    function removeGlossaryTerm(idx) {
+      const next = (cfg.news_glossary || []).slice()
+      next.splice(idx, 1)
+      cfg.news_glossary = next
+    }
+
+    function openNewsSettings() {
+      tab.value = 'settings'
+      settingsSection.value = 'news'
+    }
+    async function openNewsInBrowser(url) {
+      if (!url) return
+      if (nativeBw) applyBrowserState(await nativeBw.newTab(url))
+      else {
+        await api.post('/api/browser/action', { action: 'open', url, new_tab: true })
+        applyBrowserState(await api.get('/api/browser/state'))
+      }
+      tab.value = 'browser'
+    }
+    function toggleAskNews() {
+      askNewsOpen.value = !askNewsOpen.value
+      if (askNewsOpen.value) {
+        loadNewsStatus()
+        loadNewsItems(true)
+      }
+    }
+    function toggleAskNewsPick(it) {
+      if (!it || !it.id) return
+      const cur = { ...askNewsPicked.value }
+      if (cur[it.id]) delete cur[it.id]
+      else cur[it.id] = it
+      askNewsPicked.value = cur
+    }
+    function removeCitedNews(id) {
+      citedNews.value = citedNews.value.filter((x) => x.id !== id)
+    }
+    function citeSelectedNewsToAsk(sendNow) {
+      const picked = Object.values(askNewsPicked.value).filter(Boolean)
+      if (!picked.length) return
+      const have = new Set(citedNews.value.map((x) => x.id))
+      const merged = citedNews.value.slice()
+      for (const it of picked) {
+        if (!have.has(it.id)) merged.push(it)
+      }
+      citedNews.value = merged
+      askNewsPicked.value = {}
+      if (sendNow) {
+        if (!(question.value || '').trim()) {
+          question.value = '请对引用的多语种新闻进行核心事实提炼、交叉比对与金融/业务影响研判：'
+        }
+        send()
+      }
+    }
+    function sendNewsToChat(list) {
+      const arr = (list || []).filter(Boolean)
+      if (!arr.length) return
+      const have = new Set(citedNews.value.map((x) => x.id))
+      const merged = citedNews.value.slice()
+      for (const it of arr) {
+        if (!have.has(it.id)) merged.push(it)
+      }
+      citedNews.value = merged
+      tab.value = 'ask'
+    }
+    function onAskNewsDragStart(e) {
+      if (askNewsMode.value !== 'float') return
+      const sx = e.clientX
+      const sy = e.clientY
+      const ox = askNewsPos.x
+      const oy = askNewsPos.y
+      const onMove = (ev) => {
+        askNewsPos.x = Math.max(8, Math.min(window.innerWidth - 340, ox + (ev.clientX - sx)))
+        askNewsPos.y = Math.max(8, Math.min(window.innerHeight - 160, oy + (ev.clientY - sy)))
+      }
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+    }
+
+    // ============== 金融行情 / 宏观 / 地缘终端 ==============
+    const marketOverview = reactive({ ribbon: [], panels: [], watchlist: [], stats: {} })
+    const marketLoading = ref(false)
+    const marketSectors = ref([])
+    const marketMovers = reactive({ gainers: [], losers: [], active: [] })
+    const macroData = reactive({ treasury: { date: '', rates: [] }, fx: { date: '', rates: {} }, cbr: { date: '', items: {} }, fred: [] })
+    const geoData = reactive({ events: [], chokepoints: [] })
+
+    const chartOpts = reactive({ ma: true, vol: true, markers: true })
+    const dashWlSelected = ref({ secid: '1.000001', symbol: '000001.SH', name: '上证指数' })
+    const dashWlInterval = ref('1d')
+    const dashKlineData = ref(null)
+
+    const mktView = ref('panels')
+    const mktInterval = ref('1d')
+    const mktDetailOpen = ref(true)
+    const mktSelectedSecid = ref('1.000001')
+    const mktSelectedSymbol = ref('000001.SH')
+    const mktSelectedName = ref('上证指数')
+    const mktKlineData = ref(null)
+    const mktSearchQuery = ref('')
+    const mktSearchHits = ref([])
+    const mktSearchOpen = ref(false)
+    const mktProxyTesting = ref(false)
+    let mktSearchTimer = 0
+    let marketBooted = false
+
+    async function testMarketProxy() {
+      mktProxyTesting.value = true
+      try {
+        const res = await api.post('/api/market/test_proxy', { proxy: cfg.market_proxy || '' })
+        if (res && res.ok) {
+          message.success(`YahooFinance 连通 (${res.proxy}, NVDA=${res.price}, ${res.ms}ms)`)
+        } else {
+          message.error(`代理测试失败 (${(res && res.proxy) || 'direct'}): ${(res && res.error) || '未知错误'}`)
+        }
+      } catch (e) {
+        message.error(String(e))
+      } finally {
+        mktProxyTesting.value = false
+      }
+    }
+
+    function fmtPrice(v) {
+      if (v === null || v === undefined || v === '') return '-'
+      const n = Number(v)
+      if (!Number.isFinite(n)) return '-'
+      if (Math.abs(n) >= 1000) return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      if (Math.abs(n) >= 10) return n.toFixed(2)
+      return n.toFixed(4).replace(/0+$/, '').replace(/\.$/, '') || '0'
+    }
+    function fmtPct(v) {
+      if (v === null || v === undefined || v === '') return '-'
+      const n = Number(v)
+      if (!Number.isFinite(n)) return '-'
+      return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'
+    }
+    function fmtCompact(v) {
+      const n = Number(v)
+      if (!Number.isFinite(n) || n === 0) return '0'
+      if (Math.abs(n) >= 1e8) return (n / 1e8).toFixed(2) + 'B'
+      if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + 'M'
+      if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1) + 'K'
+      return String(Math.round(n))
+    }
+
+    const macroFxGrid = computed(() => {
+      const fx = (macroData.fx && macroData.fx.rates) || {}
+      const cbr = (macroData.cbr && macroData.cbr.items) || {}
+      const out = []
+      if (fx.CNY) out.push({ pair: 'USD/CNY', val: Number(fx.CNY).toFixed(4) })
+      if (cbr['CBR.USDRUB']) out.push({ pair: 'USD/RUB', val: cbr['CBR.USDRUB'].price })
+      if (cbr['CBR.CNYRUB']) out.push({ pair: 'CNY/RUB', val: cbr['CBR.CNYRUB'].price })
+      if (fx.EUR) out.push({ pair: 'EUR/USD', val: (1 / Number(fx.EUR)).toFixed(4) })
+      if (fx.JPY) out.push({ pair: 'USD/JPY', val: Number(fx.JPY).toFixed(2) })
+      if (fx.GBP) out.push({ pair: 'GBP/USD', val: (1 / Number(fx.GBP)).toFixed(4) })
+      for (const f of (macroData.fred || []).slice(0, 3)) {
+        out.push({ pair: f.label, val: f.value })
+      }
+      return out.slice(0, 6)
+    })
+
+    const mktTechSummary = computed(() => {
+      const kd = mktKlineData.value
+      if (!kd || !kd.indicators) return null
+      const rsiArr = kd.indicators.rsi14 || []
+      const macdArr = kd.indicators.macd || []
+      const rsi = rsiArr.length ? rsiArr[rsiArr.length - 1].value : '-'
+      const m = macdArr.length ? macdArr[macdArr.length - 1] : null
+      return {
+        rsi,
+        macd: m ? `${m.dif} / ${m.dea} (${m.hist >= 0 ? '+' : ''}${m.hist})` : '-',
+      }
+    })
+
+    async function loadMarketOverview(force) {
+      marketLoading.value = true
+      try {
+        const res = await api.get('/api/market/overview' + (force ? '?force=1' : ''))
+        if (res && res.ok) {
+          marketOverview.ribbon = res.ribbon || []
+          marketOverview.panels = res.panels || []
+          marketOverview.watchlist = res.watchlist || []
+          marketOverview.stats = res.stats || {}
+          if (marketOverview.watchlist.length && !dashKlineData.value) {
+            dashWlSelected.value = marketOverview.watchlist[0]
+            loadDashKline(false)
+          }
+        }
+      } catch (e) { /* ignore */ } finally {
+        marketLoading.value = false
+      }
+    }
+    async function loadDashKline(force) {
+      const sel = dashWlSelected.value
+      if (!sel || !sel.secid) return
+      try {
+        const qs = new URLSearchParams({
+          secid: sel.secid,
+          interval: dashWlInterval.value || '1d',
+          limit: '120',
+          name: sel.name || '',
+        })
+        if (force) qs.set('force', '1')
+        const res = await api.get('/api/market/kline?' + qs.toString())
+        if (res && res.ok) dashKlineData.value = res
+      } catch (e) { /* ignore */ }
+    }
+    async function loadMarketKline(secid, force) {
+      const sid = secid || mktSelectedSecid.value
+      if (!sid) return
+      try {
+        const qs = new URLSearchParams({
+          secid: sid,
+          interval: mktInterval.value || '1d',
+          limit: '160',
+          name: mktSelectedName.value || '',
+        })
+        if (force) qs.set('force', '1')
+        const res = await api.get('/api/market/kline?' + qs.toString())
+        if (res && res.ok) mktKlineData.value = res
+      } catch (e) { /* ignore */ }
+    }
+    async function loadMarketSectors(force) {
+      try {
+        const res = await api.get('/api/market/sectors?limit=36' + (force ? '&force=1' : ''))
+        if (res && res.ok) marketSectors.value = res.items || []
+      } catch (e) { /* ignore */ }
+    }
+    async function loadMarketMovers(force) {
+      try {
+        const res = await api.get('/api/market/movers?limit=15' + (force ? '&force=1' : ''))
+        if (res && res.ok) {
+          marketMovers.gainers = res.gainers || []
+          marketMovers.losers = res.losers || []
+          marketMovers.active = res.active || []
+        }
+      } catch (e) { /* ignore */ }
+    }
+    async function loadMacroData(force) {
+      try {
+        const res = await api.get('/api/market/macro' + (force ? '?force=1' : ''))
+        if (res && res.ok) {
+          macroData.treasury = res.treasury || { date: '', rates: [] }
+          macroData.fx = res.fx || { date: '', rates: {} }
+          macroData.cbr = res.cbr || { date: '', items: {} }
+          macroData.fred = res.fred || []
+        }
+      } catch (e) { /* ignore */ }
+    }
+    async function loadGeoData(force) {
+      try {
+        const res = await api.get('/api/market/geopolitics' + (force ? '?force=1' : ''))
+        if (res && res.ok) {
+          geoData.events = res.events || []
+          geoData.chokepoints = res.chokepoints || []
+        }
+      } catch (e) { /* ignore */ }
+    }
+    function ensureMarketBoot() {
+      if (marketBooted) return
+      marketBooted = true
+      loadMarketOverview(false)
+      loadMarketSectors(false)
+      loadMacroData(false)
+      loadGeoData(false)
+    }
+    async function refreshDashboardAll() {
+      await Promise.all([
+        fetchNewsNow(),
+        loadMarketOverview(true),
+        loadDashKline(true),
+        loadMarketSectors(true),
+        loadMacroData(true),
+        loadGeoData(true),
+      ])
+    }
+    function selectDashWatchItem(it) {
+      if (!it || !it.secid) return
+      dashWlSelected.value = it
+      loadDashKline(false)
+    }
+    function selectMarketSymbol(it) {
+      if (!it || !it.secid) return
+      mktSelectedSecid.value = it.secid
+      mktSelectedSymbol.value = it.symbol || it.secid
+      mktSelectedName.value = it.name || it.symbol || it.secid
+      mktDetailOpen.value = true
+      loadMarketKline(it.secid, false)
+    }
+    function openMarketDetail(it) {
+      tab.value = 'markets'
+      selectMarketSymbol(it)
+    }
+    async function onPickKlineNewsMarker(ev) {
+      if (!ev) return
+      const id = ev.news_id || ev.id
+      if (id) {
+        tab.value = 'news'
+        await selectNewsItem({ id })
+      }
+    }
+    function onPickSector(sec) {
+      if (!sec || !sec.name) return
+      newsFilters.q = sec.name
+      tab.value = 'news'
+      runNewsSearch(true)
+    }
+    function onMktSearchInput() {
+      clearTimeout(mktSearchTimer)
+      const qs = (mktSearchQuery.value || '').trim()
+      if (!qs) {
+        mktSearchHits.value = []
+        mktSearchOpen.value = false
+        return
+      }
+      mktSearchTimer = setTimeout(async () => {
+        try {
+          const res = await api.get('/api/market/search?q=' + encodeURIComponent(qs))
+          if (res && res.ok) {
+            mktSearchHits.value = res.items || []
+            mktSearchOpen.value = mktSearchHits.value.length > 0
+          }
+        } catch (e) { /* ignore */ }
+      }, 220)
+    }
+    function isInWatchlist(secid) {
+      return (marketOverview.watchlist || []).some((w) => w.secid === secid)
+    }
+    async function toggleWatchlistSymbol(it) {
+      if (!it || !it.secid) return
+      const remove = isInWatchlist(it.secid)
+      const res = await api.post('/api/market/watchlist', {
+        action: remove ? 'remove' : 'add',
+        secid: it.secid,
+        symbol: it.symbol || it.secid,
+        name: it.name || it.symbol || it.secid,
+      })
+      if (res && res.ok) {
+        await loadMarketOverview(true)
+        message.success(remove ? '已移出自选' : '已加入自选')
+      }
+    }
+    function askAiAboutSymbol(sym) {
+      if (!sym || !sym.secid) return
+      const nm = sym.name || sym.symbol || sym.secid
+      question.value = `请调用 market_query（secid="${sym.secid}"）获取「${nm}」最新行情、K线与技术指标，并结合 search_news 与本地文档库进行多维度研判：`
+      tab.value = 'ask'
+    }
+    function askAiMacro() {
+      question.value = '请调用 macro_query 获取当前美债利率、汇率（含USD/CNH、USD/RUB）及 FRED 指标，结合最新中/英/俄宏观新闻给出态势研判：'
+      tab.value = 'ask'
+    }
+    function askAiGeo() {
+      question.value = '请调用 macro_query(action="geopolitics") 获取地缘预测赔率与港口航运态势，结合俄/英/中新闻流与本地制度规范分析供应链及市场影响：'
+      tab.value = 'ask'
+    }
+
+    watch(tab, (next) => {
+      if (next === 'news' || next === 'dashboard') {
+        loadNewsStatus()
+        loadNewsFeeds()
+        loadNewsItems(true)
+        loadNewsEntities()
+        if (next === 'dashboard') {
+          loadDashboardLayout()
+          loadEntityGraph()
+          ensureMarketBoot()
+        }
+      } else if (next === 'markets') {
+        loadMarketLayout()
+        ensureMarketBoot()
+        if (!mktKlineData.value) loadMarketKline(mktSelectedSecid.value, false)
+        loadMarketMovers(false)
+      }
+    })
+
     loadStats()
     loadFacets()
     loadDocs()
+    loadKb()
     loadConfig()
     loadModels()
+    syncBackendChats()
 
     return {
       tab, q, loading, results, searched, filters, facets, stats,
@@ -6955,7 +11913,11 @@ const App = {
       newBrowserTab, switchBrowserTab, closeBrowserTab, browserBack, browserForward, browserReloadOrStop, browserDevTools,
       doSearch, pageUrl,
       messages, question, asking, chatlog, chatAscii: CHAT_ASCII, turns, send, stopAsk, newChat, clearChat, onEnter,
+      searchInputEl, askInputEl, currentQueued, removeQueuedFollowup,
+      shortcutGroups, recordingShortcutId, hasCustomShortcuts, getShortcutCombo, isShortcutModified, shortcutTokens,
+      onShortcutContext, resetShortcut, resetAllShortcuts, onAskKeydown, onSearchKeydown,
       chatId, histMode, histPicked, histGroups, histPickCount, histPaneTitle, histPinLabel, runningIds,
+      histSearchQuery, allSessionChats, filteredSessionChats, convTurnCount, convRelTime, closeSessionTab,
       openHistManage, openHistBrowse, closeHistManage, openHistChat, onHistRow, togglePick, pinPicked, deletePicked,
       renderAnswer, onAnswerClick, displaySources, toggleSrc, bindAnswer, scheduleAnswer, blockDelay, msgDelay,
       toolDotClass, toolLabel, toolMeta, sbfWindowH, sbfOffset, sbfItemClass,
@@ -6963,12 +11925,14 @@ const App = {
       onAttachEnter, onAttachLeave, onAttachDrop, onAttachPaste, removeAttach,
       menuOpen, menuPanel, modelWrap, modelQuery, modelPill, modelLabel, channelLabel, modelHasVision, effortLabel,
       effortOptions, contextLabel, contextOptions, groupedModels, filteredModels,
-      toggleModelMenu, openPanel, setEffort, setContext, setChatModel,
+      toggleModelMenu, openPanel, setEffort, setContext, setChatModel, modelList,
       settingsPid, settingsEmbedPid, settingsApiId, settingsPrimary, settingsSection, settingsPillStyle, bindSettingsNav,
+      settingsSearch, ocSettingsGroups, ocActiveMeta, isNavMatched, showSettingsSec, selectSettingsNav, exitSettings, onSettingsModelPick,
+      cacheReport, cacheClearing, formatBytes, loadCacheStatus, clearCacheTarget, openCacheDir,
       navPillStyle, llmPillStyle, embedPillStyle, apiPillStyle, bindMainNav, bindLlmProvider, bindEmbedProvider, bindApiConnector,
       currentProvider, currentEmbedProvider, currentApiConnector, addProvider, addEmbedProvider, addModel, addApiConnector,
       urlPlaceholder, embedUrlPlaceholder, embedProtocols, embedStatusText,
-      apiProtocols, apiAuthTypes, apiPresets, apiTesting, apiTestHint, apiDiscovering,
+      apiProtocols, apiAuthTypes, apiCategories, apiConnectorGroups, apiPresets, apiTesting, apiTestHint, apiDiscovering,
       apiConnectorStateText, apiKeyLabel, apiSecretLabel, needsApiSecret,
       openAddApiConnector, applyApiPreset, confirmAddApiConnector, removeApiConnector, removeApiEndpoint,
       saveApiConnectorKey, clearApiConnectorKey, saveApiConnectorSecret, clearApiConnectorSecret,
@@ -6983,12 +11947,12 @@ const App = {
       askCurrentQs, askLastStep, askStepDone, prevAsk, nextAsk,
       docs, catDept, catProject, catFolder, catDocType, catQuery, organizing, folderUploadInput,
       DOC_TYPE_SPECS, INGEST_ACCEPT,
-      scopeTotalCount, scopeDocTypeCapsules, filteredDocs, dynamicColumns, columns,
+      scopeTotalCount, scopeDocTypeCapsules, filteredDocs, catalogRows, dynamicColumns, columns,
       docTypeLabel, docTypeColor, chunkProfileLabel, extBadgeText, extBadgeClass,
       recordMetaVal, recordPills, docMetaPills, recordSummary, renderChunkTable,
       catalogAlive,
       isProjExpanded, selectTreeScope, setCatDocType,
-      cursorTreeRows, dropTargetKey, activeTreeDocId,
+      cursorTreeRows, dropTargetKey, activeTreeDocId, kbOff, toggleProjectKb,
       onTreeRowClick, toggleTreeNodeExpand, drillUpTree, refreshCatalogTree,
       toggleExpandCollapseAll, openIngestInScope, openRenameFolderModal, deleteDocRecord,
       onTreeDragStart, onTreeDragOver, onTreeDragLeave, onTreeDrop, onTreeDragEnd,
@@ -7005,7 +11969,45 @@ const App = {
       openFolderModal, confirmCreateFolder, removeFolderNode, organizeCurrentProject,
       openEditMeta, confirmSaveMeta, onIngestTypeChange,
       triggerFolderUpload, onFolderInputPicked,
-      openIngest, onIngestFile, onIngestOk, resetIngest, onDocOp,
+      openIngest, onIngestFile, onIngestOk, resetIngest, onIngestCancel, onIngestDismiss,
+      batchHasGap, retryBatchFromBreak, retryBatchItem, shortBatchStatus, onDocOp,
+      toggleTheme, terminalClock, marketHours,
+      dashboardLayout, dashCustomizeOpen, dashCompact, dashPulseOpen, dashTickerMode, dashMaximizedId, dashPulseWidth, dashWatchlistWidth,
+      editingWsKey, editingWsName, startWsRename, commitWsRename, cancelWsRename, deleteDashboardWorkspaceById, deleteMarketWorkspaceById,
+      activeWorkspaceObj, activeDashboardWidgets, missingDashboardWidgets, readyConnectorCount,
+      widgetMeta, addDashboardWidget, loadDashboardLayout, saveDashboardLayout, saveDashboardLayoutDebounced,
+      switchDashboardWorkspace, toggleDashboardLock, createDashboardWorkspace, duplicateDashboardWorkspace, deleteDashboardWorkspace,
+      compactWorkspaceWidgets, moveDashboardWidget, resetDashboardLayout, jumpToConnectorSettings,
+      marketLayout, mktCustomizeOpen, mktCompact, mktMaximizedId, mktDetailWidth, mktDetailChartHeight,
+      activeMarketWorkspaceObj, activeMarketWidgets, missingMarketWidgets,
+      mktWidgetMeta, marketPanelItems, marketMoverItems, addMarketWidget, loadMarketLayout, saveMarketLayout, saveMarketLayoutDebounced,
+      switchMarketWorkspace, toggleMarketLock, createMarketWorkspace, duplicateMarketWorkspace, deleteMarketWorkspace, resetMarketLayout,
+      marketOverview, marketLoading, marketSectors, marketMovers, macroData, geoData, macroFxGrid,
+      chartOpts, dashWlSelected, dashWlInterval, dashKlineData,
+      mktView, mktInterval, mktDetailOpen, mktSelectedSecid, mktSelectedSymbol, mktSelectedName, mktKlineData, mktTechSummary,
+      mktSearchQuery, mktSearchHits, mktSearchOpen, mktProxyTesting, testMarketProxy,
+      fmtPrice, fmtPct, fmtCompact,
+      loadMarketOverview, loadDashKline, loadMarketKline, loadMarketSectors, loadMarketMovers, loadMacroData, loadGeoData,
+      refreshDashboardAll, selectDashWatchItem, selectMarketSymbol, openMarketDetail,
+      onPickKlineNewsMarker, onPickSector, onMktSearchInput, isInWatchlist, toggleWatchlistSymbol,
+      askAiAboutSymbol, askAiMacro, askAiGeo,
+      newsStatus, newsFeeds, newsItems, newsTotal, newsLoading, newsLoadingMore, newsHasMore, newsFetching, newsTranslating, newsEmbedding,
+      newsListEl, newsVirtStart, newsVirtRows, onNewsListScroll, loadMoreNews,
+      newsSelectedItem, newsDetailLoading, newsViewMode, newsSearchMode, newsLastSearchMode, showBreakingBanner,
+      breakingIdx, currentBreaking, nextBreaking, newsReindexing, reindexNewsAll, newsFilters, newsCategories,
+      newsEntities, entityGraph, entityGraphLayout, entityDrawerOpen, entityProfile, entityLoading,
+      sentimentGauge, sentimentSignals, toneRatio,
+      newsBriefText, newsBriefLoading, briefModalOpen,
+      newFeedForm, newGlossaryForm, opmlInput, newsModelSelectVal, onNewsModelPick,
+      sentimentLabel, langPct, formatNewsTime,
+      loadNewsStatus, loadNewsFeeds, loadNewsItems, runNewsSearch, markAllNewsRead, embedNewsNow,
+      loadNewsEntities, loadEntityGraph, openEntityDossier, filterNewsByEntity, askAiAboutEntity,
+      loadNewsBrief, openBriefModal,
+      selectNewsItem, fetchNewsNow, translatePendingNews, translateNewsFull, toggleNewsStar,
+      saveNewFeed, toggleFeedEnabled, deleteNewsFeed, importPresetFeeds, triggerOpmlImport, onOpmlFilePicked, exportOpml,
+      loadDefaultGlossary, addGlossaryTerm, removeGlossaryTerm, openNewsSettings, openNewsInBrowser,
+      askNewsOpen, askNewsMode, askNewsFloatStyle, askNewsPicked, askNewsPickedCount, citedNews,
+      toggleAskNews, toggleAskNewsPick, removeCitedNews, citeSelectedNewsToAsk, sendNewsToChat, onAskNewsDragStart,
     }
   },
 }
@@ -7088,7 +12090,763 @@ const MatrixLoader = {
   beforeUnmount() { matrixUnbind(this.$el) },
 }
 
+const O2Empty = {
+  props: { description: { type: String, default: '暂无数据' } },
+  template: `
+    <div class="o2-empty">
+      <div class="o2-empty-art" aria-hidden="true">
+        <svg viewBox="0 0 88 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="14" y="14" width="60" height="40" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.16" stroke-width="1.5"/>
+          <path d="M26 26h24M26 34h36M26 42h18" stroke="currentColor" stroke-opacity="0.24" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="66" cy="18" r="10" fill="var(--background, #fff)" stroke="var(--primary, #2563eb)" stroke-opacity="0.45" stroke-width="1.5"/>
+          <path d="M63 18h6M66 15v6" stroke="var(--primary, #2563eb)" stroke-opacity="0.65" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="o2-empty-desc">{{ description }}</div>
+    </div>
+  `,
+}
+
+const SparkLine = {
+  props: {
+    values: { type: Array, default: () => [] },
+    up: { type: Boolean, default: true },
+  },
+  computed: {
+    points() {
+      const arr = (this.values || []).map(Number).filter(Number.isFinite)
+      if (arr.length < 2) return ''
+      const min = Math.min(...arr)
+      const max = Math.max(...arr)
+      const span = max - min || 1
+      return arr.map((v, i) => {
+        const x = ((i / (arr.length - 1)) * 54 + 1).toFixed(1)
+        const y = (16 - ((v - min) / span) * 14).toFixed(1)
+        return `${x},${y}`
+      }).join(' ')
+    },
+    stroke() {
+      return this.up ? 'var(--up, #10b981)' : 'var(--down, #ef4444)'
+    },
+  },
+  template: `
+    <svg viewBox="0 0 56 18" style="width:56px;height:18px;flex:none;display:block">
+      <polyline v-if="points" :points="points" fill="none" :stroke="stroke" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  `,
+}
+
+const KlineChart = {
+  props: {
+    data: { type: Object, default: null },
+    theme: { type: String, default: 'light' },
+    showMa: { type: Boolean, default: true },
+    showVol: { type: Boolean, default: true },
+    showMarkers: { type: Boolean, default: true },
+  },
+  emits: ['pick-marker'],
+  setup(props, { emit }) {
+    const elRef = ref(null)
+    let chart = null
+    let candleSeries = null
+    let volSeries = null
+    let ma5Series = null
+    let ma20Series = null
+    let ro = null
+    let markersByTime = {}
+
+    function chartOptsTheme() {
+      const dark = props.theme === 'dark'
+      return {
+        layout: {
+          background: { type: ColorType.Solid, color: dark ? '#0b0f17' : '#ffffff' },
+          textColor: dark ? '#94a3b8' : '#475569',
+          fontSize: 10,
+        },
+        grid: {
+          vertLines: { color: dark ? '#1e293b' : '#f1f5f9' },
+          horzLines: { color: dark ? '#1e293b' : '#f1f5f9' },
+        },
+        crosshair: { mode: CrosshairMode.Normal },
+        rightPriceScale: { borderColor: dark ? '#1e293b' : '#e2e8f0' },
+        timeScale: { borderColor: dark ? '#1e293b' : '#e2e8f0', timeVisible: false },
+      }
+    }
+
+    function dedupSort(list) {
+      const seen = new Set()
+      return (list || []).slice().sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0)).filter((x) => {
+        if (!x || !x.time || seen.has(x.time)) return false
+        seen.add(x.time)
+        return true
+      })
+    }
+
+    function ensureChart() {
+      const el = elRef.value
+      if (!el || !el.clientWidth || !el.clientHeight) return
+      if (!chart) {
+        chart = createChart(el, {
+          width: el.clientWidth,
+          height: el.clientHeight,
+          ...chartOptsTheme(),
+        })
+        candleSeries = chart.addCandlestickSeries({
+          upColor: '#10b981',
+          downColor: '#ef4444',
+          borderVisible: false,
+          wickUpColor: '#10b981',
+          wickDownColor: '#ef4444',
+        })
+        volSeries = chart.addHistogramSeries({
+          priceFormat: { type: 'volume' },
+          priceScaleId: '',
+        })
+        volSeries.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
+        ma5Series = chart.addLineSeries({ color: '#3b82f6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false })
+        ma20Series = chart.addLineSeries({ color: '#f59e0b', lineWidth: 1, priceLineVisible: false, lastValueVisible: false })
+        chart.subscribeClick((param) => {
+          if (!param || !param.time) return
+          const mk = markersByTime[String(param.time)]
+          if (mk) emit('pick-marker', mk)
+        })
+      } else {
+        chart.applyOptions(chartOptsTheme())
+      }
+      renderData()
+    }
+
+    function renderData() {
+      if (!chart || !candleSeries) return
+      const d = props.data
+      const bars = dedupSort((d && d.bars) || [])
+      candleSeries.setData(bars.map((b) => ({
+        time: b.time, open: b.open, high: b.high, low: b.low, close: b.close,
+      })))
+      if (volSeries) {
+        volSeries.setData(props.showVol ? bars.map((b) => ({
+          time: b.time,
+          value: b.volume || 0,
+          color: b.close >= b.open ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)',
+        })) : [])
+      }
+      const ind = (d && d.indicators) || {}
+      if (ma5Series) ma5Series.setData(props.showMa ? dedupSort(ind.ma5 || []) : [])
+      if (ma20Series) ma20Series.setData(props.showMa ? dedupSort(ind.ma20 || []) : [])
+      markersByTime = {}
+      const rawMarkers = props.showMarkers ? ((d && d.markers) || []) : []
+      for (const m of rawMarkers) {
+        if (m && m.time && !markersByTime[m.time]) markersByTime[m.time] = m
+      }
+      candleSeries.setMarkers(rawMarkers)
+      if (bars.length) chart.timeScale().fitContent()
+    }
+
+    onMounted(() => {
+      let rafId = 0
+      nextTick(() => {
+        ensureChart()
+        if (elRef.value && typeof ResizeObserver !== 'undefined') {
+          ro = new ResizeObserver((entries) => {
+            const cr = entries[0] && entries[0].contentRect
+            if (!cr || cr.width <= 0 || cr.height <= 0) return
+            const w = Math.floor(cr.width)
+            const h = Math.floor(cr.height)
+            if (rafId) cancelAnimationFrame(rafId)
+            rafId = requestAnimationFrame(() => {
+              rafId = 0
+              if (!elRef.value) return
+              if (!chart) ensureChart()
+              else chart.applyOptions({ width: w, height: h })
+            })
+          })
+          ro.observe(elRef.value)
+        }
+      })
+      onBeforeUnmount(() => {
+        if (rafId) cancelAnimationFrame(rafId)
+      })
+    })
+    watch(() => [props.data, props.showMa, props.showVol, props.showMarkers], () => nextTick(ensureChart), { deep: false })
+    watch(() => props.theme, () => nextTick(ensureChart))
+    onBeforeUnmount(() => {
+      if (ro) ro.disconnect()
+      if (chart) { chart.remove(); chart = null }
+    })
+
+    return { elRef }
+  },
+  template: '<div ref="elRef" style="width:100%;height:100%;min-height:0"></div>',
+}
+
+const SectorTreemap = {
+  props: {
+    items: { type: Array, default: () => [] },
+    theme: { type: String, default: 'light' },
+    height: { type: String, default: '100%' },
+  },
+  emits: ['pick'],
+  setup(props, { emit }) {
+    const elRef = ref(null)
+    let inst = null
+    let ro = null
+    let rafId = 0
+
+    function pctColor(pct) {
+      const p = Number(pct) || 0
+      if (p >= 3) return '#059669'
+      if (p >= 1) return '#10b981'
+      if (p > 0) return '#34d399'
+      if (p <= -3) return '#b91c1c'
+      if (p <= -1) return '#ef4444'
+      if (p < 0) return '#f87171'
+      return '#64748b'
+    }
+
+    function draw() {
+      const el = elRef.value
+      if (!el || !el.clientWidth || !el.clientHeight) return
+      if (!inst) {
+        inst = echarts.init(el)
+        inst.on('click', (p) => {
+          if (p && p.data && p.data.raw) emit('pick', p.data.raw)
+        })
+      }
+      const data = (props.items || []).map((it) => ({
+        name: it.name,
+        value: Math.max(1, Number(it.mkt_cap) || 1),
+        pct: it.pct,
+        inflow: it.net_inflow,
+        raw: it,
+        itemStyle: {
+          color: pctColor(it.pct),
+          borderColor: props.theme === 'dark' ? '#0b0f17' : '#ffffff',
+          borderWidth: 1,
+        },
+      }))
+      inst.setOption({
+        animationDurationUpdate: 180,
+        tooltip: {
+          formatter(info) {
+            const d = info.data || {}
+            const p = Number(d.pct || 0)
+            const inf = ((Number(d.inflow) || 0) / 1e8).toFixed(2)
+            return `<b>${d.name || ''}</b><br/>涨跌: ${p >= 0 ? '+' : ''}${p.toFixed(2)}%<br/>主力净流: ${inf}亿`
+          },
+        },
+        series: [{
+          type: 'treemap',
+          roam: false,
+          nodeClick: false,
+          breadcrumb: { show: false },
+          left: 0, right: 0, top: 0, bottom: 0,
+          label: {
+            show: true,
+            color: '#fff',
+            fontSize: 11,
+            formatter(p) {
+              const pct = Number((p.data && p.data.pct) || 0)
+              return `${p.name}\n${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`
+            },
+          },
+          data,
+        }],
+      })
+    }
+
+    onMounted(() => {
+      nextTick(() => {
+        draw()
+        if (elRef.value && typeof ResizeObserver !== 'undefined') {
+          ro = new ResizeObserver((entries) => {
+            const cr = entries[0] && entries[0].contentRect
+            if (!cr || cr.width <= 0 || cr.height <= 0) return
+            if (rafId) cancelAnimationFrame(rafId)
+            rafId = requestAnimationFrame(() => {
+              rafId = 0
+              if (!elRef.value) return
+              if (!inst) draw()
+              else inst.resize()
+            })
+          })
+          ro.observe(elRef.value)
+        }
+      })
+    })
+    watch(() => [props.items, props.theme], () => nextTick(draw))
+    onBeforeUnmount(() => {
+      if (rafId) cancelAnimationFrame(rafId)
+      if (ro) ro.disconnect()
+      if (inst) { inst.dispose(); inst = null }
+    })
+
+    return { elRef }
+  },
+  template: `<div ref="elRef" :style="{ width: '100%', height: height, minHeight: 0, flex: height === '100%' ? '1 1 auto' : undefined }"></div>`,
+}
+
+const YieldChart = {
+  props: {
+    rates: { type: Array, default: () => [] },
+    theme: { type: String, default: 'light' },
+    height: { type: String, default: '100%' },
+  },
+  setup(props) {
+    const elRef = ref(null)
+    let inst = null
+    let ro = null
+    let rafId = 0
+
+    function draw() {
+      const el = elRef.value
+      if (!el || !el.clientWidth || !el.clientHeight) return
+      if (!inst) inst = echarts.init(el)
+      const dark = props.theme === 'dark'
+      const xs = (props.rates || []).map((r) => String(r.label || '').replace('Treasury ', '').replace('Inflation-Protected Securities ', ''))
+      const ys = (props.rates || []).map((r) => Number(r.rate) || 0)
+      inst.setOption({
+        animationDurationUpdate: 150,
+        grid: { left: 34, right: 10, top: 14, bottom: 22 },
+        tooltip: { trigger: 'axis' },
+        xAxis: {
+          type: 'category',
+          data: xs,
+          axisLabel: { fontSize: 9, color: dark ? '#94a3b8' : '#64748b' },
+          axisLine: { lineStyle: { color: dark ? '#1e293b' : '#cbd5e1' } },
+        },
+        yAxis: {
+          type: 'value',
+          scale: true,
+          axisLabel: { fontSize: 9, color: dark ? '#94a3b8' : '#64748b', formatter: '{value}%' },
+          splitLine: { lineStyle: { color: dark ? '#1e293b' : '#f1f5f9' } },
+        },
+        series: [{
+          type: 'line',
+          smooth: true,
+          data: ys,
+          lineStyle: { width: 2, color: '#3b82f6' },
+          itemStyle: { color: '#3b82f6' },
+          areaStyle: { color: 'rgba(59,130,246,0.14)' },
+        }],
+      })
+    }
+
+    onMounted(() => {
+      nextTick(() => {
+        draw()
+        if (elRef.value && typeof ResizeObserver !== 'undefined') {
+          ro = new ResizeObserver((entries) => {
+            const cr = entries[0] && entries[0].contentRect
+            if (!cr || cr.width <= 0 || cr.height <= 0) return
+            if (rafId) cancelAnimationFrame(rafId)
+            rafId = requestAnimationFrame(() => {
+              rafId = 0
+              if (!elRef.value) return
+              if (!inst) draw()
+              else inst.resize()
+            })
+          })
+          ro.observe(elRef.value)
+        }
+      })
+    })
+    watch(() => [props.rates, props.theme], () => nextTick(draw))
+    onBeforeUnmount(() => {
+      if (rafId) cancelAnimationFrame(rafId)
+      if (ro) ro.disconnect()
+      if (inst) { inst.dispose(); inst = null }
+    })
+
+    return { elRef }
+  },
+  template: `<div ref="elRef" :style="{ width: '100%', height: height, minHeight: 0, flex: height === '100%' ? '1 1 auto' : undefined }"></div>`,
+}
+
+const SplitResizer = {
+  props: {
+    direction: { type: String, default: 'v' }, // 'v' vertical divider (resizes width), 'h' horizontal divider (resizes height)
+    modelValue: { type: Number, required: true },
+    min: { type: Number, default: 160 },
+    max: { type: Number, default: 640 },
+    reverse: { type: Boolean, default: false },
+  },
+  emits: ['update:modelValue', 'commit'],
+  setup(props, { emit }) {
+    const dragging = ref(false)
+    let rafId = 0
+    function onDown(e) {
+      if (e.button !== 0) return
+      e.preventDefault()
+      e.stopPropagation()
+      dragging.value = true
+      const startPos = props.direction === 'v' ? e.clientX : e.clientY
+      const startVal = Number(props.modelValue) || props.min
+      const bodyCls = props.direction === 'v' ? 'is-splitting-v' : 'is-splitting-h'
+      document.body.classList.add(bodyCls)
+      let latest = startVal
+
+      function onMove(ev) {
+        const curPos = props.direction === 'v' ? ev.clientX : ev.clientY
+        const delta = (curPos - startPos) * (props.reverse ? -1 : 1)
+        latest = Math.round(Math.max(props.min, Math.min(props.max, startVal + delta)))
+        if (rafId) cancelAnimationFrame(rafId)
+        rafId = requestAnimationFrame(() => {
+          rafId = 0
+          emit('update:modelValue', latest)
+        })
+      }
+      function onUp() {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
+        if (rafId) { cancelAnimationFrame(rafId); rafId = 0 }
+        dragging.value = false
+        document.body.classList.remove(bodyCls)
+        emit('update:modelValue', latest)
+        emit('commit', latest)
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onUp)
+    }
+    return { dragging, onDown }
+  },
+  template: `<div :class="[direction === 'v' ? 'sp-bar-v' : 'sp-bar-h', { dragging }]" @pointerdown="onDown" title="拖拽调整分栏大小"></div>`,
+}
+
+const FreeGrid = {
+  props: {
+    items: { type: Array, default: () => [] },
+    cols: { type: Number, default: 24 },
+    rowHeight: { type: Number, default: 26 },
+    gap: { type: Number, default: 6 },
+    locked: { type: Boolean, default: false },
+    maximizedId: { type: String, default: '' },
+  },
+  emits: ['layout-commit', 'update:maximizedId'],
+  setup(props, { emit }) {
+    const canvasRef = ref(null)
+    const canvasW = ref(1100)
+    const active = ref(null) // { id, mode, left, top, width, height, x, y, w, h, title }
+    let ro = null
+    let rafId = 0
+
+    function syncWidth() {
+      const el = canvasRef.value
+      if (el && el.clientWidth > 40) canvasW.value = el.clientWidth
+    }
+
+    function colWidth() {
+      const c = Math.max(1, props.cols || 24)
+      const g = props.gap
+      return Math.max(12, (canvasW.value - g * (c - 1)) / c)
+    }
+
+    function itemPx(it) {
+      const cw = colWidth()
+      const g = props.gap
+      const rh = props.rowHeight
+      const x = Math.max(0, Math.min(props.cols - 1, Number(it.x) || 0))
+      const w = Math.max(1, Math.min(props.cols - x, Number(it.w) || 8))
+      const y = Math.max(0, Number(it.y) || 0)
+      const h = Math.max(2, Number(it.h) || 8)
+      return {
+        left: x * (cw + g),
+        top: y * (rh + g),
+        width: w * cw + (w - 1) * g,
+        height: h * rh + (h - 1) * g,
+      }
+    }
+
+    function collides(a, b) {
+      if (a.id === b.id) return false
+      return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y)
+    }
+
+    function resolveCollisions(moved) {
+      const list = props.items || []
+      const queue = [moved]
+      let iter = 0
+      while (queue.length && iter++ < 120) {
+        const cur = queue.shift()
+        for (const other of list) {
+          if (collides(cur, other)) {
+            other.y = cur.y + cur.h
+            queue.push(other)
+          }
+        }
+      }
+      compactVertical(moved.id)
+    }
+
+    function compactVertical(pinnedId = '') {
+      const list = (props.items || []).slice().sort((a, b) => (a.y - b.y) || (a.x - b.x))
+      for (const it of list) {
+        if (pinnedId && it.id === pinnedId) continue
+        while (it.y > 0) {
+          it.y -= 1
+          if (list.some((o) => collides(it, o))) {
+            it.y += 1
+            break
+          }
+        }
+      }
+    }
+
+    const canvasHeight = computed(() => {
+      const list = props.items || []
+      const maxRow = list.reduce((m, it) => Math.max(m, (Number(it.y) || 0) + (Number(it.h) || 8)), 16)
+      const actBottom = active.value ? (active.value.y + active.value.h) : 0
+      const rows = Math.max(maxRow, actBottom)
+      return Math.max(420, rows * (props.rowHeight + props.gap) + 32)
+    })
+
+    const canvasStyle = computed(() => {
+      const cw = colWidth()
+      return {
+        height: canvasHeight.value + 'px',
+        '--fg-col-step': (cw + props.gap) + 'px',
+        '--fg-row-step': (props.rowHeight + props.gap) + 'px',
+      }
+    })
+
+    function itemStyle(it) {
+      if (props.maximizedId && props.maximizedId === it.id) return {}
+      if (active.value && active.value.id === it.id) {
+        return {
+          left: active.value.left + 'px',
+          top: active.value.top + 'px',
+          width: active.value.width + 'px',
+          height: active.value.height + 'px',
+        }
+      }
+      const p = itemPx(it)
+      return {
+        left: p.left + 'px',
+        top: p.top + 'px',
+        width: p.width + 'px',
+        height: p.height + 'px',
+      }
+    }
+
+    const ghostStyle = computed(() => {
+      if (!active.value) return null
+      const p = itemPx(active.value)
+      return {
+        left: p.left + 'px',
+        top: p.top + 'px',
+        width: p.width + 'px',
+        height: p.height + 'px',
+      }
+    })
+
+    function startDrag(it, e) {
+      if (props.locked || props.maximizedId === it.id) return
+      if (e.button !== 0) return
+      if (e.target && e.target.closest('button, input, select, textarea, a, .ant-switch, .ant-select')) return
+      e.preventDefault()
+      syncWidth()
+      const orig = itemPx(it)
+      const cw = colWidth()
+      const g = props.gap
+      const rh = props.rowHeight
+      const startX = e.clientX
+      const startY = e.clientY
+
+      active.value = {
+        id: it.id, mode: 'drag', title: it.title || it.id,
+        left: orig.left, top: orig.top, width: orig.width, height: orig.height,
+        x: it.x, y: it.y, w: it.w, h: it.h,
+      }
+
+      function onMove(ev) {
+        const dx = ev.clientX - startX
+        const dy = ev.clientY - startY
+        const nextLeft = Math.max(0, Math.min(Math.max(0, canvasW.value - orig.width), orig.left + dx))
+        const nextTop = Math.max(0, orig.top + dy)
+        const gx = Math.max(0, Math.min(props.cols - it.w, Math.round(nextLeft / (cw + g))))
+        const gy = Math.max(0, Math.round(nextTop / (rh + g)))
+        if (active.value) {
+          active.value.left = nextLeft
+          active.value.top = nextTop
+          active.value.x = gx
+          active.value.y = gy
+        }
+        if (gx !== it.x || gy !== it.y) {
+          it.x = gx
+          it.y = gy
+          resolveCollisions(it)
+        }
+      }
+
+      function onUp() {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
+        active.value = null
+        compactVertical('')
+        emit('layout-commit')
+      }
+
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onUp)
+    }
+
+    function startResize(it, dir, e) {
+      if (props.locked || props.maximizedId === it.id) return
+      if (e.button !== 0) return
+      e.preventDefault()
+      e.stopPropagation()
+      syncWidth()
+      const orig = itemPx(it)
+      const cw = colWidth()
+      const g = props.gap
+      const rh = props.rowHeight
+      const startX = e.clientX
+      const startY = e.clientY
+      const minW = Math.max(3, Number(it.minW) || 4)
+      const minH = Math.max(4, Number(it.minH) || 5)
+      const minPxW = minW * cw + (minW - 1) * g
+      const minPxH = minH * rh + (minH - 1) * g
+      const origRightPx = orig.left + orig.width
+      const origRightCol = it.x + it.w
+
+      active.value = {
+        id: it.id, mode: 'resize', title: it.title || it.id,
+        left: orig.left, top: orig.top, width: orig.width, height: orig.height,
+        x: it.x, y: it.y, w: it.w, h: it.h,
+      }
+
+      function onMove(ev) {
+        const dx = ev.clientX - startX
+        const dy = ev.clientY - startY
+        let nextLeft = orig.left
+        let nextWpx = orig.width
+        let nextHpx = orig.height
+        let gx = it.x
+        let gw = it.w
+        let gh = it.h
+
+        if (dir === 'e' || dir === 'se') {
+          const maxPxW = (props.cols - it.x) * cw + (props.cols - it.x - 1) * g
+          nextWpx = Math.max(minPxW, Math.min(maxPxW, orig.width + dx))
+          gw = Math.max(minW, Math.min(props.cols - it.x, Math.round((nextWpx + g) / (cw + g))))
+        }
+        if (dir === 'w' || dir === 'sw') {
+          nextLeft = Math.max(0, Math.min(origRightPx - minPxW, orig.left + dx))
+          nextWpx = origRightPx - nextLeft
+          gx = Math.max(0, Math.min(origRightCol - minW, Math.round(nextLeft / (cw + g))))
+          gw = Math.max(minW, origRightCol - gx)
+        }
+        if (dir === 's' || dir === 'se' || dir === 'sw') {
+          nextHpx = Math.max(minPxH, orig.height + dy)
+          gh = Math.max(minH, Math.round((nextHpx + g) / (rh + g)))
+        }
+
+        if (active.value) {
+          active.value.left = nextLeft
+          active.value.width = nextWpx
+          active.value.height = nextHpx
+          active.value.x = gx
+          active.value.w = gw
+          active.value.h = gh
+        }
+        if (gx !== it.x || gw !== it.w || gh !== it.h) {
+          it.x = gx
+          it.w = gw
+          it.h = gh
+          resolveCollisions(it)
+        }
+      }
+
+      function onUp() {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
+        active.value = null
+        compactVertical('')
+        emit('layout-commit')
+      }
+
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onUp)
+    }
+
+    function toggleMaximize(id) {
+      emit('update:maximizedId', props.maximizedId === id ? '' : id)
+    }
+
+    function onKeyEsc(e) {
+      if (e.key === 'Escape' && props.maximizedId) {
+        emit('update:maximizedId', '')
+      }
+    }
+
+    onMounted(() => {
+      nextTick(() => {
+        syncWidth()
+        if (canvasRef.value && typeof ResizeObserver !== 'undefined') {
+          ro = new ResizeObserver(() => {
+            if (rafId) cancelAnimationFrame(rafId)
+            rafId = requestAnimationFrame(() => {
+              rafId = 0
+              syncWidth()
+            })
+          })
+          ro.observe(canvasRef.value)
+        }
+      })
+      window.addEventListener('keydown', onKeyEsc)
+    })
+
+    onBeforeUnmount(() => {
+      if (rafId) cancelAnimationFrame(rafId)
+      if (ro) ro.disconnect()
+      window.removeEventListener('keydown', onKeyEsc)
+    })
+
+    return {
+      canvasRef, active, canvasStyle, ghostStyle, itemStyle,
+      startDrag, startResize, toggleMaximize,
+    }
+  },
+  template: `
+    <div ref="canvasRef" :class="['fg-canvas', { unlocked: !locked }]" :style="canvasStyle">
+      <div v-if="maximizedId" class="fg-max-backdrop" @click="$emit('update:maximizedId', '')"></div>
+      <div v-if="ghostStyle" class="fg-ghost" :style="ghostStyle"></div>
+      <div v-for="it in items" :key="it.id"
+           :class="['fg-item', { 'is-active': active && active.id === it.id, 'is-max': maximizedId === it.id }]"
+           :style="itemStyle(it)">
+        <slot name="item"
+              :widget="it"
+              :is-maximized="maximizedId === it.id"
+              :toggle-maximize="() => toggleMaximize(it.id)"
+              :start-drag="(e) => startDrag(it, e)" />
+        <template v-if="!locked && maximizedId !== it.id">
+          <div class="fg-rh fg-rh-e" @pointerdown="startResize(it, 'e', $event)" title="向右拖拽调整宽度"></div>
+          <div class="fg-rh fg-rh-w" @pointerdown="startResize(it, 'w', $event)" title="向左拖拽调整宽度"></div>
+          <div class="fg-rh fg-rh-s" @pointerdown="startResize(it, 's', $event)" title="向下拖拽调整高度"></div>
+          <div class="fg-rh fg-rh-se" @pointerdown="startResize(it, 'se', $event)" title="拖拽自由调整宽与高"></div>
+          <div class="fg-rh fg-rh-sw" @pointerdown="startResize(it, 'sw', $event)" title="拖拽自由调整宽与高"></div>
+        </template>
+      </div>
+      <div v-if="active" class="fg-hud ft-mono">
+        {{ active.mode === 'drag' ? '移动' : '缩放' }} · {{ active.title }} · X:{{ active.x }} Y:{{ active.y }} · {{ active.w }}/{{ cols }}列 × {{ active.h }}行
+      </div>
+    </div>
+  `,
+}
+
 const app = createApp(App)
 app.use(Antd)
 app.component('matrix-loader', MatrixLoader)
+app.component('o2-empty', O2Empty)
+app.component('spark-line', SparkLine)
+app.component('kline-chart', KlineChart)
+app.component('sector-treemap', SectorTreemap)
+app.component('yield-chart', YieldChart)
+app.component('split-resizer', SplitResizer)
+app.component('free-grid', FreeGrid)
 app.mount('#app')

@@ -580,7 +580,7 @@ def _run_job(cfg, db_path: str) -> None:
 def search_vec(con, q: str, cfg, limit: int = 24, dept: str = "",
                status: str = "", category: str = "", doc_id: int | None = None,
                project: str = "", folder: str = "", doc_type: str = "",
-               chunk_type: str = "") -> list[dict]:
+               chunk_type: str = "", exclude_projects: list | None = None) -> list[dict]:
     if not (q or "").strip():
         return []
     ch = resolve(cfg.data)
@@ -618,6 +618,10 @@ def search_vec(con, q: str, cfg, limit: int = 24, dept: str = "",
     if doc_id:
         where.append("d.id = ?")
         args.append(doc_id)
+    if not project and not doc_id and exclude_projects:
+        marks = ",".join("?" * len(exclude_projects))
+        where.append(f"IFNULL(d.project, '集团制度库') NOT IN ({marks})")
+        args.extend(list(exclude_projects))
     sql = f"""
         SELECT ch.id, ch.doc_id, ch.seq, ch.chapter, ch.article, ch.page_start,
                ch.page_end, ch.text, ch.text_norm, d.title, d.doc_no, d.dept,

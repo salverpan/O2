@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import re
 import shutil
 import sqlite3
+import threading
+import time
 import uuid
 import urllib.error
 import urllib.request
+from collections import OrderedDict
 
 import attach as attach_mod
 import build as build_mod
@@ -19,6 +23,40 @@ import search as search_mod
 ALLOWED_EXT = ex.SUPPORTED_EXTS
 STATUSES = ("现行", "试行", "已废止")
 MAX_UPLOAD = 100 * 1024 * 1024
+_hash_backfill_done = False
+_hash_backfill_lock = threading.Lock()
+
+_PARSED_CACHE: OrderedDict[str, tuple[float, ex.Doc]] = OrderedDict()
+_PARSED_CACHE_LOCK = threading.Lock()
+_PARSED_CACHE_MAX = 64
+_PARSED_CACHE_TTL = 1800.0
+
+
+def _cache_put_doc(tmp_id: str, doc: ex.Doc) -> None:
+    if not tmp_id:
+        return
+    now = time.time()
+    with _PARSED_CACHE_LOCK:
+        stale = [k for k, (ts, _) in _PARSED_CACHE.items() if now - ts > _PARSED_CACHE_TTL]
+        for k in stale:
+            _PARSED_CACHE.pop(k, None)
+        _PARSED_CACHE[tmp_id] = (now, doc)
+        _PARSED_CACHE.move_to_end(tmp_id)
+        while len(_PARSED_CACHE) > _PARSED_CACHE_MAX:
+            _PARSED_CACHE.popitem(last=False)
+
+
+def _cache_pop_doc(tmp_id: str) -> ex.Doc | None:
+    if not tmp_id:
+        return None
+    with _PARSED_CACHE_LOCK:
+        entry = _PARSED_CACHE.pop(tmp_id, None)
+    if not entry:
+        return None
+    ts, doc = entry
+    if time.time() - ts > _PARSED_CACHE_TTL:
+        return None
+    return doc
 
 META_SYS = """你是企业级多模态文档智能分类与结构化元数据抽取器。只返回 JSON，不要解释。
 输出 JSON 结构：
@@ -122,7 +160,7 @@ def _chat_json(cfg, user: str, sys_prompt: str = META_SYS) -> dict:
         },
         method="POST",
     )
-    with prov_mod.urlopen(req, timeout=90) as resp:
+    with prov_mod.urlopen(req, timeout=35) as resp:
         data = json.loads(resp.read().decode("utf-8"))
     text = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
     text = text.strip()
@@ -185,7 +223,7 @@ def _describe_image_with_vlm(cfg, img_bytes: bytes, ext: str) -> str:
         return ""
 
 
-def extract_meta(cfg, doc: ex.Doc, filename: str, existing_folders: list[str]) -> dict:
+def extract_meta(cfg, doc: ex.Doc, filename: str, existing_folders: list[str], fast_mode: bool = False) -> dict:
     ex.enrich_from_text(doc)
     head = "\n".join(doc.pages[:3])[:4500]
     table_hint = ""
@@ -205,12 +243,13 @@ def extract_meta(cfg, doc: ex.Doc, filename: str, existing_folders: list[str]) -
         f"内容前部摘录：\n{head or '（无文本）'}"
     )
     got: dict = {}
-    try:
-        import providers as prov_mod
-        if prov_mod.any_key(cfg.data):
-            got = _chat_json(cfg, prompt)
-    except Exception:
-        got = {}
+    if not fast_mode:
+        try:
+            import providers as prov_mod
+            if prov_mod.any_key(cfg.data):
+                got = _chat_json(cfg, prompt)
+        except Exception:
+            got = {}
 
     dtype = str(got.get("doc_type") or doc.doc_type or "general").strip().lower()
     if dtype not in ex.DOC_TYPES:
@@ -283,6 +322,11 @@ def parse_upload(
     project: str = "",
     folder: str = "",
     rel_path: str = "",
+    db_path: str = "",
+    src_root: str = "",
+    skip_existing: bool = True,
+    force_ocr: bool | None = None,
+    fast_meta: bool | None = None,
 ) -> dict:
     def prog(percent: int, message: str, done: int = 0, total: int = 0,
              stage: str = "") -> None:
@@ -320,6 +364,24 @@ def parse_upload(
                         f"{inferred_folder}/{sub}" if inferred_folder else sub
                     )
 
+    digest = hashlib.sha256(data).hexdigest()
+    if skip_existing and db_path:
+        prog(8, "正在核对是否已入库")
+        hit = find_same_document(db_path, inferred_proj or "集团制度库", digest, src_root)
+        if hit:
+            prog(100, "已在库，跳过", stage="done")
+            return {
+                "skipped": True,
+                "filename": os.path.basename(filename),
+                "file_ext": ext,
+                "content_hash": digest,
+                "project": hit["project"],
+                "folder": hit["folder"],
+                "doc_type": hit["doc_type"] or "general",
+                "title": hit["title"] or os.path.splitext(os.path.basename(filename))[0],
+                "doc_id": hit["doc_id"],
+            }
+
     prog(5, "正在保存文件")
     tmp_id = uuid.uuid4().hex
     path = os.path.join(uploads_dir(work_dir), tmp_id + ext)
@@ -339,14 +401,24 @@ def parse_upload(
         doc_no="",
         issued_date="",
         status="现行",
+        content_hash=digest,
     )
     ex.extract_text(d)
 
     token = (cfg.data.get("paddle_token") or "").strip()
     cache = os.path.join(work_dir, "ocr_cloud")
+    if force_ocr is None:
+        force_ocr = (str(cfg.data.get("pdf_ocr_mode") or "smart").strip().lower() == "always")
+    if fast_meta is None:
+        fast_meta = bool(cfg.data.get("batch_fast_meta", False))
 
     if ext == ".pdf":
-        if token:
+        # 若本地已存在该 PDF 的云端 OCR 缓存，直接零成本复用
+        if ex.apply_cloud_ocr(d, cache):
+            prog(55, "命中本地版面识别缓存", len(d.pages), len(d.pages), "ocr")
+        elif d.has_text and not force_ocr:
+            prog(58, f"已高速抽取 PDF 文本与 {len(d.tables)} 张表格")
+        elif token:
             def ocr_hook(done: int, total: int, stage: str = "ocr") -> None:
                 total = max(int(total or 0), 1)
                 done = int(done or 0)
@@ -392,12 +464,13 @@ def parse_upload(
         else:
             prog(60, f"内容抽取完成（共 {len(d.pages)} 页/表）")
 
-    prog(86, "AI 正在识别文件性质并提取专属属性", stage="meta")
-    meta = extract_meta(cfg, d, os.path.basename(filename), depts)
+    prog(86, "正在提取文档分类与属性" if fast_meta else "AI 正在识别文件性质并提取专属属性", stage="meta")
+    meta = extract_meta(cfg, d, os.path.basename(filename), depts, fast_mode=bool(fast_meta))
     if inferred_proj:
         meta["project"] = inferred_proj
     if inferred_folder:
         meta["folder"] = inferred_folder
+    _cache_put_doc(tmp_id, d)
     prog(100, "识别完成", stage="done")
     return {
         "tmp_id": tmp_id,
@@ -418,6 +491,7 @@ def commit(
     tmp_id: str,
     meta: dict,
     doc_id: int | None = None,
+    db_lock: threading.Lock | None = None,
 ) -> dict:
     src = _find_tmp(work_dir, tmp_id)
     ext = os.path.splitext(src)[1].lower()
@@ -452,38 +526,66 @@ def commit(
     shutil.copy2(src, dest)
 
     rel = os.path.relpath(dest, src_root)
-    d = ex.Doc(
-        key=rel,
-        project=project,
-        folder=folder,
-        dept=dept,
-        doc_type=doc_type,
-        category=category,
-        file_ext=ext,
-        chunk_profile=chunk_profile,
-        title=title,
-        doc_no=doc_no,
-        issued_date=issued,
-        status=status,
-        summary=summary,
-        tags=tags,
-        meta=custom_meta,
-        rel_path=rel,
-        abs_path=dest,
-    )
-    ex.extract_text(d)
-    cache = os.path.join(work_dir, "ocr_cloud")
-    if ext in (".pdf", *ex.IMAGE_EXTS):
-        ex.apply_cloud_ocr(d, cache)
-    if ext in ex.IMAGE_EXTS and custom_meta.get("visual_summary"):
-        v_text = f"【AI 视觉解析】\n{custom_meta['visual_summary']}\n\n" + "\n".join(d.pages)
-        d.pages = [v_text]
-        d.has_text = True
+    cached_doc = _cache_pop_doc(tmp_id)
+    if cached_doc is not None and cached_doc.has_text:
+        d = cached_doc
+        d.key = rel
+        d.project = project
+        d.folder = folder
+        d.dept = dept
+        d.doc_type = doc_type
+        d.category = category
+        d.file_ext = ext
+        d.chunk_profile = chunk_profile
+        d.title = title
+        d.doc_no = doc_no
+        d.issued_date = issued
+        d.status = status
+        d.summary = summary
+        d.tags = tags
+        d.meta = custom_meta
+        d.rel_path = rel
+        d.abs_path = dest
+        if not d.content_hash:
+            d.content_hash = ex._sha256(src)
+    else:
+        d = ex.Doc(
+            key=rel,
+            project=project,
+            folder=folder,
+            dept=dept,
+            doc_type=doc_type,
+            category=category,
+            file_ext=ext,
+            chunk_profile=chunk_profile,
+            title=title,
+            doc_no=doc_no,
+            issued_date=issued,
+            status=status,
+            summary=summary,
+            tags=tags,
+            meta=custom_meta,
+            rel_path=rel,
+            abs_path=dest,
+            content_hash=ex._sha256(src),
+        )
+        ex.extract_text(d)
+        cache = os.path.join(work_dir, "ocr_cloud")
+        if ext in (".pdf", *ex.IMAGE_EXTS):
+            ex.apply_cloud_ocr(d, cache)
+        if ext in ex.IMAGE_EXTS and custom_meta.get("visual_summary"):
+            v_text = f"【AI 视觉解析】\n{custom_meta['visual_summary']}\n\n" + "\n".join(d.pages)
+            d.pages = [v_text]
+            d.has_text = True
     ex.enrich_from_text(d)
     if not d.has_text:
         raise ValueError(d.note or "入库失败：没有可用文本")
 
-    new_id = build_mod.upsert_document(db_path, d, doc_id)
+    if db_lock is not None:
+        with db_lock:
+            new_id = build_mod.upsert_document(db_path, d, doc_id)
+    else:
+        new_id = build_mod.upsert_document(db_path, d, doc_id)
     try:
         os.remove(src)
     except OSError:
@@ -491,7 +593,9 @@ def commit(
     if cfg.data.get("embed_running"):
         try:
             import embed as embed_mod
-            embed_mod.embed_document(cfg, db_path, new_id)
+            threading.Thread(
+                target=embed_mod.start_job, args=(cfg, db_path), daemon=True
+            ).start()
         except Exception:
             pass
     return {"ok": True, "doc_id": new_id, "rel_path": rel, "project": project, "folder": folder, "doc_type": doc_type}
@@ -574,3 +678,72 @@ def existing_depts(con) -> list[str]:
     folders = fct.get("folders") or []
     depts = fct.get("depts") or []
     return list(dict.fromkeys([*folders, *depts]))
+
+
+def _file_for_hash(abs_path: str, rel_path: str, src_root: str) -> str:
+    if abs_path and os.path.isfile(abs_path):
+        return abs_path
+    rel = (rel_path or "").replace("/", os.sep).replace("\\", os.sep).lstrip("\\/")
+    if src_root and rel:
+        cand = os.path.join(src_root, rel)
+        if os.path.isfile(cand):
+            return cand
+    return ""
+
+
+def _backfill_content_hashes(con: sqlite3.Connection, src_root: str = "") -> None:
+    """给已经入库、还没有内容指纹的文件补一次哈希，之后重复导入才能认出来。"""
+    global _hash_backfill_done
+    if _hash_backfill_done:
+        return
+    with _hash_backfill_lock:
+        if _hash_backfill_done:
+            return
+        rows = con.execute(
+            "SELECT id, abs_path, rel_path FROM docs WHERE IFNULL(content_hash, '') = ''"
+        ).fetchall()
+        for row in rows:
+            path = _file_for_hash(row["abs_path"] if isinstance(row, sqlite3.Row) else row[1],
+                                  row["rel_path"] if isinstance(row, sqlite3.Row) else row[2],
+                                  src_root)
+            if not path:
+                continue
+            try:
+                digest = ex._sha256(path)
+            except OSError:
+                continue
+            if digest:
+                did = row["id"] if isinstance(row, sqlite3.Row) else row[0]
+                con.execute("UPDATE docs SET content_hash=? WHERE id=?", (digest, did))
+        con.commit()
+        _hash_backfill_done = True
+
+
+def find_same_document(db_path: str, project: str, digest: str, src_root: str = "") -> dict | None:
+    digest = (digest or "").strip().lower()
+    if not digest or not db_path:
+        return None
+    project = (project or "").strip() or "集团制度库"
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    try:
+        build_mod.ensure_schema(con)
+        _backfill_content_hashes(con, src_root)
+        row = con.execute(
+            """SELECT id, title, folder, doc_type, project
+                 FROM docs
+                WHERE content_hash=? AND project=?
+                LIMIT 1""",
+            (digest, project),
+        ).fetchone()
+    finally:
+        con.close()
+    if not row:
+        return None
+    return {
+        "doc_id": int(row["id"]),
+        "title": row["title"] or "",
+        "folder": row["folder"] or "",
+        "doc_type": row["doc_type"] or "",
+        "project": row["project"] or project,
+    }

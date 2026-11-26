@@ -80,6 +80,7 @@ class Doc:
     folder: str = ""
     doc_type: str = ""
     file_ext: str = ""
+    content_hash: str = ""
     chunk_profile: str = "auto"
     summary: str = ""
     tags: list[str] = field(default_factory=list)
@@ -435,6 +436,7 @@ def scan(root: str) -> tuple[list[Doc], list[dict]]:
             project=project,
             folder=folder,
             file_ext=ext,
+            content_hash=h,
             rel_path=rel,
             abs_path=abs_path,
             category="文档",
@@ -525,13 +527,40 @@ def _html_table_to_struct(raw_html: str, page_no: int = 1, title: str = "") -> d
     }
 
 
-def read_pdf_pages(path: str, out_tables: list[dict] | None = None) -> list[str]:
+def read_pdf_pages(
+    path: str,
+    out_tables: list[dict] | None = None,
+    out_page_blocks: dict[int, list[str]] | None = None,
+    out_bboxes: dict[tuple[int, int], list[float]] | None = None,
+) -> list[str]:
     import pymupdf
 
     pages: list[str] = []
     with pymupdf.open(path) as doc:
         for pno, p in enumerate(doc, start=1):
             txt = _dedupe_page_lines(p.get_text())
+            if out_page_blocks is not None and out_bboxes is not None:
+                try:
+                    raw_blocks = p.get_text("blocks") or []
+                    b_texts: list[str] = []
+                    for rb in raw_blocks:
+                        if len(rb) >= 7 and rb[6] != 0:
+                            continue
+                        b_clean = _dedupe_page_lines(str(rb[4] or "")).strip()
+                        if not b_clean:
+                            continue
+                        bi = len(b_texts)
+                        b_texts.append(b_clean)
+                        out_bboxes[(pno, bi)] = [
+                            round(float(rb[0]), 2),
+                            round(float(rb[1]), 2),
+                            round(float(rb[2]), 2),
+                            round(float(rb[3]), 2),
+                        ]
+                    if b_texts:
+                        out_page_blocks[pno] = b_texts
+                except Exception:
+                    pass
             if out_tables is not None and hasattr(p, "find_tables"):
                 try:
                     tf = p.find_tables()
@@ -966,7 +995,12 @@ def extract_text(doc: Doc) -> None:
     doc.tables = []
     try:
         if ext == ".pdf":
-            doc.pages = read_pdf_pages(doc.abs_path, out_tables=doc.tables)
+            doc.pages = read_pdf_pages(
+                doc.abs_path,
+                out_tables=doc.tables,
+                out_page_blocks=doc.page_blocks,
+                out_bboxes=doc.bboxes,
+            )
             doc.text_source = "pdf-layer"
         elif ext == ".docx":
             doc.pages = read_docx_pages(doc.abs_path, out_tables=doc.tables)
@@ -998,6 +1032,12 @@ def extract_text(doc: Doc) -> None:
     total = sum(len(p.strip()) for p in doc.pages)
     if ext in IMAGE_EXTS:
         doc.has_text = total >= 4
+    elif ext == ".pdf":
+        n_pages = max(1, len(doc.pages))
+        rich_pages = sum(1 for p in doc.pages if len(p.strip()) >= 28)
+        doc.has_text = bool(doc.tables) or (
+            total >= 24 and (rich_pages >= max(1, n_pages // 3) or (total / n_pages) >= 35)
+        )
     else:
         doc.has_text = total >= 12 or bool(doc.tables)
     if not doc.has_text:

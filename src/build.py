@@ -49,11 +49,13 @@ CREATE TABLE docs(
     meta_json     TEXT DEFAULT '{}',
     n_pages       INTEGER,
     text_source   TEXT,
-    note          TEXT
+    note          TEXT,
+    content_hash  TEXT DEFAULT ''
 );
 
 CREATE INDEX idx_docs_project ON docs(project, folder);
 CREATE INDEX idx_docs_type ON docs(doc_type);
+CREATE INDEX idx_docs_hash ON docs(project, content_hash);
 
 CREATE TABLE IF NOT EXISTS folders(
     id         INTEGER PRIMARY KEY,
@@ -112,8 +114,20 @@ CREATE TABLE meta(k TEXT PRIMARY KEY, v TEXT);
 """
 
 
+_SCHEMA_CHECKED: set[str] = set()
+
+
 def ensure_schema(con: sqlite3.Connection) -> None:
     cur = con.cursor()
+    db_file = ""
+    try:
+        db_row = cur.execute("PRAGMA database_list").fetchone()
+        if db_row and len(db_row) >= 3 and db_row[2]:
+            db_file = os.path.normcase(os.path.abspath(str(db_row[2])))
+    except sqlite3.Error:
+        db_file = ""
+    if db_file and db_file in _SCHEMA_CHECKED:
+        return
     cur.execute(
         """CREATE TABLE IF NOT EXISTS folders(
             id         INTEGER PRIMARY KEY,
@@ -121,6 +135,11 @@ def ensure_schema(con: sqlite3.Connection) -> None:
             path       TEXT NOT NULL DEFAULT '',
             created_at TEXT,
             UNIQUE(project, path)
+        )"""
+    )
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS kb_off(
+            project TEXT PRIMARY KEY
         )"""
     )
     has_docs = cur.execute(
@@ -140,10 +159,12 @@ def ensure_schema(con: sqlite3.Connection) -> None:
         ("summary", "TEXT DEFAULT ''"),
         ("tags", "TEXT DEFAULT '[]'"),
         ("meta_json", "TEXT DEFAULT '{}'"),
+        ("content_hash", "TEXT DEFAULT ''"),
     ]
     for col, spec in add_doc_cols:
         if col not in doc_cols:
             cur.execute(f"ALTER TABLE docs ADD COLUMN {col} {spec}")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_docs_hash ON docs(project, content_hash)")
 
     chunk_cols = {r[1] for r in cur.execute("PRAGMA table_info(chunks)").fetchall()}
     if "chunk_type" not in chunk_cols:
@@ -223,6 +244,8 @@ def ensure_schema(con: sqlite3.Connection) -> None:
                 (proj, fpath, now_str),
             )
     con.commit()
+    if db_file:
+        _SCHEMA_CHECKED.add(db_file)
 
 
 def _register_folder_tree(cur: sqlite3.Cursor, project: str, folder: str) -> None:
@@ -318,6 +341,7 @@ def build(src_root: str, db_path: str, work_dir: str) -> dict:
     warm_userdict([d.title for d in docs], [d.doc_no for d in docs])
 
     con = sqlite3.connect(db_path)
+    _SCHEMA_CHECKED.discard(os.path.normcase(os.path.abspath(db_path)))
     con.executescript(SCHEMA)
     cur = con.cursor()
 
@@ -330,8 +354,8 @@ def build(src_root: str, db_path: str, work_dir: str) -> dict:
             """INSERT INTO docs(id,key,project,folder,dept,doc_type,category,title,
                                 doc_no,issued_date,handler,status,rel_path,abs_path,
                                 file_ext,chunk_profile,summary,tags,meta_json,
-                                n_pages,text_source,note)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                n_pages,text_source,note,content_hash)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 di, d.key, d.project or "集团制度库", d.folder or "", d.dept or "",
                 d.doc_type or "regulation", d.category or "制度法规", d.title,
@@ -341,7 +365,7 @@ def build(src_root: str, db_path: str, work_dir: str) -> dict:
                 d.summary or "",
                 json.dumps(d.tags or [], ensure_ascii=False),
                 json.dumps(d.meta or {}, ensure_ascii=False),
-                len(d.pages), d.text_source, d.note,
+                len(d.pages), d.text_source, d.note, d.content_hash or "",
             ),
         )
         nc, nd, chars = index_document(cur, d, di)
@@ -506,6 +530,7 @@ def upsert_document(db_path: str, d, doc_id: int | None = None) -> int:
         len(d.pages),
         d.text_source,
         d.note,
+        d.content_hash or "",
     )
     if doc_id:
         row = cur.execute("SELECT id FROM docs WHERE id=?", (doc_id,)).fetchone()
@@ -517,7 +542,7 @@ def upsert_document(db_path: str, d, doc_id: int | None = None) -> int:
             """UPDATE docs SET key=?,project=?,folder=?,dept=?,doc_type=?,category=?,
                    title=?,doc_no=?,issued_date=?,handler=?,status=?,rel_path=?,
                    abs_path=?,file_ext=?,chunk_profile=?,summary=?,tags=?,meta_json=?,
-                   n_pages=?,text_source=?,note=?
+                   n_pages=?,text_source=?,note=?,content_hash=?
                WHERE id=?""",
             (*vals, doc_id),
         )
@@ -527,8 +552,8 @@ def upsert_document(db_path: str, d, doc_id: int | None = None) -> int:
             """INSERT INTO docs(id,key,project,folder,dept,doc_type,category,title,
                                 doc_no,issued_date,handler,status,rel_path,abs_path,
                                 file_ext,chunk_profile,summary,tags,meta_json,
-                                n_pages,text_source,note)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                n_pages,text_source,note,content_hash)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (doc_id, *vals),
         )
     index_document(cur, d, doc_id)

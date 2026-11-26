@@ -208,6 +208,34 @@ def _rrf_merge(primary: list[dict], extra: list[dict], limit: int | None) -> lis
     return ranked
 
 
+def kb_disabled(con: sqlite3.Connection) -> list[str]:
+    return [r[0] for r in con.execute("SELECT project FROM kb_off ORDER BY project")]
+
+
+def set_kb_enabled(con: sqlite3.Connection, project: str, enabled: bool) -> list[str]:
+    build_mod.ensure_schema(con)
+    name = (project or "").strip()
+    if not name:
+        raise ValueError("缺少文库名称")
+    if enabled:
+        con.execute("DELETE FROM kb_off WHERE project=?", (name,))
+    else:
+        con.execute("INSERT OR IGNORE INTO kb_off(project) VALUES(?)", (name,))
+    con.commit()
+    return kb_disabled(con)
+
+
+def _kb_off_clause(con: sqlite3.Connection, project: str, doc_id: int | None) -> tuple[str, list]:
+    """问答未点名文库时，跳过已关闭的文库。点名了文库或某一份文件则照常。"""
+    if (project or "").strip() or doc_id:
+        return "", []
+    names = kb_disabled(con)
+    if not names:
+        return "", []
+    marks = ",".join("?" * len(names))
+    return f"IFNULL(d.project, '集团制度库') NOT IN ({marks})", names
+
+
 def search(
     con: sqlite3.Connection,
     q: str,
@@ -251,6 +279,10 @@ def search(
     if doc_id:
         where.append("d.id = ?")
         params.append(doc_id)
+    off_sql, off_params = _kb_off_clause(con, project, doc_id)
+    if off_sql:
+        where.append(off_sql)
+        params.extend(off_params)
     wsql = (" AND " + " AND ".join(where)) if where else ""
 
     stages = [("and", False), ("or", False), ("or", True)]
@@ -339,6 +371,7 @@ def search(
                 limit=limit or 24,
                 dept=dept, status=status, category=category, doc_id=doc_id,
                 project=project, folder=folder, doc_type=doc_type, chunk_type=chunk_type,
+                exclude_projects=off_params,
             )
             for h in vec_hits:
                 if not h.get("snippet"):
@@ -421,6 +454,10 @@ def find_docs(con: sqlite3.Connection, title: str = "", doc_no: str = "",
         return []
     where = ["d.status <> '已废止'"]
     params: list = []
+    off_sql, off_params = _kb_off_clause(con, "", None)
+    if off_sql:
+        where.append(off_sql)
+        params.extend(off_params)
     if doc_no:
         where.append("IFNULL(d.doc_no,'') LIKE ?")
         params.append(f"%{doc_no}%")

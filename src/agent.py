@@ -9,6 +9,8 @@ import urllib.request
 
 import api_tool as api_mod
 import browser_tool as browser_mod
+import market_tool as market_tool_mod
+import news_tool as news_tool_mod
 import providers as prov_mod
 import search as search_mod
 import shell_tool as shell_mod
@@ -782,7 +784,8 @@ def _prepare_read(con, args: dict, used: set[int], cfg=None) -> tuple[str, list[
 
 def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         prior_sources: list[dict] | None = None, model: str | None = None,
-        effort: str | None = None, provider_id: str | None = None) -> None:
+        effort: str | None = None, provider_id: str | None = None,
+        news_mgr=None, market_mgr=None) -> None:
     import catalog as cat_mod
 
     ch = prov_mod.resolve(cfg.data, provider_id, model)
@@ -820,6 +823,15 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         tools.append(browser_mod.TOOL)
     if api_mod.enabled(cfg):
         tools.append(api_mod.TOOL)
+    if news_mgr is not None and news_tool_mod.enabled(cfg):
+        tools.extend(news_tool_mod.TOOLS)
+    if market_mgr is not None and market_tool_mod.enabled(cfg):
+        tools.extend(market_tool_mod.TOOLS)
+
+    route_q = ""
+    for m in reversed(messages[-4:]):
+        if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), str):
+            route_q = (route_q + " " + m["content"].strip()).strip()
 
     def _build_system() -> str:
         s = SYSTEM_PROMPT
@@ -828,7 +840,11 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         if browser_mod.enabled(cfg):
             s += browser_mod.PROMPT
         if api_mod.enabled(cfg):
-            s += api_mod.PROMPT + api_mod.format_api_catalog(cfg)
+            s += api_mod.PROMPT + api_mod.format_api_catalog(cfg, query=route_q)
+        if news_mgr is not None and news_tool_mod.enabled(cfg):
+            s += news_tool_mod.PROMPT
+        if market_mgr is not None and market_tool_mod.enabled(cfg):
+            s += market_tool_mod.PROMPT
         return s
 
     system = _build_system()
@@ -1079,7 +1095,8 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
 
             ordered = [tool_calls[k] for k in sorted(tool_calls)]
             has_ask = any((s.get("name") or "") == "ask_user" for s in ordered)
-            if content_buf.strip() and not has_ask:
+            cb_trim = content_buf.strip()
+            if cb_trim and not has_ask and len(cb_trim) < 60 and "```" not in cb_trim and "\n" not in cb_trim:
                 emit({"type": "reset"})
 
             asst = {
@@ -1109,6 +1126,40 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                     args = {}
                 if name == "ask_user":
                     ask_qs.extend(_normalize_ask(args))
+                    continue
+
+                if name in ("search_news", "entity_brief", "news_digest"):
+                    label = news_tool_mod.action_label(name, args)
+                    emit({"type": "tool", "name": name, "args": {"query": label}})
+                    try:
+                        text, ok_n, note, cnt_n = news_tool_mod.run_news_tool(name, args, news_mgr)
+                    except Exception as e:
+                        text, ok_n, note, cnt_n = f"Error: {e}", False, "失败", 0
+                    convo.append({"role": "tool", "tool_call_id": call_id, "content": text})
+                    emit({
+                        "type": "tool_result",
+                        "query": label,
+                        "count": cnt_n,
+                        "exit": 0 if ok_n else 1,
+                        "note": note,
+                    })
+                    continue
+
+                if name in ("market_query", "macro_query"):
+                    label = market_tool_mod.action_label(name, args)
+                    emit({"type": "tool", "name": name, "args": {"query": label}})
+                    try:
+                        text, ok_m, note, cnt_m = market_tool_mod.run_market_tool(name, args, market_mgr)
+                    except Exception as e:
+                        text, ok_m, note, cnt_m = f"Error: {e}", False, "失败", 0
+                    convo.append({"role": "tool", "tool_call_id": call_id, "content": text})
+                    emit({
+                        "type": "tool_result",
+                        "query": label,
+                        "count": cnt_m,
+                        "exit": 0 if ok_m else 1,
+                        "note": note,
+                    })
                     continue
 
                 if name == "call_api":
@@ -1225,6 +1276,10 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                         known += "、browser"
                     if api_mod.enabled(cfg):
                         known += "、call_api"
+                    if news_mgr is not None and news_tool_mod.enabled(cfg):
+                        known += "、search_news、entity_brief、news_digest"
+                    if market_mgr is not None and market_tool_mod.enabled(cfg):
+                        known += "、market_query、macro_query"
                     convo.append({"role": "tool", "tool_call_id": call_id,
                                   "content": f"未知工具 {name}。可用 {known}。"})
                     continue
