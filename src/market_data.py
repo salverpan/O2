@@ -45,8 +45,8 @@ DEFAULT_WATCHLIST: list[dict] = [
     {"secid": "101.GC00Y", "symbol": "XAU", "name": "COMEX黄金", "market_group": "commodities"},
     {"secid": "112.B00Y", "symbol": "BRENT", "name": "布伦特原油", "market_group": "commodities"},
     {"secid": "133.USDCNH", "symbol": "USDCNH", "name": "USD/CNH", "market_group": "forex"},
-    {"secid": "1.601919", "symbol": "601919.SH", "name": "中远海控", "market_group": "cn_logistics"},
-    {"secid": "0.002352", "symbol": "002352.SZ", "name": "顺丰控股", "market_group": "cn_logistics"},
+    {"secid": "1.600519", "symbol": "600519.SH", "name": "贵州茅台", "market_group": "cn_logistics"},
+    {"secid": "0.300750", "symbol": "300750.SZ", "name": "宁德时代", "market_group": "cn_logistics"},
     {"secid": "105.NVDA", "symbol": "NVDA", "name": "英伟达", "market_group": "us_hk"},
     {"secid": "116.00700", "symbol": "00700.HK", "name": "腾讯控股", "market_group": "us_hk"},
 ]
@@ -98,17 +98,17 @@ MARKET_PANELS: list[dict] = [
     },
     {
         "id": "cn_logistics",
-        "title": "CN LOGISTICS & CORE",
+        "title": "A 股核心资产",
         "items": [
-            {"secid": "1.601919", "symbol": "601919.SH", "name": "中远海控"},
-            {"secid": "0.002352", "symbol": "002352.SZ", "name": "顺丰控股"},
-            {"secid": "1.601872", "symbol": "601872.SH", "name": "招商轮船"},
-            {"secid": "1.600026", "symbol": "600026.SH", "name": "中远海能"},
-            {"secid": "1.601006", "symbol": "601006.SH", "name": "大秦铁路"},
             {"secid": "1.600519", "symbol": "600519.SH", "name": "贵州茅台"},
             {"secid": "0.300750", "symbol": "300750.SZ", "name": "宁德时代"},
-            {"secid": "1.601857", "symbol": "601857.SH", "name": "中国石油"},
+            {"secid": "1.601318", "symbol": "601318.SH", "name": "中国平安"},
+            {"secid": "1.600036", "symbol": "600036.SH", "name": "招商银行"},
+            {"secid": "0.002594", "symbol": "002594.SZ", "name": "比亚迪"},
             {"secid": "1.601899", "symbol": "601899.SH", "name": "紫金矿业"},
+            {"secid": "1.601857", "symbol": "601857.SH", "name": "中国石油"},
+            {"secid": "1.600900", "symbol": "600900.SH", "name": "长江电力"},
+            {"secid": "0.002475", "symbol": "002475.SZ", "name": "立讯精密"},
         ],
     },
     {
@@ -471,12 +471,31 @@ def _calc_indicators(bars: list[dict]) -> dict:
                     "hist": round(hist, 4),
                 })
 
+    boll_list: list[dict] = []
+    if n >= 20:
+        for i in range(19, n):
+            win = closes[i - 19 : i + 1]
+            mid = sum(win) / 20.0
+            var = sum((x - mid) ** 2 for x in win) / 20.0
+            sd = var ** 0.5
+            up = mid + 2.0 * sd
+            dn = mid - 2.0 * sd
+            bw = ((up - dn) / mid * 100.0) if abs(mid) > 1e-12 else 0.0
+            boll_list.append({
+                "time": times[i],
+                "mid": round(mid, 4),
+                "upper": round(up, 4),
+                "lower": round(dn, 4),
+                "bw": round(bw, 3),
+            })
+
     return {
         "ma5": _ma(5),
         "ma20": _ma(20),
         "ma60": _ma(60),
         "rsi14": rsi14,
         "macd": macd_list,
+        "boll": boll_list,
     }
 
 
@@ -645,6 +664,15 @@ class MarketStore:
         s = (secid or "").strip()
         with self._lock, self.con() as c:
             c.execute("DELETE FROM watchlist WHERE secid=?", (s,))
+        return self.list_watchlist()
+
+    def pin_watchlist(self, secid: str) -> list[dict]:
+        s = (secid or "").strip()
+        if not s:
+            return self.list_watchlist()
+        with self._lock, self.con() as c:
+            min_ord = c.execute("SELECT COALESCE(MIN(sort_order), 0) FROM watchlist").fetchone()[0]
+            c.execute("UPDATE watchlist SET sort_order=? WHERE secid=?", (int(min_ord) - 1, s))
         return self.list_watchlist()
 
 
@@ -1740,11 +1768,78 @@ class MarketManager:
         markers.sort(key=lambda m: m["time"])
         return markers, events[:20]
 
+    def _kline_local_quant_store(self, secid: str, iv: str, limit: int) -> tuple[list[dict], str, str]:
+        """Read locally synced daily bars from data/quant_bars.sqlite (shared with Backtest Lab warehouse)."""
+        if iv not in ("1d", "1w", "1M"):
+            return [], "", ""
+        qdb = os.path.join(os.path.dirname(self.store.db_path) or ".", "quant_bars.sqlite")
+        if not os.path.isfile(qdb):
+            return [], "", ""
+        sid = (secid or "").strip()
+        cand_syms = [sid]
+        if "." in sid:
+            mkt, code = sid.split(".", 1)
+            if mkt == "1" and code.isdigit():
+                cand_syms.append(f"{code}.SH")
+            elif mkt == "0" and code.isdigit():
+                cand_syms.append(f"{code}.SZ")
+            elif mkt in ("105", "106", "107") and code:
+                cand_syms.append(code.upper())
+            elif mkt == "116" and code.isdigit():
+                cand_syms.append(f"{int(code):04d}.HK")
+        yf_s = _resolve_yf_symbol(sid)
+        if yf_s and yf_s not in cand_syms:
+            cand_syms.append(yf_s)
+        raw_lim = limit if iv == "1d" else min(4000, limit * (6 if iv == "1w" else 24))
+        try:
+            con = sqlite3.connect(f"file:{qdb}?mode=ro", uri=True, timeout=5.0)
+            con.row_factory = sqlite3.Row
+            try:
+                ph = ",".join("?" for _ in cand_syms)
+                rows = con.execute(
+                    f"""SELECT trade_date, open, high, low, close, volume, name, market
+                        FROM hist_bars
+                        WHERE secid = ? OR symbol IN ({ph})
+                        ORDER BY trade_date DESC LIMIT ?""",
+                    [sid, *cand_syms, int(raw_lim)],
+                ).fetchall()
+            finally:
+                con.close()
+        except Exception:
+            return [], "", ""
+        if len(rows) < 15:
+            return [], "", ""
+        rows = list(reversed(rows))
+        # Ensure local warehouse data isn't severely stale (within 7 days of today)
+        last_d = str(rows[-1]["trade_date"] or "")[:10]
+        try:
+            age_days = (datetime.date.today() - datetime.date.fromisoformat(last_d)).days
+            if age_days > 7:
+                return [], "", ""
+        except ValueError:
+            pass
+        bars = [
+            {
+                "time": str(r["trade_date"])[:10],
+                "open": float(r["open"]),
+                "high": float(r["high"]),
+                "low": float(r["low"]),
+                "close": float(r["close"]),
+                "volume": float(r["volume"] or 0.0),
+            }
+            for r in rows
+            if r["close"] is not None
+        ]
+        if iv in ("1w", "1M"):
+            bars = _resample_bars(bars, iv)
+        nm = str(rows[-1]["name"] or "")
+        return bars[-limit:], nm, "本地量化数据仓"
+
     def kline(self, secid: str, interval: str = "1d", limit: int = 160, name: str = "", force: bool = False) -> dict:
         sid = (secid or "").strip()
         if not sid:
             raise ValueError("缺少标的代码 secid")
-        lim = max(10, min(360, int(limit or 160)))
+        lim = max(10, min(2500, int(limit or 160)))
         iv = (interval or "1d").strip()
         ck = f"kline:{sid}:{iv}:{lim}"
         data = None if force else self.store.cache_get(ck)
@@ -1752,8 +1847,16 @@ class MarketManager:
             bars: list[dict] = []
             resolved_name = name or (self._meta_map.get(sid) or {}).get("name") or sid
             source = ""
+            # Prefer shared local quant warehouse (Parquet -> quant_bars.sqlite) when available and fresh!
+            if not force and iv in ("1d", "1w", "1M"):
+                lbars, lnm, lsrc = self._kline_local_quant_store(sid, iv, lim)
+                if lbars:
+                    bars = lbars
+                    source = lsrc
+                    if not name and lnm:
+                        resolved_name = (self._meta_map.get(sid) or {}).get("name") or lnm
             mode = str(self.cfg.data.get("market_source_mode") or "auto").strip().lower()
-            if sid.startswith("CBR."):
+            if not bars and sid.startswith("CBR."):
                 bars, cname, source = self._kline_cbr(sid, lim)
                 resolved_name = name or cname
                 if not bars:
@@ -2077,8 +2180,20 @@ class MarketManager:
             key = str((conn or {}).get("api_key") or "").strip()
             if not key:
                 return []
-            series = [("FEDFUNDS", "联邦基金利率"), ("DGS10", "美债10Y收益率"), ("DGS2", "美债2Y收益率"), ("CPIAUCSL", "美国CPI")]
+            series = [
+                ("FEDFUNDS", "联邦基金利率"),
+                ("SOFR", "SOFR隔夜利率"),
+                ("DGS10", "美债10Y收益率"),
+                ("DGS2", "美债2Y收益率"),
+                ("T10Y2Y", "美债10Y-2Y利差"),
+                ("VIXCLS", "VIX恐慌指数"),
+                ("WALCL", "美联储总资产(百万$)"),
+                ("WTREGEN", "财政部TGA账户(百万$)"),
+                ("RRPONTSYD", "隔夜逆回购RRP(十亿$)"),
+                ("CPIAUCSL", "美国CPI"),
+            ]
             out = []
+            raw_map: dict[str, float] = {}
             for sid, lbl in series:
                 try:
                     u = (
@@ -2089,8 +2204,20 @@ class MarketManager:
                     obs = [o for o in ((r or {}).get("observations") or []) if o.get("value") not in (None, ".")]
                     if obs:
                         out.append({"id": sid, "label": lbl, "value": obs[0]["value"], "date": obs[0]["date"]})
+                        fv = _num(obs[0]["value"])
+                        if fv is not None:
+                            raw_map[sid] = fv
                 except Exception:
                     continue
+            if "WALCL" in raw_map and "WTREGEN" in raw_map:
+                rrp_mn = (raw_map.get("RRPONTSYD") or 0.0) * 1000.0
+                net_liq_tn = (raw_map["WALCL"] - raw_map["WTREGEN"] - rrp_mn) / 1e6
+                out.insert(0, {
+                    "id": "NET_LIQ",
+                    "label": "美元净流动性(万亿$)",
+                    "value": f"{net_liq_tn:.3f}",
+                    "date": out[0]["date"] if out else "",
+                })
             return out
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
@@ -2268,3 +2395,800 @@ class MarketManager:
             except Exception:
                 pass
         return {"ok": True, "items": hits[:18]}
+
+    def quant_analytics(self, action: str, qs: dict) -> dict:
+        act = (action or "barcode").strip().lower()
+        force = (qs.get("force") or ["0"])[0] in ("1", "true", "yes")
+
+        if act == "rebased":
+            raw_sids = (qs.get("secids") or ["0.399300,1.600519,0.300750,1.601318"])[0]
+            sids = [s.strip() for s in raw_sids.split(",") if s.strip()][:6]
+            try:
+                limit = max(20, min(250, int((qs.get("limit") or ["90"])[0] or 90)))
+            except ValueError:
+                limit = 90
+            ckey = f"quant:rebased:{','.join(sids)}:{limit}"
+            if not force:
+                cached = self.store.cache_get(ckey)
+                if cached:
+                    return cached
+
+            def _pull(sid: str):
+                return sid, self.kline(sid, interval="1d", limit=limit, force=False)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(6, max(1, len(sids)))) as ex:
+                fetched = dict(ex.map(lambda s: _pull(s), sids))
+
+            series_out = []
+            all_dates: set[str] = set()
+            maps: list[tuple[str, str, dict[str, float]]] = []
+            for sid in sids:
+                kl = fetched.get(sid) or {}
+                bars = kl.get("bars") or []
+                if len(bars) < 5:
+                    continue
+                mp = {b["time"]: float(b["close"]) for b in bars if b.get("time") and b.get("close")}
+                all_dates.update(mp.keys())
+                maps.append((sid, kl.get("name") or sid, mp))
+            dates = sorted(all_dates)[-limit:]
+            for sid, nm, mp in maps:
+                base_val = None
+                vals = []
+                for d in dates:
+                    v = mp.get(d)
+                    if v is not None and base_val is None and v > 0:
+                        base_val = v
+                    if v is not None and base_val:
+                        vals.append(round((v / base_val - 1.0) * 100.0, 2))
+                    else:
+                        vals.append(None)
+                last_v = next((x for x in reversed(vals) if x is not None), 0.0)
+                series_out.append({"secid": sid, "name": nm, "values": vals, "latest_pct": last_v})
+            out = {"ok": True, "dates": dates, "series": series_out, "updated_at": int(time.time())}
+            self.store.cache_set(ckey, out, ttl=300)
+            return out
+
+        if act == "formula":
+            preset = (qs.get("preset") or ["gold_oil"])[0].strip()
+            PRESET_SPECS = {
+                "gold_oil": ("101.GC00Y", "102.CL00Y", "ratio", 1.0, "金油比 (COMEX黄金 / WTI原油)", "飙升反映滞胀/避险升温，回落反映实体需求扩张"),
+                "copper_gold": ("101.HG00Y", "101.GC00Y", "ratio", 1000.0, "铜金比×1000 (铜 / 黄金)", "全球制造业景气与长端美债利率领先风向标"),
+                "gold_silver": ("101.GC00Y", "101.SI00Y", "ratio", 1.0, "金银比 (COMEX黄金 / 白银)", "衡量贵金属避险溢价与工业复苏弹性"),
+                "csi_bond": ("1.510300", "1.511090", "ratio", 100.0, "股债强弱比 (沪深300ETF / 30年国债ETF)", "A股股债性价比实时高频代理：低分位=股票偏低估，高分位=债券更具性价比"),
+                "us_cn_tech": ("100.NDX", "124.HSTECH", "ratio", 1.0, "纳指100 / 恒生科技比值", "中美科技成长资产估值剪刀差与资金偏好"),
+                "ship_oil": ("1.601919", "112.B00Y", "ratio", 10.0, "航运/布油比 (中远海控×10 / 布伦特原油)", "衡量集运相对燃油成本端定价"),
+            }
+            if preset in PRESET_SPECS:
+                sid_a, sid_b, op, scale, title, hint_desc = PRESET_SPECS[preset]
+            else:
+                sid_a = (qs.get("secid_a") or ["101.GC00Y"])[0].strip()
+                sid_b = (qs.get("secid_b") or ["102.CL00Y"])[0].strip()
+                op = (qs.get("op") or ["ratio"])[0].strip()
+                scale = 1.0
+                title = f"{sid_a} {'/' if op == 'ratio' else '-'} {sid_b}"
+                hint_desc = "自定义跨资产合成序列与历史分位通道"
+
+            ckey = f"quant:formula:{preset}:{sid_a}:{sid_b}:{op}"
+            if not force:
+                cached = self.store.cache_get(ckey)
+                if cached:
+                    return cached
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+                fa = ex.submit(self.kline, sid_a, "1d", 240, "", False)
+                fb = ex.submit(self.kline, sid_b, "1d", 240, "", False)
+                kla, klb = fa.result(), fb.result()
+
+            mpa = {b["time"]: float(b["close"]) for b in (kla.get("bars") or []) if b.get("close")}
+            mpb = {b["time"]: float(b["close"]) for b in (klb.get("bars") or []) if b.get("close")}
+            common = sorted(set(mpa.keys()) & set(mpb.keys()))
+            dates, vals = [], []
+            for d in common:
+                va, vb = mpa[d], mpb[d]
+                if op == "spread":
+                    v = (va - vb) * scale
+                else:
+                    if abs(vb) < 1e-9:
+                        continue
+                    v = (va / vb) * scale
+                dates.append(d)
+                vals.append(round(v, 4))
+
+            if not vals:
+                return {"ok": False, "error": "缺少重叠历史K线数据", "dates": [], "values": []}
+
+            mean = sum(vals) / len(vals)
+            sd = (sum((x - mean) ** 2 for x in vals) / len(vals)) ** 0.5
+            cur = vals[-1]
+            pct_rank = round(sum(1 for x in vals if x <= cur) / len(vals) * 100.0, 1)
+            zscore = round((cur - mean) / sd, 2) if sd > 1e-9 else 0.0
+            out = {
+                "ok": True,
+                "preset": preset,
+                "title": title,
+                "desc": hint_desc,
+                "dates": dates,
+                "values": vals,
+                "latest": round(cur, 4),
+                "percentile": pct_rank,
+                "zscore": zscore,
+                "std": round(sd, 4),
+                "mean": round(mean, 4),
+                "up1": round(mean + sd, 4),
+                "dn1": round(mean - sd, 4),
+                "up2": round(mean + 2.0 * sd, 4),
+                "dn2": round(mean - 2.0 * sd, 4),
+                "updated_at": int(time.time()),
+            }
+            self.store.cache_set(ckey, out, ttl=600)
+            return out
+
+        if act == "barcode":
+            raw_sids = (qs.get("secids") or [""])[0].strip()
+            custom_sids = [s.strip() for s in raw_sids.split(",") if s.strip()][:20]
+            ckey = f"quant:barcode:v2:{','.join(custom_sids)}" if custom_sids else "quant:barcode:v2:default"
+            if not force:
+                cached = self.store.cache_get(ckey)
+                if cached:
+                    return cached
+
+            if custom_sids:
+                TARGETS = []
+                for sid in custom_sids:
+                    meta = self._meta_map.get(sid) or {}
+                    TARGETS.append((sid, meta.get("name") or sid, meta.get("group") or "自选标的"))
+            else:
+                TARGETS = [
+                    ("0.399300", "沪深300", "A股核心"),
+                    ("0.399006", "创业板指", "A股成长"),
+                    ("124.HSTECH", "恒生科技", "港股科技"),
+                    ("100.SPX", "标普500", "美股核心"),
+                    ("100.NDX", "纳斯达克100", "全球科技"),
+                    ("1.511090", "中国30Y国债ETF", "国内利率"),
+                    ("105.TLT", "美债20Y+ ETF", "美元久期"),
+                    ("100.UDI", "美元指数 DXY", "全球流动性"),
+                    ("133.USDCNH", "USD/CNH 离岸人民币", "跨境汇率"),
+                    ("101.GC00Y", "COMEX 黄金", "避险信用"),
+                    ("112.B00Y", "布伦特原油", "能源通胀"),
+                    ("101.HG00Y", "COMEX 铜", "工业景气"),
+                    ("1.600519", "贵州茅台", "A股消费"),
+                    ("CG.bitcoin", "Bitcoin", "风险流动性"),
+                ]
+
+            def _calc_one(item):
+                sid, nm, cat = item
+                try:
+                    kl = self.kline(sid, "1d", 200, nm if nm != sid else "", False)
+                    bars = kl.get("bars") or []
+                    closes = [float(b["close"]) for b in bars if b.get("close") is not None]
+                    if len(closes) < 15:
+                        return None
+                    cur = closes[-1]
+                    pr = round(sum(1 for x in closes if x <= cur) / len(closes) * 100.0, 1)
+                    rsi_list = ((kl.get("indicators") or {}).get("rsi14") or [])
+                    rsi_v = rsi_list[-1]["value"] if rsi_list else 50.0
+                    zone = "hot" if pr >= 88 else ("warm" if pr >= 70 else ("ice" if pr <= 12 else ("cool" if pr <= 30 else "neutral")))
+                    real_nm = kl.get("name") or nm
+                    return {
+                        "secid": sid,
+                        "name": real_nm,
+                        "category": cat,
+                        "price": cur,
+                        "pct": kl.get("pct") or 0.0,
+                        "percentile": pr,
+                        "rsi14": rsi_v,
+                        "zone": zone,
+                    }
+                except Exception:
+                    return None
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+                rows = [r for r in ex.map(_calc_one, TARGETS) if r]
+
+            if not custom_sids:
+                for preset_id, lbl, cat in [("gold_oil", "金油比 (滞胀温度)", "跨资产因子"), ("csi_bond", "股债性价比代理", "跨资产因子")]:
+                    try:
+                        fm = self.quant_analytics("formula", {"preset": [preset_id]})
+                        if fm.get("ok"):
+                            pr = fm["percentile"]
+                            zone = "hot" if pr >= 88 else ("warm" if pr >= 70 else ("ice" if pr <= 12 else ("cool" if pr <= 30 else "neutral")))
+                            rows.append({
+                                "secid": preset_id,
+                                "name": lbl,
+                                "category": cat,
+                                "price": fm["latest"],
+                                "pct": 0.0,
+                                "percentile": pr,
+                                "rsi14": 50.0,
+                                "zone": zone,
+                            })
+                    except Exception:
+                        pass
+
+            rows.sort(key=lambda x: x["percentile"], reverse=True)
+            out = {"ok": True, "items": rows, "window_days": 200, "updated_at": int(time.time())}
+            self.store.cache_set(ckey, out, ttl=600)
+            return out
+
+        if act == "analog":
+            sid = (qs.get("secid") or ["0.399300"])[0].strip()
+            win = 30
+            fwd = 20
+            ckey = f"quant:analog:{sid}:{win}:{fwd}"
+            if not force:
+                cached = self.store.cache_get(ckey)
+                if cached:
+                    return cached
+
+            kl = self.kline(sid, "1d", 500, "", False)
+            bars = kl.get("bars") or []
+            if len(bars) < win * 2 + fwd + 5:
+                return {"ok": False, "error": "历史K线样本不足以匹配历史剧本（需至少 90 根日线）"}
+
+            closes = [float(b["close"]) for b in bars]
+            dates = [b["time"] for b in bars]
+            cur_seg = closes[-win:]
+            c0 = cur_seg[0] or 1.0
+            cur_norm = [(x / c0 - 1.0) * 100.0 for x in cur_seg]
+            c_mean = sum(cur_norm) / win
+            c_cent = [x - c_mean for x in cur_norm]
+            c_norm_len = (sum(x * x for x in c_cent) ** 0.5) or 1e-9
+
+            cands = []
+            last_valid_start = len(closes) - win - fwd - 5
+            for s in range(0, last_valid_start):
+                seg = closes[s : s + win]
+                s0 = seg[0]
+                if not s0 or s0 <= 0:
+                    continue
+                sn = [(x / s0 - 1.0) * 100.0 for x in seg]
+                sm = sum(sn) / win
+                sc = [x - sm for x in sn]
+                slen = (sum(x * x for x in sc) ** 0.5)
+                if slen < 1e-9:
+                    continue
+                corr = sum(a * b for a, b in zip(c_cent, sc)) / (c_norm_len * slen)
+                cands.append((corr, s))
+
+            cands.sort(key=lambda x: x[0], reverse=True)
+            picked = []
+            for corr, s in cands:
+                if any(abs(s - ps) < win // 2 for _, ps in picked):
+                    continue
+                picked.append((corr, s))
+                if len(picked) >= 3:
+                    break
+
+            analogs = []
+            cur_last_base = cur_norm[-1]
+            for corr, s in picked:
+                full = closes[s : s + win + fwd]
+                f0 = full[0]
+                curve = [round((x / f0 - 1.0) * 100.0, 2) for x in full]
+                shift = cur_last_base - curve[win - 1]
+                aligned = curve[:win] + [round(x + shift, 2) for x in curve[win:]]
+                fwd_ret = round((full[-1] / full[win - 1] - 1.0) * 100.0, 2) if full[win - 1] else 0.0
+                analogs.append({
+                    "period": f"{dates[s]} ~ {dates[s + win - 1]}",
+                    "similarity": round(max(0.0, corr) * 100.0, 1),
+                    "forward_20d_pct": fwd_ret,
+                    "path": aligned,
+                })
+
+            avg_fwd = []
+            if analogs:
+                for k in range(win + fwd):
+                    if k < win - 1:
+                        avg_fwd.append(None)
+                    else:
+                        avg_fwd.append(round(sum(a["path"][k] for a in analogs) / len(analogs), 2))
+
+            x_labels = [dates[-win + i] for i in range(win)] + [f"T+{i}" for i in range(1, fwd + 1)]
+            out = {
+                "ok": True,
+                "secid": sid,
+                "name": kl.get("name") or sid,
+                "window": win,
+                "forward": fwd,
+                "labels": x_labels,
+                "current": [round(x, 2) for x in cur_norm] + [None] * fwd,
+                "analogs": analogs,
+                "avg_projection": avg_fwd,
+                "updated_at": int(time.time()),
+            }
+            self.store.cache_set(ckey, out, ttl=600)
+            return out
+
+        if act == "factors":
+            sid = (qs.get("secid") or ["0.399300"])[0].strip()
+            pack = (qs.get("factor_pack") or ["oversold_reversal"])[0].strip()
+            ckey = f"quant:factors:{sid}:{pack}"
+            if not force:
+                cached = self.store.cache_get(ckey)
+                if cached:
+                    return cached
+
+            PACK_META = {
+                "oversold_reversal": ("冰点恐慌反转因子包", "RSI14 < 34 且收盘触及/跌破布林下轨附近，捕捉恐慌出清后的均值回归"),
+                "squeeze_breakout": ("波动压缩突破因子包", "布林带宽收敛后放量站上20日均线，捕捉蓄势主升拐点"),
+                "macd_golden_trend": ("趋势金叉共振因子包", "MACD柱由负转正且收盘位于MA20之上，捕捉顺势加速段"),
+                "liquidity_impulse": ("放量异动脉冲因子包", "单日成交量 > 20日均量1.7倍且单日涨幅 > 1.8%，追踪增量资金点火"),
+            }
+            p_title, p_desc = PACK_META.get(pack, PACK_META["oversold_reversal"])
+            kl = self.kline(sid, "1d", 420, "", False)
+            bars = kl.get("bars") or []
+            if len(bars) < 45:
+                return {"ok": False, "error": "历史K线不足以回测该事件因子包"}
+
+            ind = kl.get("indicators") or {}
+            rsi_map = {x["time"]: x["value"] for x in (ind.get("rsi14") or [])}
+            boll_map = {x["time"]: x for x in (ind.get("boll") or [])}
+            macd_map = {x["time"]: x for x in (ind.get("macd") or [])}
+            ma20_map = {x["time"]: x["value"] for x in (ind.get("ma20") or [])}
+
+            trig_indices: list[int] = []
+            last_trig = -10
+            for i in range(22, len(bars)):
+                if i - last_trig < 5:
+                    continue
+                b = bars[i]
+                t = b["time"]
+                c = float(b["close"])
+                prev_c = float(bars[i - 1]["close"])
+                matched = False
+                if pack == "oversold_reversal":
+                    rv = rsi_map.get(t, 50.0)
+                    bl = boll_map.get(t)
+                    if rv < 35.0 and bl and c <= bl["lower"] * 1.012:
+                        matched = True
+                elif pack == "squeeze_breakout":
+                    bl = boll_map.get(t)
+                    bws = [boll_map[bars[j]["time"]]["bw"] for j in range(max(20, i - 40), i) if bars[j]["time"] in boll_map]
+                    if bl and bws:
+                        bw_thr = sorted(bws)[max(0, int(len(bws) * 0.35) - 1)]
+                        if bl["bw"] <= bw_thr * 1.15 and c > bl["mid"] and prev_c <= bl["mid"]:
+                            matched = True
+                elif pack == "macd_golden_trend":
+                    mc = macd_map.get(t)
+                    mc_prev = macd_map.get(bars[i - 1]["time"])
+                    m20 = ma20_map.get(t)
+                    if mc and mc_prev and m20 and mc_prev["hist"] <= 0 < mc["hist"] and c >= m20:
+                        matched = True
+                else:
+                    vols = [float(bars[j].get("volume") or 0.0) for j in range(i - 20, i)]
+                    avg_v = sum(vols) / 20.0 if vols else 0.0
+                    pct_d = (c / prev_c - 1.0) * 100.0 if prev_c else 0.0
+                    if avg_v > 0 and float(b.get("volume") or 0.0) >= avg_v * 1.7 and pct_d >= 1.8:
+                        matched = True
+
+                if matched:
+                    trig_indices.append(i)
+                    last_trig = i
+
+            offsets = list(range(-5, 21))
+            paths = []
+            for idx in trig_indices:
+                if idx - 5 < 0 or idx + 20 >= len(bars):
+                    continue
+                base_c = float(bars[idx]["close"]) or 1.0
+                paths.append([round((float(bars[idx + off]["close"]) / base_c - 1.0) * 100.0, 2) for off in offsets])
+
+            mean_curve, p25_curve, p75_curve = [], [], []
+            for col_i in range(len(offsets)):
+                col = sorted(p[col_i] for p in paths) if paths else [0.0]
+                mean_curve.append(round(sum(col) / len(col), 2))
+                p25_curve.append(round(col[max(0, int(len(col) * 0.25))], 2))
+                p75_curve.append(round(col[min(len(col) - 1, int(len(col) * 0.75))], 2))
+
+            def _stat_at(day_ahead: int) -> dict:
+                ci = offsets.index(day_ahead)
+                vals = [p[ci] for p in paths]
+                if not vals:
+                    return {"win_rate": 0.0, "avg": 0.0}
+                wins = sum(1 for v in vals if v > 0)
+                return {
+                    "win_rate": round(wins / len(vals) * 100.0, 1),
+                    "avg": round(sum(vals) / len(vals), 2),
+                }
+
+            triggers = [
+                {"time": bars[idx]["time"], "price": bars[idx]["close"]}
+                for idx in trig_indices[-18:]
+            ]
+            out = {
+                "ok": True,
+                "secid": sid,
+                "name": kl.get("name") or sid,
+                "factor_pack": pack,
+                "title": p_title,
+                "desc": p_desc,
+                "sample_count": len(paths),
+                "total_triggers": len(trig_indices),
+                "triggers": triggers,
+                "labels": [f"T{o:+d}" if o != 0 else "T0(触发)" for o in offsets],
+                "mean_curve": mean_curve,
+                "p25_curve": p25_curve,
+                "p75_curve": p75_curve,
+                "stats": {"t5": _stat_at(5), "t10": _stat_at(10), "t20": _stat_at(20)},
+                "updated_at": int(time.time()),
+            }
+            self.store.cache_set(ckey, out, ttl=600)
+            return out
+
+        if act == "macro_regime":
+            ckey = "quant:macro_regime:v1"
+            if not force:
+                cached = self.store.cache_get(ckey)
+                if cached:
+                    return cached
+
+            probes = [
+                ("101.HG00Y", "COMEX铜"),
+                ("101.GC00Y", "COMEX黄金"),
+                ("112.B00Y", "布伦特原油"),
+                ("100.SPX", "标普500"),
+                ("0.399300", "沪深300"),
+                ("100.UDI", "美元指数"),
+                ("105.TLT", "美债20Y+"),
+            ]
+
+            def _pull_m(item):
+                sid, nm = item
+                try:
+                    kl = self.kline(sid, "1d", 90, nm, False)
+                    bars = kl.get("bars") or []
+                    closes = [float(b["close"]) for b in bars if b.get("close")]
+                    if len(closes) < 22:
+                        return sid, None
+                    c_now = closes[-1]
+                    c_20 = closes[-21] if len(closes) >= 21 else closes[0]
+                    c_60 = closes[-61] if len(closes) >= 61 else closes[0]
+                    r20 = (c_now / c_20 - 1.0) * 100.0 if c_20 else 0.0
+                    r60 = (c_now / c_60 - 1.0) * 100.0 if c_60 else 0.0
+                    return sid, {
+                        "secid": sid,
+                        "name": kl.get("name") or nm,
+                        "price": c_now,
+                        "pct": float(kl.get("pct") or 0.0),
+                        "r20": round(r20, 2),
+                        "r60": round(r60, 2),
+                    }
+                except Exception:
+                    return sid, None
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+                res_map = dict(ex.map(_pull_m, probes))
+
+            def _mom(sid: str) -> float:
+                d = res_map.get(sid)
+                if not d:
+                    return 0.0
+                return 0.6 * d["r20"] + 0.4 * d["r60"]
+
+            cu_m = _mom("101.HG00Y")
+            au_m = _mom("101.GC00Y")
+            oil_m = _mom("112.B00Y")
+            spx_m = _mom("100.SPX")
+            csi_m = _mom("0.399300")
+            dxy_m = _mom("100.UDI")
+            tlt_m = _mom("105.TLT")
+
+            def _clamp100(v: float) -> float:
+                return round(max(-100.0, min(100.0, v)), 1)
+
+            # Growth: Copper-Gold momentum + Global equity blend
+            growth_score = _clamp100(((cu_m - au_m) * 0.55 + (spx_m * 0.25 + csi_m * 0.20)) * 5.2)
+            # Inflation: Brent oil + Gold + Copper commodity pulse
+            inflation_score = _clamp100((oil_m * 0.50 + au_m * 0.30 + cu_m * 0.20) * 4.8)
+            # Liquidity: TLT up (yields down) + DXY down (weak dollar)
+            liquidity_score = _clamp100((tlt_m * 0.55 - dxy_m * 0.65) * 6.0)
+
+            if growth_score >= 0 and inflation_score < 0:
+                regime, r_lbl, playbook = "recovery", "复苏期 (Goldilocks)", "顺周期权益 · 科技成长 · 信用债"
+            elif growth_score >= 0 and inflation_score >= 0:
+                regime, r_lbl, playbook = "overheat", "过热期 (Reflation)", "大宗商品 · 能源有色 · 价值周期"
+            elif growth_score < 0 and inflation_score >= 0:
+                regime, r_lbl, playbook = "stagflation", "滞胀期 (Stagflation)", "黄金避险 · 能源上游 · 现金短久期"
+            else:
+                regime, r_lbl, playbook = "recession", "衰退期 (Deflation)", "长久期国债 · 高股息红利 · 黄金"
+
+            signals = [res_map[s] for s, _ in probes if res_map.get(s)]
+            out = {
+                "ok": True,
+                "regime": regime,
+                "regime_label": r_lbl,
+                "playbook": playbook,
+                "growth_score": growth_score,
+                "inflation_score": inflation_score,
+                "liquidity_score": liquidity_score,
+                "signals": signals,
+                "updated_at": int(time.time()),
+            }
+            self.store.cache_set(ckey, out, ttl=600)
+            return out
+
+        if act == "correlation":
+            group = (qs.get("group") or ["macro_core"])[0].strip()
+            raw_sids = (qs.get("secids") or [""])[0].strip()
+            try:
+                limit = max(25, min(180, int((qs.get("limit") or ["60"])[0] or 60)))
+            except ValueError:
+                limit = 60
+
+            CORR_GROUPS = {
+                "macro_core": ["0.399300", "100.SPX", "105.TLT", "101.GC00Y", "112.B00Y", "100.UDI"],
+                "global_eq": ["0.399300", "0.399006", "124.HSTECH", "100.SPX", "100.NDX", "1.600519"],
+                "tech_leaders": ["105.NVDA", "105.MSFT", "116.00700", "0.300750", "100.NDX", "124.HSTECH"],
+            }
+            if raw_sids:
+                sids = [s.strip() for s in raw_sids.split(",") if s.strip()][:7]
+            else:
+                sids = CORR_GROUPS.get(group, CORR_GROUPS["macro_core"])
+
+            ckey = f"quant:corr:{group}:{','.join(sids)}:{limit}"
+            if not force:
+                cached = self.store.cache_get(ckey)
+                if cached:
+                    return cached
+
+            def _pull_c(sid: str):
+                try:
+                    kl = self.kline(sid, "1d", limit + 15, "", False)
+                    bars = kl.get("bars") or []
+                    rets = {}
+                    for i in range(1, len(bars)):
+                        c0 = float(bars[i - 1].get("close") or 0)
+                        c1 = float(bars[i].get("close") or 0)
+                        if c0 > 0 and c1 > 0:
+                            rets[bars[i]["time"]] = (c1 / c0) - 1.0
+                    return sid, (kl.get("name") or sid), rets
+                except Exception:
+                    return sid, sid, {}
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(6, max(1, len(sids)))) as ex:
+                pulled = list(ex.map(_pull_c, sids))
+
+            valid = [(s, nm, rm) for s, nm, rm in pulled if len(rm) >= 12]
+            if len(valid) < 2:
+                return {"ok": False, "error": "有效资产样本不足，无法计算相关性矩阵"}
+
+            n = len(valid)
+            names = [x[1] for x in valid]
+            secids_out = [x[0] for x in valid]
+            matrix = []
+            pair_list = []
+
+            def _pearson(m1: dict, m2: dict) -> float:
+                common = sorted(set(m1.keys()) & set(m2.keys()))[-limit:]
+                if len(common) < 8:
+                    return 0.0
+                xs = [m1[d] for d in common]
+                ys = [m2[d] for d in common]
+                mx = sum(xs) / len(xs)
+                my = sum(ys) / len(ys)
+                num = sum((a - mx) * (b - my) for a, b in zip(xs, ys))
+                dx = sum((a - mx) ** 2 for a in xs) ** 0.5
+                dy = sum((b - my) ** 2 for b in ys) ** 0.5
+                if dx < 1e-12 or dy < 1e-12:
+                    return 0.0
+                return round(max(-1.0, min(1.0, num / (dx * dy))), 2)
+
+            abs_corrs = []
+            for i in range(n):
+                for j in range(n):
+                    c_val = 1.0 if i == j else _pearson(valid[i][2], valid[j][2])
+                    matrix.append([i, j, c_val])
+                    if j > i:
+                        abs_corrs.append(abs(c_val))
+                        pair_list.append({"a": names[i], "b": names[j], "corr": c_val})
+
+            pair_list.sort(key=lambda x: x["corr"])
+            avg_abs = round(sum(abs_corrs) / len(abs_corrs), 2) if abs_corrs else 0.0
+            out = {
+                "ok": True,
+                "group": group,
+                "limit": limit,
+                "names": names,
+                "secids": secids_out,
+                "matrix": matrix,
+                "avg_abs_corr": avg_abs,
+                "best_hedge": pair_list[0] if pair_list else None,
+                "most_crowded": pair_list[-1] if pair_list else None,
+                "updated_at": int(time.time()),
+            }
+            self.store.cache_set(ckey, out, ttl=600)
+            return out
+
+        if act == "risk_metrics":
+            sid = (qs.get("secid") or ["0.399300"])[0].strip()
+            try:
+                limit = max(60, min(360, int((qs.get("limit") or ["240"])[0] or 240)))
+            except ValueError:
+                limit = 240
+            ckey = f"quant:risk:{sid}:{limit}"
+            if not force:
+                cached = self.store.cache_get(ckey)
+                if cached:
+                    return cached
+
+            kl = self.kline(sid, "1d", limit, "", False)
+            bars = kl.get("bars") or []
+            if len(bars) < 25:
+                return {"ok": False, "error": "历史 K 线不足，无法计算波动率与回撤指标"}
+
+            dates = [b["time"] for b in bars]
+            closes = [float(b["close"]) for b in bars]
+            rets = [(closes[i] / closes[i - 1] - 1.0) for i in range(1, len(closes)) if closes[i - 1] > 0]
+
+            peak = closes[0]
+            dd_curve = []
+            max_dd = 0.0
+            max_dd_date = dates[0]
+            for dt, c in zip(dates, closes):
+                if c > peak:
+                    peak = c
+                dd = (c / peak - 1.0) * 100.0 if peak > 0 else 0.0
+                dd_r = round(dd, 2)
+                dd_curve.append(dd_r)
+                if dd_r < max_dd:
+                    max_dd = dd_r
+                    max_dd_date = dt
+
+            def _ann_vol(arr: list[float]) -> float:
+                if len(arr) < 5:
+                    return 0.0
+                m = sum(arr) / len(arr)
+                var = sum((x - m) ** 2 for x in arr) / max(1, len(arr) - 1)
+                return round((var ** 0.5) * (252.0 ** 0.5) * 100.0, 1)
+
+            vol_20 = _ann_vol(rets[-20:])
+            vol_60 = _ann_vol(rets[-60:])
+            vol_all = _ann_vol(rets)
+            sorted_rets = sorted(rets)
+            var95_idx = max(0, int(len(sorted_rets) * 0.05))
+            var_95 = round(sorted_rets[var95_idx] * 100.0, 2) if sorted_rets else 0.0
+
+            total_ret = round((closes[-1] / closes[0] - 1.0) * 100.0, 2) if closes[0] > 0 else 0.0
+            ann_ret = ((closes[-1] / closes[0]) ** (252.0 / max(1, len(rets))) - 1.0) * 100.0 if closes[0] > 0 else 0.0
+            sharpe = round((ann_ret - 2.0) / vol_all, 2) if vol_all > 0.1 else 0.0
+            calmar = round(ann_ret / abs(max_dd), 2) if abs(max_dd) > 0.5 else 0.0
+            win_days = round(sum(1 for x in rets if x > 0) / max(1, len(rets)) * 100.0, 1)
+
+            out = {
+                "ok": True,
+                "secid": sid,
+                "name": kl.get("name") or sid,
+                "price": closes[-1],
+                "pct": float(kl.get("pct") or 0.0),
+                "dates": dates,
+                "drawdown_curve": dd_curve,
+                "max_drawdown": max_dd,
+                "max_dd_date": max_dd_date,
+                "current_drawdown": dd_curve[-1] if dd_curve else 0.0,
+                "vol_20d": vol_20,
+                "vol_60d": vol_60,
+                "vol_ann": vol_all,
+                "var_95": var_95,
+                "sharpe": sharpe,
+                "calmar": calmar,
+                "total_ret": total_ret,
+                "win_days_pct": win_days,
+                "updated_at": int(time.time()),
+            }
+            self.store.cache_set(ckey, out, ttl=300)
+            return out
+
+        if act == "style_rotation":
+            ckey = "quant:style_rotation:v1"
+            if not force:
+                cached = self.store.cache_get(ckey)
+                if cached:
+                    return cached
+
+            STYLES = [
+                ("0.399300", "大盘核心", "沪深300"),
+                ("0.399006", "A股成长", "创业板指"),
+                ("124.HSTECH", "港股弹性", "恒生科技"),
+                ("100.NDX", "海外科技", "纳指100"),
+                ("1.511090", "利率防御", "30Y国债ETF"),
+                ("101.GC00Y", "避险商品", "COMEX黄金"),
+            ]
+
+            def _pull_s(item):
+                sid, style_lbl, nm = item
+                try:
+                    kl = self.kline(sid, "1d", 80, nm, False)
+                    bars = kl.get("bars") or []
+                    closes = [float(b["close"]) for b in bars if b.get("close")]
+                    if len(closes) < 8:
+                        return None
+                    c_now = closes[-1]
+                    r5 = round((c_now / closes[max(0, len(closes) - 6)] - 1.0) * 100.0, 2)
+                    r20 = round((c_now / closes[max(0, len(closes) - 21)] - 1.0) * 100.0, 2)
+                    r60 = round((c_now / closes[max(0, len(closes) - 61)] - 1.0) * 100.0, 2)
+                    return {
+                        "secid": sid,
+                        "style": style_lbl,
+                        "name": kl.get("name") or nm,
+                        "price": c_now,
+                        "pct": float(kl.get("pct") or 0.0),
+                        "r5": r5,
+                        "r20": r20,
+                        "r60": r60,
+                    }
+                except Exception:
+                    return None
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+                items = [x for x in ex.map(_pull_s, STYLES) if x]
+
+            by20 = sorted(items, key=lambda x: x["r20"], reverse=True)
+            out = {
+                "ok": True,
+                "items": items,
+                "leader_20d": by20[0] if by20 else None,
+                "laggard_20d": by20[-1] if by20 else None,
+                "updated_at": int(time.time()),
+            }
+            self.store.cache_set(ckey, out, ttl=300)
+            return out
+
+        # Default: divergence radar
+        ov = self.overview(force=False)
+        secs = (self.sectors(limit=30, force=False).get("items") or [])
+        quote_map = {}
+        for p in (ov.get("panels") or []):
+            for it in (p.get("items") or []):
+                quote_map[it["secid"]] = it
+
+        alerts: list[dict] = []
+        gc = quote_map.get("101.GC00Y")
+        dxy = quote_map.get("100.UDI")
+        if gc and dxy and (gc.get("pct") or 0) > 0.4 and (dxy.get("pct") or 0) > 0.25:
+            alerts.append({
+                "level": "high",
+                "tag": "宏观背离",
+                "title": f"黄金 ({gc['pct']:+.2f}%) 与美元指数 ({dxy['pct']:+.2f}%) 同向走强",
+                "detail": "避险买盘压倒美元计价压制，常见于地缘摩擦或信用风险升温阶段。",
+                "secid": "101.GC00Y",
+            })
+        brent = quote_map.get("112.B00Y")
+        spx = quote_map.get("100.SPX")
+        if brent and spx and abs((brent.get("pct") or 0) - (spx.get("pct") or 0)) >= 2.2:
+            alerts.append({
+                "level": "medium",
+                "tag": "跨资产分化",
+                "title": f"布油 ({brent['pct']:+.2f}%) 与标普500 ({spx['pct']:+.2f}%) 日内走阔",
+                "detail": "能源价格与权益市场走势显著分化，建议关注通胀预期与风险偏好切换。",
+                "secid": "112.B00Y",
+            })
+        for s in secs:
+            pct = float(s.get("pct") or 0.0)
+            inf_yi = float(s.get("net_inflow") or 0.0) / 1e8
+            if pct >= 1.2 and inf_yi <= -1.5:
+                alerts.append({
+                    "level": "warn",
+                    "tag": "量价背离·诱多",
+                    "title": f"{s['name']} 指数涨 {pct:+.2f}% 但主力净流出 {inf_yi:.2f}亿",
+                    "detail": "板块账面飘红但大单资金净撤离，警惕冲高回落。",
+                    "secid": "",
+                })
+            elif pct <= -0.5 and inf_yi >= 1.5:
+                alerts.append({
+                    "level": "ok",
+                    "tag": "潜伏吸筹",
+                    "title": f"{s['name']} 跌 {pct:+.2f}% 但主力逆势净流入 +{inf_yi:.2f}亿",
+                    "detail": "回调过程中出现大单逆势承接，具备左侧潜伏观察价值。",
+                    "secid": "",
+                })
+        if not alerts:
+            for s in secs[:4]:
+                inf_yi = float(s.get("net_inflow") or 0.0) / 1e8
+                alerts.append({
+                    "level": "info",
+                    "tag": "资金焦点",
+                    "title": f"{s['name']} ({float(s.get('pct') or 0):+.2f}%) · 主力净流 {inf_yi:+.2f}亿",
+                    "detail": "当前盘面量价方向一致，未触发显著跨市场背离阈值。",
+                    "secid": "",
+                })
+        return {"ok": True, "alerts": alerts[:10], "updated_at": int(time.time())}

@@ -58,12 +58,11 @@ def _cache_pop_doc(tmp_id: str) -> ex.Doc | None:
         return None
     return doc
 
-META_SYS = """你是企业级多模态文档智能分类与结构化元数据抽取器。只返回 JSON，不要解释。
+META_SYS = """你是企业级多模态文档结构化元数据抽取器。只返回 JSON，不要解释。
 输出 JSON 结构：
 {
   "doc_type": "regulation | finance | contract | report | spreadsheet | image | general",
-  "folder": "建议归入的子文件夹名称（优先从已有文件夹中匹配；若都不合适，给出2-8字简短分类目录名）",
-  "dept": "所属部门或业务归口",
+  "dept": "所属部门或业务归口（无则留空）",
   "title": "规范化文档标题（不要书名号与扩展名）",
   "doc_no": "文号或编号，无则留空",
   "issued_date": "YYYY-MM-DD，无则留空",
@@ -255,14 +254,9 @@ def extract_meta(cfg, doc: ex.Doc, filename: str, existing_folders: list[str], f
     if dtype not in ex.DOC_TYPES:
         dtype = doc.doc_type if doc.doc_type in ex.DOC_TYPES else "general"
 
-    folder_pick = _safe_folder_path(str(got.get("folder") or got.get("dept") or doc.folder or doc.dept or ""))
-    if folder_pick and existing_folders:
-        for ef in existing_folders:
-            if ef == folder_pick or ef.endswith("/" + folder_pick):
-                folder_pick = ef
-                break
-
-    dept = str(got.get("dept") or doc.dept or (folder_pick.split("/")[-1] if folder_pick else "")).strip()
+    # 导入阶段绝不擅自自动分文件夹：严格保留用户指定的目录（doc.folder），仅在用户手动点击「智能归档」时才自动归类
+    explicit_folder = _safe_folder_path(doc.folder or "")
+    dept = str(got.get("dept") or doc.dept or "").strip()
     title = str(got.get("title") or doc.title or os.path.splitext(os.path.basename(filename))[0]).strip()
     doc_no = str(got.get("doc_no") or doc.doc_no or "").strip()
     issued_date = str(got.get("issued_date") or doc.issued_date or "").strip()
@@ -296,9 +290,9 @@ def extract_meta(cfg, doc: ex.Doc, filename: str, existing_folders: list[str], f
     chunk_profile = ex.default_chunk_profile(dtype, doc.file_ext, sum(len(p) for p in doc.pages), has_art)
 
     return {
-        "project": doc.project or "集团制度库",
-        "folder": doc.folder or folder_pick,
-        "dept": dept or folder_pick or "其他",
+        "project": doc.project or "默认知识库",
+        "folder": explicit_folder,
+        "dept": dept,
         "doc_type": dtype,
         "category": ex.DOC_TYPES[dtype]["label"],
         "chunk_profile": chunk_profile,
@@ -590,12 +584,14 @@ def commit(
         os.remove(src)
     except OSError:
         pass
-    if cfg.data.get("embed_running"):
+    if cfg.data.get("embed_use") or cfg.data.get("embed_running"):
         try:
             import embed as embed_mod
-            threading.Thread(
-                target=embed_mod.start_job, args=(cfg, db_path), daemon=True
-            ).start()
+            if embed_mod.resolve(cfg.data):
+                cfg.data["embed_running"] = True
+                threading.Thread(
+                    target=embed_mod.start_job, args=(cfg, db_path), daemon=True
+                ).start()
         except Exception:
             pass
     return {"ok": True, "doc_id": new_id, "rel_path": rel, "project": project, "folder": folder, "doc_type": doc_type}

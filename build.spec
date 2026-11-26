@@ -52,6 +52,7 @@ a = Analysis(
         "news_tool",
         "market_data",
         "market_tool",
+        "quant_engine",
         "xxhash",
         "usearch",
         "tantivy",

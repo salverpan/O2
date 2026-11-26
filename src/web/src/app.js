@@ -6,11 +6,9 @@ import markedKatex from 'marked-katex-extension'
 import katex from 'katex'
 import { createChart, ColorType, CrosshairMode } from 'lightweight-charts'
 import * as echarts from 'echarts/core'
-import { TreemapChart, LineChart } from 'echarts/charts'
-import { TooltipComponent, GridComponent } from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
-
-echarts.use([TreemapChart, LineChart, TooltipComponent, GridComponent, CanvasRenderer])
+import { BUILTIN_GALLERY_CATALOG, GALLERY_MAP, SymbolPicker, O2Echarts, QuantWidget, WidgetConfigDrawer, LazyChatVisual, WidgetGalleryModal } from './widgets_hub.js'
+import { EntityGeoAtlas } from './geo_atlas.js'
+import { BacktestLab } from './backtest_lab.js'
 
 const api = {
   async get(path) {
@@ -70,6 +68,7 @@ const ICO = {
   pinWindow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg>',
   external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
   chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 6-6"/></svg>',
+  backtest: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v5.4a2 2 0 0 1-.4 1.2L4.2 17a2 2 0 0 0 1.6 3.2h12.4a2 2 0 0 0 1.6-3.2l-5.4-7.4a2 2 0 0 1-.4-1.2V3"/><path d="M7.5 14.5h9"/></svg>',
   heatmap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></svg>',
   flame: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>',
   star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
@@ -133,36 +132,38 @@ const App = {
 <div class="shell" :class="cfg.ui_density ? ('density-' + cfg.ui_density) : 'density-default'">
   <!-- 布局一：顶部标签页 -->
   <header v-if="cfg.ui_density === 'topbar'" class="app-top-tabbar">
-    <div class="att-left">
+    <div class="att-left" role="navigation" aria-label="主导航">
       <button v-for="n in navs" :key="n.key" type="button"
               :class="['att-nav-btn', tab === n.key ? 'on' : '']"
-              :title="n.label"
+              :aria-current="tab === n.key ? 'page' : undefined"
               @click="tab = n.key">
         <span class="nav-ico" v-html="n.icon"></span>
         <span>{{ n.label }}</span>
       </button>
       <span class="att-divider"></span>
-      <button type="button" class="att-nav-btn" title="管理会话" @click="openHistBrowse">
+      <button type="button" class="att-nav-btn" title="管理会话" aria-label="管理会话" @click="openHistBrowse">
         <span class="nav-ico" v-html="ICO.search"></span>
       </button>
     </div>
-    <div class="att-tabs">
+    <div class="att-tabs" role="tablist" aria-label="会话标签">
       <div v-for="c in allSessionChats" :key="c.id"
+           role="tab" tabindex="0" :aria-selected="c.id === chatId && tab === 'ask'"
            :class="['att-tab', c.id === chatId && tab === 'ask' ? 'on' : '']"
            :title="c.title || '新对话'"
-           @click="openHistChat(c)">
+           @click="openHistChat(c)" @keydown.enter.prevent="openHistChat(c)">
         <span class="att-tab-title">{{ c.title || '新对话' }}</span>
         <matrix-loader v-if="runningIds[c.id]" />
         <button v-if="allSessionChats.length > 1" type="button" class="att-tab-close"
-                title="关闭会话" @click.stop="closeSessionTab(c)">×</button>
+                title="关闭会话" aria-label="关闭会话" @click.stop="closeSessionTab(c)">×</button>
       </div>
-      <button type="button" class="att-new-btn" title="新建会话" @click="newChat">
+      <button type="button" class="att-new-btn" title="新建会话" aria-label="新建会话" @click="newChat">
         <span v-html="ICO.plus"></span>
       </button>
     </div>
     <div class="att-right">
       <button type="button" class="att-nav-btn"
-              :title="cfg.ui_theme === 'dark' ? '切换浅色主题' : '切换深色终端主题'"
+              :title="cfg.ui_theme === 'dark' ? '切换浅色外观' : '切换深色外观'"
+              aria-label="切换外观主题"
               @click="toggleTheme">
         <span class="nav-ico" v-html="cfg.ui_theme === 'dark' ? ICO.sun : ICO.moon"></span>
       </button>
@@ -217,12 +218,13 @@ const App = {
         </a-button>
       </div>
     </div>
-    <nav v-else class="nav">
+    <nav v-else class="nav" aria-label="主导航">
       <div class="nav-switch">
         <span class="slide-pill" :style="navPillStyle"></span>
         <button v-for="n in navs" :key="n.key"
                 :ref="(el) => bindMainNav(n.key, el)"
                 :class="['nav-item', tab === n.key ? 'on' : '']"
+                :aria-current="tab === n.key ? 'page' : undefined"
                 @click="tab = n.key">
           <span class="nav-ico" v-html="n.icon"></span>
           <span>{{ n.label }}</span>
@@ -233,8 +235,8 @@ const App = {
       <div v-if="cfg.ui_density === 'compact'" class="sider-quick-actions">
         <div class="sider-search-row">
           <span class="sider-search-ico" v-html="ICO.search"></span>
-          <input v-model="histSearchQuery" type="text" class="sider-search-input" placeholder="搜索会话…" />
-          <button v-if="histSearchQuery" type="button" class="sider-search-clear" @click="histSearchQuery = ''">×</button>
+          <input v-model="histSearchQuery" type="text" class="sider-search-input" aria-label="搜索会话" placeholder="搜索会话…" />
+          <button v-if="histSearchQuery" type="button" class="sider-search-clear" aria-label="清空搜索" @click="histSearchQuery = ''">×</button>
         </div>
       </div>
 
@@ -248,12 +250,12 @@ const App = {
           <span class="hist-head-label">{{ cfg.ui_density === 'compact' ? '最近' : '会话' }}</span>
           <span class="hist-head-actions">
             <a-tooltip title="新建会话">
-              <button type="button" class="hist-tool" @click="newChat">
+              <button type="button" class="hist-tool" aria-label="新建会话" @click="newChat">
                 <span class="nav-ico" v-html="ICO.plus"></span>
               </button>
             </a-tooltip>
             <a-tooltip title="管理">
-              <button type="button" class="hist-tool" :disabled="!allSessionChats.length" @click="openHistManage">
+              <button type="button" class="hist-tool" aria-label="管理会话" :disabled="!allSessionChats.length" @click="openHistManage">
                 <span class="nav-ico" v-html="ICO.manage"></span>
               </button>
             </a-tooltip>
@@ -329,11 +331,11 @@ const App = {
             </a-select>
             <a-select v-model:value="filters.chunk_type" placeholder="全部内容块" allow-clear
                       size="large" class="w-type" @change="doSearch">
-              <a-select-option value="text">正文与条文</a-select-option>
-              <a-select-option value="table">数据表格切片</a-select-option>
-              <a-select-option value="image">图片与图表索引</a-select-option>
+              <a-select-option value="text">正文条文</a-select-option>
+              <a-select-option value="table">数据表格</a-select-option>
+              <a-select-option value="image">图表索引</a-select-option>
             </a-select>
-            <a-select v-model:value="filters.dept" placeholder="全部目录/部门" allow-clear
+            <a-select v-model:value="filters.dept" placeholder="全部部门" allow-clear
                       size="large" class="w-dept" @change="doSearch">
               <a-select-option v-for="d in facets.depts" :key="d" :value="d">{{ d }}</a-select-option>
             </a-select>
@@ -352,7 +354,8 @@ const App = {
 
         <a-spin :spinning="loading">
           <div class="results">
-            <div v-for="(r, i) in results" :key="r.chunk_id" class="hit" :style="blockDelay(i)" @click="openDoc(r.doc_id, r.chunk_id)">
+            <div v-for="(r, i) in results" :key="r.chunk_id" class="hit" role="button" tabindex="0"
+                 :style="blockDelay(i)" @click="openDoc(r.doc_id, r.chunk_id)" @keydown.enter.prevent="openDoc(r.doc_id, r.chunk_id)">
               <div class="hit-head">
                 <div class="hit-tags">
                   <a-tag :color="docTypeColor(r.doc_type)">{{ docTypeLabel(r.doc_type) }}</a-tag>
@@ -433,19 +436,19 @@ const App = {
                            @focus="onBrowserUrlFocus($event)"
                            @blur="onBrowserUrlBlur"
                            @keydown.enter.prevent="submitBrowserUrl" />
-                    <div class="ask-bw-zoom" title="固定 16:9 比例中心缩放（也可直接拖动四周边框或按住 Ctrl 滚轮缩放）">
-                      <button type="button" class="ask-bw-zoom-btn" :disabled="askBwScale <= 0.65" @click="stepAskBwScale(-0.1)">−</button>
-                      <button type="button" class="ask-bw-zoom-val" @click="resetAskBwScale">{{ Math.round(askBwScale * 100) }}%</button>
-                      <button type="button" class="ask-bw-zoom-btn" :disabled="askBwScale >= 1.35" @click="stepAskBwScale(0.1)">+</button>
+                    <div class="ask-bw-zoom" title="视图缩放">
+                      <button type="button" class="ask-bw-zoom-btn" aria-label="缩小" :disabled="askBwScale <= 0.65" @click="stepAskBwScale(-0.1)">−</button>
+                      <button type="button" class="ask-bw-zoom-val" aria-label="重置缩放" @click="resetAskBwScale">{{ Math.round(askBwScale * 100) }}%</button>
+                      <button type="button" class="ask-bw-zoom-btn" aria-label="放大" :disabled="askBwScale >= 1.35" @click="stepAskBwScale(0.1)">+</button>
                     </div>
-                    <button type="button" class="bw-btn" title="收起浏览器窗口"
+                    <button type="button" class="bw-btn" title="收起浏览器" aria-label="收起浏览器"
                             @click="closeAskBrowserByUser" v-html="ICO.close"></button>
                   </div>
                   <div v-if="browserState.coPanel.waitingHuman" class="ask-bw-human-bar">
                     <div class="ask-bw-human-info">
-                      <span class="ask-bw-human-text">{{ browserState.coPanel.humanReason || '需要您完成页面人机验证或登录，完成后将自动继续下一步' }}</span>
+                      <span class="ask-bw-human-text">{{ browserState.coPanel.humanReason || '需要您完成页面验证或登录' }}</span>
                     </div>
-                    <button type="button" class="ask-bw-human-btn" @click="confirmHumanBrowserDone">我已完成，继续</button>
+                    <button type="button" class="ask-bw-human-btn" @click="confirmHumanBrowserDone">继续</button>
                   </div>
                   <div class="ask-bw-frame">
                     <div class="ask-bw-stage" ref="askBrowserStage">
@@ -453,8 +456,8 @@ const App = {
                            :src="browserPreviewUrl" class="bw-freeze" alt="" />
                       <div v-else-if="!hasNativeBrowser" class="bw-fallback">
                         <div class="bw-fallback-card">
-                          <h3>在 O2 桌面窗口中使用协同浏览器</h3>
-                          <p>通过 O2 桌面端启动后，此窗口将挂载固定 16:9 比例居中缩放的原生 Chromium 视图，支持 AI 模拟鼠标与人机同屏协同操作。</p>
+                          <h3>在桌面窗口中使用协同浏览器</h3>
+                          <p>通过桌面端启动后，此窗口将挂载 16:9 原生浏览器视图，支持 AI 与您同屏协同操作。</p>
                         </div>
                       </div>
                     </div>
@@ -470,18 +473,20 @@ const App = {
             <div class="anf-head" @pointerdown="onAskNewsDragStart">
               <div class="anf-title">
                 <span class="nav-ico" v-html="ICO.rss"></span>
-                <span>新闻流快讯</span>
-                <a-tag v-if="newsStatus.pending_l1 > 0" color="processing">{{ newsStatus.pending_l1 }} 待译</a-tag>
+                <span>快讯引用</span>
+                <span v-if="newsFetching || newsStatus.fetching || newsStatus.translating" class="ft-sync-pill" aria-live="polite">
+                  <span class="ft-sync-dot"></span>同步中
+                </span>
               </div>
               <div style="display:flex;align-items:center;gap:4px" @pointerdown.stop>
-                <a-tooltip :title="askNewsMode === 'float' ? '停靠右侧抽屉' : '切换自由悬浮窗'">
-                  <button type="button" class="bw-btn" @click="askNewsMode = askNewsMode === 'float' ? 'dock' : 'float'" v-html="ICO.pinWindow"></button>
+                <a-tooltip :title="askNewsMode === 'float' ? '右侧停靠' : '自由悬浮'">
+                  <button type="button" class="bw-btn" aria-label="切换窗口停靠模式" @click="askNewsMode = askNewsMode === 'float' ? 'dock' : 'float'" v-html="ICO.pinWindow"></button>
                 </a-tooltip>
-                <a-tooltip title="刷新新闻">
-                  <button type="button" class="bw-btn" @click="fetchNewsNow()" v-html="ICO.reload"></button>
+                <a-tooltip title="刷新">
+                  <button type="button" class="bw-btn" aria-label="刷新快讯" @click="fetchNewsNow()" v-html="ICO.reload"></button>
                 </a-tooltip>
                 <a-tooltip title="关闭">
-                  <button type="button" class="bw-btn" @click="askNewsOpen = false" v-html="ICO.close"></button>
+                  <button type="button" class="bw-btn" aria-label="关闭快讯窗口" @click="askNewsOpen = false" v-html="ICO.close"></button>
                 </a-tooltip>
               </div>
             </div>
@@ -493,16 +498,17 @@ const App = {
                           @click="newsFilters.lang = lg.id; runNewsSearch(true)">{{ lg.l }}</button>
                 </div>
                 <button type="button" :class="['ft-btn', newsSearchMode === 'semantic' ? 'on' : '']"
-                        title="切换关键词 / Embedding 语义检索"
+                        :aria-pressed="newsSearchMode === 'semantic'"
+                        title="切换语义检索"
                         @click="newsSearchMode = newsSearchMode === 'semantic' ? 'keyword' : 'semantic'; if ((newsFilters.q || '').trim()) runNewsSearch(true)">
-                  {{ newsSearchMode === 'semantic' ? '语义' : '词' }}
+                  语义
                 </button>
-                <a-input v-model:value="newsFilters.q" size="small" allow-clear placeholder="筛选标题/语义/实体…"
+                <a-input v-model:value="newsFilters.q" size="small" allow-clear placeholder="搜索快讯…"
                          @pressEnter="runNewsSearch(true)" />
               </div>
             </div>
             <div class="anf-list">
-              <o2-empty v-if="!newsItems.length" description="暂无新闻，请在设置→新闻流导入源并抓取" />
+              <o2-empty v-if="!newsItems.length" description="暂无快讯" />
               <div v-for="it in newsItems" :key="it.id"
                    :class="['anf-item', askNewsPicked[it.id] ? 'picked' : '']"
                    @click="toggleAskNewsPick(it)">
@@ -512,7 +518,6 @@ const App = {
                     <span :class="['news-lang-badge', it.lang]">{{ it.lang }}</span>
                     <span v-if="it.sentiment" :class="['news-sent', it.sentiment]">{{ sentimentLabel(it.sentiment) }}</span>
                     <span>{{ it.feed_name }}</span>
-                    <span v-if="it.l1_status === 'pending'" style="color:var(--warn)">未译</span>
                     <span style="margin-left:auto" class="ft-mono">{{ formatNewsTime(it.published_at) }}</span>
                   </div>
                   <div style="font-size:12.5px;font-weight:600;line-height:1.38;color:var(--foreground)">
@@ -530,7 +535,7 @@ const App = {
               <div style="display:flex;gap:6px">
                 <a-button size="small" :disabled="!askNewsPickedCount" @click="askNewsPicked = {}">清空</a-button>
                 <a-button size="small" :disabled="!askNewsPickedCount" @click="citeSelectedNewsToAsk(false)">引用</a-button>
-                <a-button size="small" type="primary" :disabled="!askNewsPickedCount" @click="citeSelectedNewsToAsk(true)">发送分析</a-button>
+                <a-button size="small" type="primary" :disabled="!askNewsPickedCount" @click="citeSelectedNewsToAsk(true)">分析</a-button>
               </div>
             </div>
           </div>
@@ -564,6 +569,19 @@ const App = {
                 <div v-else-if="m.content" class="answer-text" v-html="renderAnswer(m.content, m)"
                      @click="onAnswerClick($event, m)"></div>
                 <div v-else-if="m.stopped && !m.streaming && !m.ask" class="hint">已停止</div>
+                <div v-if="m.visuals && m.visuals.length" class="chat-vis-list">
+                  <lazy-chat-visual v-for="(vis, vi) in m.visuals" :key="vis.id || ('vis-' + vi)"
+                                    :visual="vis" :theme="cfg.ui_theme"
+                                    :sectors="marketSectors" :chokepoints="geoData.chokepoints" :custom-widgets="customWidgets"
+                                    :watchlist="marketOverview.watchlist"
+                                    :overview="marketOverview" :macro="macroData" :geo="geoData"
+                                    :movers="marketMovers" :news-status="newsStatus" :news-items="newsItems"
+                                    @save-library="onSaveVisualToLibrary"
+                                    @pin-dashboard="onPinVisualToDashboard"
+                                    @create-topic-board="onCreateTopicBoard"
+                                    @pick-symbol="openMarketDetail"
+                                    @toggle-watchlist="toggleWatchlistSymbol" />
+                </div>
                 <div v-if="m.ask && m.ask.questions && m.ask.questions.length" class="ask-card">
                   <div class="ask-card-head">
                     <span>{{ m.ask.intent === 'recommend' ? '推荐' : '请补充关键条件' }}</span>
@@ -598,12 +616,14 @@ const App = {
                   <div v-else class="hint ask-done">已提交</div>
                 </div>
                 <div v-if="displaySources(m).length" class="srcs">
-                  <div class="srcs-head" @click="toggleSrc(m)">
+                  <div class="srcs-head" role="button" tabindex="0" :aria-expanded="!!m.showSrc"
+                       @click="toggleSrc(m)" @keydown.enter.prevent="toggleSrc(m)">
                     依据 {{ displaySources(m).length }} 条
                     <span class="hint">{{ m.showSrc ? '收起' : '展开' }}</span>
                   </div>
                   <div v-if="m.showSrc">
-                    <div v-for="s in displaySources(m)" :key="s.n" class="src" @click="openDoc(s.doc_id, s.chunk_id)">
+                    <div v-for="s in displaySources(m)" :key="s.n" class="src" role="button" tabindex="0"
+                         @click="openDoc(s.doc_id, s.chunk_id)" @keydown.enter.prevent="openDoc(s.doc_id, s.chunk_id)">
                       <span class="src-n">〔{{ s.n }}〕</span>
                       <span class="src-head">
                         <b>{{ s.title }}</b>
@@ -628,37 +648,38 @@ const App = {
                  @drop.prevent="onAttachDrop"
                  @paste="onAttachPaste">
               <div v-if="currentQueued.length" class="queued-bar">
-                <span>排队中 ({{ currentQueued.length }})：</span>
+                <span>排队中 {{ currentQueued.length }}：</span>
                 <span v-for="(qf, idx) in currentQueued" :key="qf.id" class="queued-pill" :title="qf.text">
-                  <span class="queued-pill-text">{{ qf.text || '（附件/引用）' }}</span>
-                  <button type="button" title="取消排队" @click="removeQueuedFollowup(idx)">×</button>
+                  <span class="queued-pill-text">{{ qf.text || '附件引用' }}</span>
+                  <button type="button" title="移除" aria-label="移除排队项" @click="removeQueuedFollowup(idx)">×</button>
                 </span>
               </div>
               <div v-if="citedNews.length" class="cited-news-bar">
                 <div v-for="cn in citedNews" :key="cn.id" class="cited-news-chip" :title="cn.title_zh || cn.title_orig">
                   <span :class="['news-lang-badge', cn.lang]">{{ cn.lang }}</span>
                   <span class="cited-news-chip-title">{{ cn.title_zh || cn.title_orig }}</span>
-                  <button type="button" @click="removeCitedNews(cn.id)">×</button>
+                  <button type="button" aria-label="移除引用" @click="removeCitedNews(cn.id)">×</button>
                 </div>
               </div>
               <div v-if="attachments.length" class="attach-row">
                 <div v-for="a in attachments" :key="a.id" :class="['attach-chip', a.state]" :title="a.error || a.name">
                   <span class="attach-name">{{ a.name }}</span>
                   <span v-if="a.state === 'parsing'" class="attach-pct">{{ a.percent || 0 }}%</span>
-                  <button type="button" class="attach-x" @click="removeAttach(a.id)">×</button>
+                  <button type="button" class="attach-x" aria-label="移除附件" @click="removeAttach(a.id)">×</button>
                 </div>
               </div>
               <a-textarea ref="askInputEl" v-model:value="question" :auto-size="{ minRows: 3, maxRows: 6 }"
                 placeholder="输入问题，Enter 发送，可直接粘贴文件"
                 @keydown="onAskKeydown" />
               <div class="composer-bar">
-                <a-tooltip title="上传附件或图片">
-                  <button type="button" class="attach-btn" :disabled="asking" @click="pickAttach">
+                <a-tooltip title="添加附件">
+                  <button type="button" class="attach-btn" aria-label="添加附件" :disabled="asking" @click="pickAttach">
                     <span class="icon-svg" v-html="ICO.plus"></span>
                   </button>
                 </a-tooltip>
                 <a-tooltip :title="askBrowserBtnTooltip">
                   <button type="button"
+                          aria-label="协同浏览器"
                           :class="[
                             'attach-btn',
                             'bw-toggle-btn',
@@ -669,8 +690,8 @@ const App = {
                     <span class="icon-svg" v-html="ICO.globe"></span>
                   </button>
                 </a-tooltip>
-                <a-tooltip v-if="cfg.news_enabled" title="打开新闻流浮动窗口（勾选新闻引用给 AI 分析）">
-                  <button type="button" :class="['attach-btn', askNewsOpen ? 'on' : '']" @click="toggleAskNews">
+                <a-tooltip v-if="cfg.news_enabled" title="快讯引用">
+                  <button type="button" aria-label="快讯引用" :class="['attach-btn', askNewsOpen ? 'on' : '']" @click="toggleAskNews">
                     <span class="icon-svg" v-html="ICO.rss"></span>
                   </button>
                 </a-tooltip>
@@ -678,7 +699,7 @@ const App = {
                        accept=".xlsx,.csv,.pdf,.doc,.docx,.md,.markdown,.json,.txt,.jpg,.jpeg,.png,.tif,.tiff,.svg,.webp,.heif,.heic" @change="onAttachPicked" />
                 <span class="spacer"></span>
                 <div class="model-wrap" ref="modelWrap">
-                  <button type="button" class="model-pill" :class="{ busy: asking }" @click.stop="toggleModelMenu">
+                  <button type="button" class="model-pill" :class="{ busy: asking }" aria-haspopup="true" :aria-expanded="menuOpen" @click.stop="toggleModelMenu">
                     <span v-if="channelLabel" class="model-pill-chan">{{ channelLabel }}</span>
                     <span v-if="channelLabel" class="model-pill-sep"></span>
                     <span class="model-pill-text" :data-label="modelLabel">{{ modelLabel }}</span>
@@ -688,13 +709,13 @@ const App = {
                     <button v-if="effortOptions.length" type="button"
                             :class="['mp-row', menuPanel === 'effort' ? 'on' : '']"
                             @click="openPanel('effort')">
-                      <span>思考程度</span>
+                      <span>思考深度</span>
                       <span class="mp-val">{{ effortLabel }}<span class="mp-chev" v-html="ICO.chevron"></span></span>
                     </button>
                     <button v-if="contextLabel" type="button"
                             :class="['mp-row', menuPanel === 'context' ? 'on' : '']"
                             @click="contextOptions.length > 1 && openPanel('context')">
-                      <span>Context</span>
+                      <span>上下文</span>
                       <span class="mp-val">
                         {{ contextLabel }}
                         <span v-if="contextOptions.length > 1" class="mp-chev" v-html="ICO.chevron"></span>
@@ -744,13 +765,13 @@ const App = {
                     </div>
                   </div>
                 </div>
-                <a-tooltip title="清空">
-                  <a-button type="text" class="icon-btn" :disabled="asking" @click="clearChat">
+                <a-tooltip title="清空对话">
+                  <a-button type="text" class="icon-btn" aria-label="清空对话" :disabled="asking" @click="clearChat">
                     <template #icon><span class="icon-svg" v-html="ICO.trash"></span></template>
                   </a-button>
                 </a-tooltip>
                 <a-tooltip :title="asking ? '停止' : '发送'">
-                  <a-button type="primary" class="icon-btn send-btn" @click="asking ? stopAsk() : send()">
+                  <a-button type="primary" class="icon-btn send-btn" :aria-label="asking ? '停止生成' : '发送消息'" @click="asking ? stopAsk() : send()">
                     <template #icon>
                       <span class="icon-svg" v-html="asking ? ICO.stop : ICO.send"></span>
                     </template>
@@ -772,30 +793,32 @@ const App = {
               <img v-else-if="bt.favicon" :src="bt.favicon" class="bw-fav" @error="bt.favicon = ''" alt="" />
               <span v-else class="bw-tab-ico" v-html="ICO.globe"></span>
               <span class="bw-tab-title">{{ bt.title || '新标签页' }}</span>
-              <button type="button" class="bw-tab-x" title="关闭标签页"
+              <button type="button" class="bw-tab-x" title="关闭标签页" aria-label="关闭标签页"
                       @click.stop="closeBrowserTab(bt.id)" v-html="ICO.close"></button>
             </div>
-            <button type="button" class="bw-new" title="新建标签页"
+            <button type="button" class="bw-new" title="新建标签页" aria-label="新建标签页"
                     @click="newBrowserTab()" v-html="ICO.plus"></button>
           </div>
           <div class="bw-bar">
-            <button type="button" class="bw-btn" title="后退"
+            <button type="button" class="bw-btn" title="后退" aria-label="后退"
                     :disabled="!activeBrowserTab || !activeBrowserTab.canGoBack"
                     @click="browserBack" v-html="ICO.left"></button>
-            <button type="button" class="bw-btn" title="前进"
+            <button type="button" class="bw-btn" title="前进" aria-label="前进"
                     :disabled="!activeBrowserTab || !activeBrowserTab.canGoForward"
                     @click="browserForward" v-html="ICO.send"></button>
             <button type="button" class="bw-btn"
                     :title="activeBrowserTab && activeBrowserTab.loading ? '停止加载' : '刷新'"
+                    :aria-label="activeBrowserTab && activeBrowserTab.loading ? '停止加载' : '刷新'"
                     @click="browserReloadOrStop"
                     v-html="activeBrowserTab && activeBrowserTab.loading ? ICO.close : ICO.reload"></button>
             <input class="bw-url"
                    v-model="browserUrlInput"
+                   aria-label="网址或搜索词"
                    placeholder="输入网址或搜索词，按 Enter 访问"
                    @focus="onBrowserUrlFocus($event)"
                    @blur="onBrowserUrlBlur"
                    @keydown.enter.prevent="submitBrowserUrl" />
-            <button v-if="hasNativeBrowser" type="button" class="bw-btn" title="开发者工具"
+            <button v-if="hasNativeBrowser" type="button" class="bw-btn" title="开发者工具" aria-label="开发者工具"
                     @click="browserDevTools" v-html="ICO.code"></button>
           </div>
           <div class="bw-stage" ref="browserStage">
@@ -803,8 +826,8 @@ const App = {
                  :src="browserPreviewUrl" class="bw-freeze" alt="" />
             <div v-else-if="!hasNativeBrowser" class="bw-fallback">
               <div class="bw-fallback-card">
-                <h3>在 O2 桌面窗口中使用内置浏览器</h3>
-                <p>当前页面正运行在外部普通网页中。通过 O2 桌面端启动窗口后，此区域将挂载原生 Chromium 视图（持久化登录态、全权限开放、支持你与 O2 同屏同步操作）。</p>
+                <h3>在桌面窗口中使用内置浏览器</h3>
+                <p>通过桌面端启动窗口后，此区域将挂载原生浏览器视图，保持登录状态并支持同屏协同操作。</p>
               </div>
             </div>
           </div>
@@ -819,61 +842,78 @@ const App = {
             <span class="ft-brand-pill">
               <span>O2</span>
             </span>
-            <span class="ft-mono hint" style="flex:none">{{ terminalClock }}</span>
+            <symbol-picker
+              mode="add"
+              :watchlist="marketOverview.watchlist"
+              compact
+              width="148px"
+              placeholder="搜股票/加自选…"
+              @pick="onDashboardQuickPickSymbol"
+              @toggle-watchlist="toggleWatchlistSymbol"
+            />
             <span class="ft-sep"></span>
-            <div class="ws-tab-strip">
+            <div class="ws-tab-strip" role="tablist" aria-label="看板工作区">
               <div v-for="ws in (dashboardLayout.workspaces || [])" :key="ws.id"
+                   role="tab" tabindex="0" :aria-selected="dashboardLayout.activeWorkspace === ws.id"
                    :class="['ws-tab', dashboardLayout.activeWorkspace === ws.id ? 'on' : '']"
-                   :title="ws.name + '（双击重命名）'"
-                   @click="switchDashboardWorkspace(ws.id)">
+                   title="双击重命名"
+                   @click="switchDashboardWorkspace(ws.id)"
+                   @keydown.enter.prevent="switchDashboardWorkspace(ws.id)">
                 <input v-if="editingWsKey === 'dash:' + ws.id"
                        v-model="editingWsName"
                        class="ws-tab-input"
+                       aria-label="重命名工作区"
                        @click.stop
                        @keydown.enter.prevent="commitWsRename('dash', ws)"
                        @keydown.esc.prevent="cancelWsRename()"
                        @blur="commitWsRename('dash', ws)" />
                 <span v-else class="ws-tab-lbl" @dblclick.stop="startWsRename('dash', ws)">{{ ws.name }}</span>
                 <button v-if="(dashboardLayout.workspaces || []).length > 1 && editingWsKey !== 'dash:' + ws.id"
-                        type="button" class="ws-tab-del" title="删除此工作区"
+                        type="button" class="ws-tab-del" title="删除工作区" aria-label="删除工作区"
                         @click.stop="deleteDashboardWorkspaceById(ws.id)">×</button>
               </div>
-              <button type="button" class="ft-icon-btn" style="width:24px;height:24px" title="新建工作区"
+              <button type="button" class="ft-icon-btn" style="width:24px;height:24px" title="新建工作区" aria-label="新建工作区"
                       @click="createDashboardWorkspace()" v-html="ICO.plus"></button>
             </div>
             <span class="ft-sep"></span>
             <div class="ft-tools-group">
+              <button type="button" class="ft-badge-mini primary" title="打开模块库 / 自定义模块" aria-label="打开模块库"
+                      @click="openWidgetGallery('dashboard')">
+                <span v-html="ICO.plus" style="display:inline-flex"></span>
+                <span>模块库</span>
+              </button>
               <button type="button"
                       :class="['ft-badge-mini', !dashboardLayout.locked ? 'warn' : '']"
-                      :title="dashboardLayout.locked ? '布局已锁定（点击解锁自由拖拽与缩放）' : '布局已解锁（可拖标题栏移动、拖边缘/角缩放）'"
+                      :aria-pressed="!dashboardLayout.locked"
+                      :title="dashboardLayout.locked ? '解锁编辑布局' : '完成并锁定布局'"
                       @click="toggleDashboardLock()">
                 <span v-html="dashboardLayout.locked ? ICO.lock : ICO.unlock" style="display:inline-flex"></span>
-                <span>{{ dashboardLayout.locked ? '已锁定' : '自由调整' }}</span>
+                <span>{{ dashboardLayout.locked ? '编辑' : '完成' }}</span>
               </button>
               <button type="button" :class="['ft-icon-btn', dashCompact ? 'on' : '']"
-                      :title="dashCompact ? '已开启紧凑间距（点击还原）' : '切换紧凑间距'"
+                      :aria-pressed="dashCompact" title="紧凑间距" aria-label="切换紧凑间距"
                       @click="dashCompact = !dashCompact" v-html="ICO.compact"></button>
               <button type="button" :class="['ft-icon-btn', dashPulseOpen ? 'on' : '']"
-                      :title="dashPulseOpen ? '隐藏右侧态势栏' : '显示右侧态势栏'"
+                      :aria-pressed="dashPulseOpen" title="态势侧栏" aria-label="切换态势侧栏"
                       @click="dashPulseOpen = !dashPulseOpen" v-html="ICO.panelRight"></button>
               <span class="ft-sep"></span>
               <button type="button" :class="['ft-icon-btn', (newsFetching || marketLoading) ? 'on' : '']"
-                      title="刷新行情与情报" @click="refreshDashboardAll()" v-html="ICO.reload"></button>
-              <button type="button" class="ft-icon-btn" title="工作区与布局管理"
+                      title="刷新数据" aria-label="刷新数据" @click="refreshDashboardAll()" v-html="ICO.reload"></button>
+              <button type="button" class="ft-icon-btn" title="布局管理" aria-label="布局管理"
                       @click="dashCustomizeOpen = true" v-html="ICO.layers"></button>
               <button type="button" class="ft-icon-btn"
-                      :title="cfg.ui_theme === 'dark' ? '浅色主题' : '深色终端'"
+                      :title="cfg.ui_theme === 'dark' ? '浅色外观' : '深色外观'" aria-label="切换外观"
                       @click="toggleTheme" v-html="cfg.ui_theme === 'dark' ? ICO.sun : ICO.moon"></button>
             </div>
           </div>
 
-          <!-- Row 2: MKT / WIRE 实时滚动 Ticker -->
+          <!-- Row 2: 行情 / 快讯 实时滚动带 -->
           <div class="ft-ticker">
             <div class="news-lang-pills" style="padding:1px 2px">
               <button type="button" :class="['news-pill-btn', dashTickerMode === 'mkt' ? 'on' : '']"
-                      style="padding:1px 7px;font-size:10px" @click="dashTickerMode = 'mkt'">MKT</button>
+                      style="padding:1px 7px;font-size:10px" @click="dashTickerMode = 'mkt'">行情</button>
               <button type="button" :class="['news-pill-btn', dashTickerMode === 'wire' ? 'on' : '']"
-                      style="padding:1px 7px;font-size:10px" @click="dashTickerMode = 'wire'">WIRE</button>
+                      style="padding:1px 7px;font-size:10px" @click="dashTickerMode = 'wire'">快讯</button>
             </div>
             <div class="dash-ticker-track">
               <template v-if="dashTickerMode === 'mkt'">
@@ -895,10 +935,12 @@ const App = {
                 </span>
               </template>
             </div>
-            <span class="ft-mono" style="color:var(--ok);font-weight:600">API {{ readyConnectorCount }}/{{ (cfg.api_connectors || []).length }}</span>
+            <span v-if="newsFetching || marketLoading || newsStatus.translating || newsStatus.embedding" class="ft-sync-pill" aria-live="polite">
+              <span class="ft-sync-dot"></span>同步中
+            </span>
           </div>
 
-          <!-- 主体：24列自由拖拽 & 无级缩放工作台 + 分栏拖拽条 + 右侧可折叠 INTEL PULSE 栏 -->
+          <!-- 主体：24列自由拖拽 & 无级缩放工作台 + 分栏拖拽条 + 右侧可折叠态势栏 -->
           <div class="ft-dash-body">
             <div class="ft-dash-main" :class="{ compact: dashCompact }">
               <free-grid
@@ -912,82 +954,151 @@ const App = {
               >
                 <template #item="{ widget: w, isMaximized, toggleMaximize, startDrag }">
                   <div class="ft-panel-head"
-                       :title="dashboardLayout.locked ? '双击全屏聚焦' : '按住拖动位置 · 双击全屏聚焦'"
+                       :title="dashboardLayout.locked ? '双击放大' : '拖动调整位置，双击放大'"
                        @pointerdown="startDrag($event)"
                        @dblclick="toggleMaximize()">
                     <div class="ft-panel-title">
                       <span class="ft-badge-sq">{{ (widgetMeta(w.type) && widgetMeta(w.type).badge) || 'W' }}</span>
                       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ w.title }}</span>
                     </div>
-                    <div style="display:flex;align-items:center;gap:3px;flex:none">
+                    <div style="display:flex;align-items:center;gap:3px;flex:none" @dblclick.stop>
                       <template v-if="w.type === 'watchlist_slot'">
-                        <div style="display:inline-flex;gap:2px;margin-right:4px">
-                          <button v-for="iv in ['1d','1w','1M']" :key="'wiv-' + iv" type="button"
-                                  :class="['ft-btn', dashWlInterval === iv ? 'on' : '']"
+                        <div class="wl-head-extra" style="display:inline-flex;gap:2px;margin-right:2px">
+                          <button v-for="iv in ['1d','1w','1M']" :key="'wiv-' + w.id + '-' + iv" type="button"
+                                  :class="['ft-btn', getDashWlInterval(w) === iv ? 'on' : '']"
                                   style="height:18px;padding:0 5px;font-size:10px"
-                                  @click="dashWlInterval = iv; loadDashKline()">{{ iv.toUpperCase() }}</button>
+                                  @click.stop="setDashWlInterval(w, iv)">{{ iv.toUpperCase() }}</button>
                         </div>
-                        <button type="button" class="ft-ico-btn" title="AI 分析当前标的" @click="askAiAboutSymbol(dashKlineData || dashWlSelected)" v-html="ICO.robot"></button>
-                        <button type="button" class="ft-ico-btn" title="进入行情终端" @click="tab = 'markets'" v-html="ICO.chart"></button>
-                        <button type="button" class="ft-ico-btn" title="刷新" @click="loadMarketOverview(true); loadDashKline(true)" v-html="ICO.reload"></button>
+                        <button type="button" class="ft-ico-btn" title="AI 研判" aria-label="AI 研判" @click.stop="askAiAboutSymbol(getDashKlineData(w) || getDashWlSelected(w))" v-html="ICO.robot"></button>
+                        <button type="button" class="ft-ico-btn wl-head-extra" title="打开行情" aria-label="打开行情" @click.stop="tab = 'markets'" v-html="ICO.chart"></button>
+                        <button type="button"
+                                :class="['ft-ico-btn', panelRefreshing['wl_' + w.id] ? 'is-spinning' : (panelJustRefreshed['wl_' + w.id] ? 'is-done' : '')]"
+                                :disabled="!!panelRefreshing['wl_' + w.id]"
+                                :title="panelRefreshing['wl_' + w.id] ? '正在刷新…' : ('刷新自选与K线' + (panelRefreshedAt['wl_' + w.id] ? '（上次 ' + panelRefreshedAt['wl_' + w.id] + '）' : ''))"
+                                aria-label="刷新"
+                                @click.stop="refreshPanel('wl_' + w.id, () => Promise.all([loadMarketOverview(true), loadDashKlineFor(w, true)]), { successText: '自选与 K 线已刷新' })"
+                                v-html="panelJustRefreshed['wl_' + w.id] ? ICO.check : ICO.reload"></button>
                       </template>
                       <template v-else-if="w.type === 'sector_heatmap'">
-                        <button type="button" class="ft-ico-btn" title="进入行情热力图工作区" @click="switchMarketWorkspace('mkt_heatmap'); tab = 'markets'" v-html="ICO.heatmap"></button>
-                        <button type="button" class="ft-ico-btn" title="刷新板块" @click="loadMarketSectors(true)" v-html="ICO.reload"></button>
+                        <button type="button" class="ft-ico-btn" title="热力图工作区" aria-label="热力图工作区" @click.stop="switchMarketWorkspace('mkt_heatmap'); tab = 'markets'" v-html="ICO.heatmap"></button>
+                        <button type="button"
+                                :class="['ft-ico-btn', panelRefreshing.sector_heatmap ? 'is-spinning' : (panelJustRefreshed.sector_heatmap ? 'is-done' : '')]"
+                                :disabled="!!panelRefreshing.sector_heatmap"
+                                :title="panelRefreshing.sector_heatmap ? '正在刷新…' : ('刷新板块' + (panelRefreshedAt.sector_heatmap ? '（上次 ' + panelRefreshedAt.sector_heatmap + '）' : ''))"
+                                aria-label="刷新板块"
+                                @click.stop="refreshPanel('sector_heatmap', () => loadMarketSectors(true), { successText: '板块热力图已刷新' })"
+                                v-html="panelJustRefreshed.sector_heatmap ? ICO.check : ICO.reload"></button>
                       </template>
                       <template v-else-if="w.type === 'macro_curve'">
-                        <button type="button" class="ft-ico-btn" title="AI 宏观研判" @click="askAiMacro()" v-html="ICO.robot"></button>
-                        <button type="button" class="ft-ico-btn" title="刷新宏观" @click="loadMacroData(true)" v-html="ICO.reload"></button>
+                        <button type="button" class="ft-ico-btn" title="AI 研判" aria-label="AI 宏观研判" @click.stop="askAiMacro()" v-html="ICO.robot"></button>
+                        <button type="button"
+                                :class="['ft-ico-btn', panelRefreshing.macro_curve ? 'is-spinning' : (panelJustRefreshed.macro_curve ? 'is-done' : '')]"
+                                :disabled="!!panelRefreshing.macro_curve"
+                                :title="panelRefreshing.macro_curve ? '正在刷新…' : ('刷新宏观' + (panelRefreshedAt.macro_curve ? '（上次 ' + panelRefreshedAt.macro_curve + '）' : ''))"
+                                aria-label="刷新宏观"
+                                @click.stop="refreshPanel('macro_curve', () => loadMacroData(true), { successText: '宏观利率与汇率已刷新' })"
+                                v-html="panelJustRefreshed.macro_curve ? ICO.check : ICO.reload"></button>
                       </template>
                       <template v-else-if="w.type === 'geo_odds'">
-                        <button type="button" class="ft-ico-btn" title="AI 地缘研判" @click="askAiGeo()" v-html="ICO.robot"></button>
-                        <button type="button" class="ft-ico-btn" title="刷新地缘" @click="loadGeoData(true)" v-html="ICO.reload"></button>
+                        <button type="button" class="ft-ico-btn" title="AI 研判" aria-label="AI 地缘研判" @click.stop="askAiGeo()" v-html="ICO.robot"></button>
+                        <button type="button"
+                                :class="['ft-ico-btn', panelRefreshing.geo_odds ? 'is-spinning' : (panelJustRefreshed.geo_odds ? 'is-done' : '')]"
+                                :disabled="!!panelRefreshing.geo_odds"
+                                :title="panelRefreshing.geo_odds ? '正在刷新…' : ('刷新地缘' + (panelRefreshedAt.geo_odds ? '（上次 ' + panelRefreshedAt.geo_odds + '）' : ''))"
+                                aria-label="刷新地缘"
+                                @click.stop="refreshPanel('geo_odds', () => loadGeoData(true), { successText: '地缘预期概率已刷新' })"
+                                v-html="panelJustRefreshed.geo_odds ? ICO.check : ICO.reload"></button>
                       </template>
-                      <button v-else-if="w.type === 'desk_note'" type="button" class="ft-ico-btn" title="重生成 AI 简报" @click="loadNewsBrief(true)" v-html="ICO.reload"></button>
-                      <button v-else-if="w.type === 'entity_pulse'" type="button" class="ft-ico-btn" title="刷新实体" @click="loadNewsEntities(); loadEntityGraph()" v-html="ICO.reload"></button>
-                      <button v-else-if="w.type === 'live_wire'" type="button" class="ft-ico-btn" title="新闻流" @click="tab = 'news'" v-html="ICO.external"></button>
-                      <button v-else-if="w.type === 'connector_hub'" type="button" class="ft-ico-btn" title="连接器" @click="jumpToConnectorSettings('')" v-html="ICO.settings"></button>
-                      <button type="button" class="ft-ico-btn" :title="isMaximized ? '还原 (Esc)' : '全屏聚焦'"
+                      <template v-else-if="w.type === 'desk_note'">
+                        <button type="button" class="ft-ico-btn" title="AI 深度追问简报" aria-label="AI 深度追问"
+                                @click.stop="onAskAiFromWidget('请基于最新 24 小时全球情报简报，提炼今日最核心的 3 条交易主线与潜在黑天鹅风控点')" v-html="ICO.robot"></button>
+                        <button type="button"
+                                :class="['ft-ico-btn', newsBriefLoading ? 'is-spinning' : '']"
+                                :disabled="newsBriefLoading"
+                                title="重新生成" aria-label="重新生成简报"
+                                @click.stop="loadNewsBrief(true)" v-html="ICO.reload"></button>
+                      </template>
+                      <template v-else-if="w.type === 'entity_pulse'">
+                        <span v-if="panelRefreshing.entity_pulse" class="ft-panel-status is-spinning">刷新中…</span>
+                        <span v-else-if="panelJustRefreshed.entity_pulse" class="ft-panel-status is-done">已更新</span>
+                        <span v-else-if="panelRefreshedAt.entity_pulse" class="ft-panel-status ft-mono"
+                              :title="'上次刷新时间 ' + panelRefreshedAt.entity_pulse">{{ panelRefreshedAt.entity_pulse }}</span>
+                        <button type="button"
+                                :class="['ft-ico-btn', panelRefreshing.entity_pulse ? 'is-spinning' : (panelJustRefreshed.entity_pulse ? 'is-done' : '')]"
+                                :disabled="!!panelRefreshing.entity_pulse"
+                                :title="panelRefreshing.entity_pulse ? '正在刷新实体网络…' : ('刷新实体网络' + (panelRefreshedAt.entity_pulse ? '（上次 ' + panelRefreshedAt.entity_pulse + '）' : ''))"
+                                aria-label="刷新实体"
+                                @click.stop="refreshEntityPulse()"
+                                v-html="panelJustRefreshed.entity_pulse ? ICO.check : ICO.reload"></button>
+                      </template>
+                      <button v-else-if="w.type === 'live_wire'" type="button" class="ft-ico-btn" title="打开新闻流" aria-label="打开新闻流" @click.stop="tab = 'news'" v-html="ICO.external"></button>
+                      <button v-else-if="w.type === 'connector_hub'" type="button" class="ft-ico-btn" title="连接器设置" aria-label="连接器设置" @click.stop="jumpToConnectorSettings('')" v-html="ICO.settings"></button>
+                      <button v-if="w.type !== 'connector_hub'" type="button" class="ft-ico-btn" title="自定义模块与叠层" aria-label="自定义模块与叠层"
+                              @click.stop="openWidgetConfig('dashboard', w)" v-html="ICO.settings"></button>
+                      <button type="button" class="ft-ico-btn" :title="isMaximized ? '还原' : '放大'" :aria-label="isMaximized ? '还原' : '放大'"
                               @click.stop="toggleMaximize()" v-html="isMaximized ? ICO.minimize : ICO.maximize"></button>
+                      <button v-if="!dashboardLayout.locked" type="button" class="ft-ico-btn danger" title="移除模块" aria-label="移除模块"
+                              @click.stop="removeDashboardWidget(w.id)" v-html="ICO.close"></button>
                     </div>
                   </div>
 
-                  <!-- Watchlist + Live K-Line with News Markers -->
+                  <!-- Watchlist + Live K-Line with News Markers (支持卡内搜股/置顶/移出 & 单卡独立叠层与预警线) -->
                   <div v-if="w.type === 'watchlist_slot'" class="ft-panel-body" style="padding:6px 8px;overflow:hidden">
                     <div class="wl-split">
                       <div class="wl-list" :style="{ width: dashWatchlistWidth + 'px' }">
-                        <div v-for="item in (marketOverview.watchlist || [])" :key="'dwl-' + item.secid"
-                             :class="['wl-row', dashWlSelected && dashWlSelected.secid === item.secid ? 'on' : '']"
-                             @click="selectDashWatchItem(item)">
+                        <div class="wl-search-bar">
+                          <symbol-picker
+                            mode="add"
+                            :watchlist="marketOverview.watchlist"
+                            compact
+                            placeholder="+ 搜股票加自选…"
+                            @pick="(it) => addSymbolToWatchlistAndPick(it, w)"
+                            @toggle-watchlist="toggleWatchlistSymbol"
+                          />
+                        </div>
+                        <div v-for="item in (marketOverview.watchlist || [])" :key="'dwl-' + w.id + '-' + item.secid"
+                             :class="['wl-row', getDashWlSelected(w) && getDashWlSelected(w).secid === item.secid ? 'on' : '']"
+                             @click="selectDashWatchItemFor(w, item)">
                           <div style="min-width:0;overflow:hidden">
                             <div style="font-weight:600;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.name }}</div>
                             <div class="ft-mono hint" style="font-size:10px">{{ item.symbol }}</div>
                           </div>
-                          <span class="ft-mono" style="font-weight:600">{{ fmtPrice(item.price) }}</span>
-                          <span class="ft-mono" :style="{ fontWeight: 600, color: (item.pct || 0) > 0 ? 'var(--up)' : ((item.pct || 0) < 0 ? 'var(--down)' : 'var(--muted-foreground)') }">
+                          <span class="ft-mono" style="font-weight:600;white-space:nowrap">{{ fmtPrice(item.price) }}</span>
+                          <span class="ft-mono" style="white-space:nowrap" :style="{ fontWeight: 600, color: (item.pct || 0) > 0 ? 'var(--up)' : ((item.pct || 0) < 0 ? 'var(--down)' : 'var(--muted-foreground)') }">
                             {{ fmtPct(item.pct) }}
+                          </span>
+                          <span class="wl-row-acts">
+                            <button type="button" class="wl-pin-btn" title="置顶" aria-label="置顶"
+                                    @click.stop="pinWatchlistSymbol(item)">↑</button>
+                            <button type="button" class="wl-del-btn" title="移出自选" aria-label="移出自选"
+                                    @click.stop="toggleWatchlistSymbol(item)">×</button>
                           </span>
                         </div>
                       </div>
-                      <split-resizer direction="v" v-model="dashWatchlistWidth" :min="145" :max="420" @commit="saveDashboardLayoutDebounced" />
+                      <split-resizer direction="v" v-model="dashWatchlistWidth" :min="145" :max="380" @commit="saveDashboardLayoutDebounced" />
                       <div class="wl-chart-col">
                         <div class="wl-chart-head">
-                          <b>{{ (dashKlineData && dashKlineData.name) || (dashWlSelected && dashWlSelected.name) || '-' }}</b>
-                          <span class="ft-mono hint">{{ (dashKlineData && dashKlineData.secid) || '' }}</span>
-                          <span v-if="dashKlineData && dashKlineData.price != null" class="ft-mono" style="font-weight:700">
-                            {{ fmtPrice(dashKlineData.price) }}
-                            <span :style="{ color: (dashKlineData.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">{{ fmtPct(dashKlineData.pct) }}</span>
+                          <b style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ (getDashKlineData(w) && getDashKlineData(w).name) || (getDashWlSelected(w) && getDashWlSelected(w).name) || '-' }}</b>
+                          <span class="ft-mono hint">{{ (getDashWlSelected(w) && getDashWlSelected(w).symbol) || '' }}</span>
+                          <span v-if="getDashKlineData(w) && getDashKlineData(w).price != null" class="ft-mono" style="font-weight:700">
+                            {{ fmtPrice(getDashKlineData(w).price) }}
+                            <span :style="{ color: (getDashKlineData(w).pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">{{ fmtPct(getDashKlineData(w).pct) }}</span>
                           </span>
                           <span class="spacer"></span>
                           <div style="display:inline-flex;align-items:center;gap:3px">
-                            <button type="button" :class="['ft-chip', chartOpts.ma ? 'on' : '']" title="显示/隐藏均线 MA5/MA20" @click="chartOpts.ma = !chartOpts.ma">MA</button>
-                            <button type="button" :class="['ft-chip', chartOpts.vol ? 'on' : '']" title="显示/隐藏成交量" @click="chartOpts.vol = !chartOpts.vol">VOL</button>
-                            <button type="button" :class="['ft-chip', chartOpts.markers ? 'on' : '']" title="显示/隐藏新闻事件打点" @click="chartOpts.markers = !chartOpts.markers">NEWS</button>
+                            <button type="button" :class="['ft-chip', (w.config && w.config.showMa !== false) ? 'on' : '']" title="均线" @click="onUpdateWidgetConfig('dashboard', w.id, { showMa: w.config && w.config.showMa === false })">均线</button>
+                            <button type="button" :class="['ft-chip', (w.config && w.config.showBoll) ? 'on' : '']" title="布林带" @click="onUpdateWidgetConfig('dashboard', w.id, { showBoll: !(w.config && w.config.showBoll) })">BOLL</button>
+                            <button type="button" :class="['ft-chip', (w.config && w.config.showVol !== false) ? 'on' : '']" title="成交量" @click="onUpdateWidgetConfig('dashboard', w.id, { showVol: w.config && w.config.showVol === false })">量能</button>
+                            <button type="button" :class="['ft-chip', (w.config && w.config.showMarkers !== false) ? 'on' : '']" title="快讯事件打点" @click="onUpdateWidgetConfig('dashboard', w.id, { showMarkers: w.config && w.config.showMarkers === false })">事件</button>
                           </div>
                         </div>
                         <div style="flex:1;min-height:0;position:relative">
-                          <kline-chart :data="dashKlineData" :theme="cfg.ui_theme"
-                                       :show-ma="chartOpts.ma" :show-vol="chartOpts.vol" :show-markers="chartOpts.markers"
+                          <kline-chart :data="getDashKlineData(w)" :theme="cfg.ui_theme"
+                                       :show-ma="!(w.config && w.config.showMa === false)"
+                                       :show-boll="!!(w.config && w.config.showBoll)"
+                                       :show-vol="!(w.config && w.config.showVol === false)"
+                                       :show-markers="!(w.config && w.config.showMarkers === false)"
+                                       :redlines="(w.config && w.config.redlines) || []"
                                        @pick-marker="onPickKlineNewsMarker" />
                         </div>
                       </div>
@@ -995,7 +1106,14 @@ const App = {
                   </div>
 
                   <!-- Sector Heatmap -->
-                  <div v-else-if="w.type === 'sector_heatmap'" class="ft-panel-body" style="padding:4px 6px;overflow:hidden">
+                  <div v-else-if="w.type === 'sector_heatmap'" class="ft-panel-body" style="padding:4px 6px;gap:4px;overflow:hidden">
+                    <div v-if="marketSectors.length" style="display:flex;align-items:center;gap:8px;font-size:10.5px;flex:none;padding:0 2px">
+                      <span class="ft-mono" style="color:var(--up);font-weight:700">涨 {{ marketSectors.filter(s => (s.pct || 0) > 0).length }}</span>
+                      <span class="ft-mono" style="color:var(--down);font-weight:700">跌 {{ marketSectors.filter(s => (s.pct || 0) < 0).length }}</span>
+                      <span class="hint ft-mono" style="margin-left:auto">
+                        均幅 {{ ((marketSectors.reduce((a, b) => a + (Number(b.pct) || 0), 0) / marketSectors.length)).toFixed(2) }}%
+                      </span>
+                    </div>
                     <div v-if="marketSectors.length" style="flex:1;min-height:0;display:flex;position:relative">
                       <sector-treemap :items="marketSectors" :theme="cfg.ui_theme" height="100%" @pick="onPickSector" />
                     </div>
@@ -1003,97 +1121,183 @@ const App = {
                   </div>
 
                   <!-- Macro Yields & FX Matrix -->
-                  <div v-else-if="w.type === 'macro_curve'" class="ft-panel-body" style="padding:4px 8px;overflow:hidden">
+                  <div v-else-if="w.type === 'macro_curve'" class="ft-panel-body" style="padding:4px 8px;overflow-y:auto">
+                    <div v-if="macroSpreadSummary" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex:none;font-size:10.5px">
+                      <span class="ft-mono">
+                        <span class="hint">10Y-2Y: </span>
+                        <b :style="{ color: macroSpreadSummary.s10_2 < 0 ? 'var(--down)' : 'var(--up)' }">{{ macroSpreadSummary.s10_2 >= 0 ? '+' : '' }}{{ macroSpreadSummary.s10_2 }}bp</b>
+                      </span>
+                      <span :class="['div-tag', macroSpreadSummary.s10_2 < 0 ? 'high' : (macroSpreadSummary.s10_2 < 25 ? 'warn' : 'ok')]">
+                        {{ macroSpreadSummary.s10_2 < 0 ? '曲线倒挂' : (macroSpreadSummary.s10_2 < 25 ? '平坦' : '正常陡峭') }}
+                      </span>
+                    </div>
                     <div v-if="macroData.treasury && macroData.treasury.rates && macroData.treasury.rates.length"
-                         style="flex:1;min-height:96px;display:flex;position:relative">
+                         style="flex:1 1 110px;min-height:96px;display:flex;position:relative">
                       <yield-chart :rates="macroData.treasury.rates" :theme="cfg.ui_theme" height="100%" />
                     </div>
-                    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;flex:none">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:4px;flex:none">
                       <div v-for="fx in macroFxGrid" :key="fx.pair"
-                           style="padding:4px 6px;border:1px solid var(--border);border-radius:3px;background:var(--background)">
-                        <div class="ft-mono hint" style="font-size:10px">{{ fx.pair }}</div>
-                        <div class="ft-mono" style="font-size:12.5px;font-weight:700;color:var(--foreground)">{{ fx.val }}</div>
+                           style="padding:4px 6px;border:1px solid var(--border);border-radius:3px;background:var(--background);min-width:0">
+                        <div class="ft-mono hint" style="font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="fx.pair">{{ fx.pair }}</div>
+                        <div class="ft-mono" style="font-size:12px;font-weight:700;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ fx.val }}</div>
                       </div>
                     </div>
                   </div>
 
                   <!-- Geopolitics Polymarket + PortWatch -->
                   <div v-else-if="w.type === 'geo_odds'" class="ft-panel-body" style="padding:4px 8px;gap:5px">
-                    <div v-for="ev in (geoData.events || []).slice(0, 12)" :key="ev.id"
-                         style="display:flex;flex-direction:column;gap:3px;padding:4px 0;border-bottom:1px solid var(--border);cursor:pointer"
-                         @click="openNewsInBrowser(ev.url)">
-                      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px">
-                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)">{{ ev.title }}</span>
-                        <span class="ft-mono" style="font-weight:700;color:var(--primary);flex:none">{{ ev.yes_pct != null ? (ev.yes_pct + '%') : '-' }}</span>
-                      </div>
-                      <div style="display:flex;align-items:center;gap:6px">
-                        <div style="flex:1;height:4px;background:var(--muted);border-radius:2px;overflow:hidden">
-                          <div :style="{ width: Math.min(100, ev.yes_pct || 0) + '%', height: '100%', background: 'var(--primary)' }"></div>
+                    <div style="display:flex;align-items:center;gap:4px;flex:none;padding-bottom:3px;border-bottom:1px solid var(--border)">
+                      <button v-for="tg in [{id:'all',l:'全'},{id:'geopolitics',l:'地缘'},{id:'economy',l:'宏观'}]" :key="tg.id"
+                              type="button" :class="['ft-chip', ((w.config && w.config.tag) || 'all') === tg.id ? 'on' : '']"
+                              @click="onUpdateWidgetConfig('dashboard', w.id, { tag: tg.id })">{{ tg.l }}</button>
+                      <span class="hint ft-mono" style="margin-left:auto;font-size:10px">Polymarket</span>
+                    </div>
+                    <div style="flex:1;min-height:0;overflow-y:auto">
+                      <div v-for="ev in (geoData.events || []).filter(e => !w.config || !w.config.tag || w.config.tag === 'all' || e.tag === w.config.tag).slice(0, (w.config && Number(w.config.limit)) || 12)" :key="ev.id"
+                           style="display:flex;flex-direction:column;gap:3px;padding:4px 0;border-bottom:1px solid var(--border);cursor:pointer"
+                           @click="openNewsInBrowser(ev.url)">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px">
+                          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)" :title="ev.title">{{ ev.title }}</span>
+                          <span class="ft-mono" style="font-weight:700;flex:none"
+                                :style="{ color: (ev.yes_pct || 0) >= 70 ? 'var(--down)' : ((ev.yes_pct || 0) >= 40 ? 'var(--warn)' : 'var(--primary)') }">
+                            {{ ev.yes_pct != null ? (ev.yes_pct + '%') : '-' }}
+                          </span>
                         </div>
-                        <span class="ft-mono hint" style="font-size:10px">\${{ fmtCompact(ev.volume24h) }}</span>
+                        <div style="display:flex;align-items:center;gap:6px">
+                          <div style="flex:1;height:4px;background:var(--muted);border-radius:2px;overflow:hidden">
+                            <div :style="{ width: Math.min(100, ev.yes_pct || 0) + '%', height: '100%', background: (ev.yes_pct || 0) >= 70 ? '#ef4444' : ((ev.yes_pct || 0) >= 40 ? '#f59e0b' : 'var(--primary)') }"></div>
+                          </div>
+                          <span class="ft-mono hint" style="font-size:10px">\${{ fmtCompact(ev.volume24h) }}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   <!-- Panel A: 核心数据源与市场连接器紧凑表 -->
-                  <div v-else-if="w.type === 'connector_hub'" class="ft-panel-body" style="padding:2px 6px">
-                    <table class="ft-table">
-                      <thead>
-                        <tr><th>连接器</th><th>分类</th><th>状态</th></tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="c in (cfg.api_connectors || []).slice(0, 18)" :key="'dc-' + c.id"
-                            @click="jumpToConnectorSettings(c.id)">
-                          <td><b>{{ c.name }}</b></td>
-                          <td style="color:var(--muted-foreground)">{{ c.category || 'other' }}</td>
-                          <td class="ft-mono">
-                            <span v-if="c.auth_type === 'none'" style="color:var(--ok)">● 免Key</span>
-                            <span v-else-if="c.api_key_set || c.api_secret_set" style="color:var(--ok)">● 已配</span>
-                            <span v-else style="color:var(--warn)">○ 待配</span>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <!-- Panel B: 实体热度与 SVG 共现网络 -->
-                  <div v-else-if="w.type === 'entity_pulse'" class="ft-panel-body">
-                    <div v-if="!entityGraphLayout.nodes.length" class="hint" style="padding:18px 8px;text-align:center">暂无实体</div>
-                    <template v-else>
-                      <svg viewBox="0 0 320 148" preserveAspectRatio="xMidYMid meet"
-                           style="width:100%;flex:1;min-height:110px;background:var(--background);border:1px solid var(--border);border-radius:3px">
-                        <line v-for="(ed, ei) in entityGraphLayout.edges" :key="'eg-' + ei"
-                              :x1="ed.x1" :y1="ed.y1" :x2="ed.x2" :y2="ed.y2"
-                              stroke="var(--border)" :stroke-width="Math.min(3, 0.8 + ed.weight * 0.5)" stroke-opacity="0.85" />
-                        <g v-for="nd in entityGraphLayout.nodes" :key="'en-' + nd.id"
-                           style="cursor:pointer" @click="openEntityDossier(nd.canonical_name)">
-                          <circle :cx="nd.x" :cy="nd.y" :r="nd.r" :fill="nd.color" fill-opacity="0.22" :stroke="nd.color" stroke-width="1.5" />
-                          <text :x="nd.x" :y="nd.y + nd.r + 10" text-anchor="middle" font-size="9" fill="var(--foreground)">
-                            {{ nd.canonical_name.slice(0, 7) }}
-                          </text>
-                        </g>
-                      </svg>
-                      <table class="ft-table" style="flex:none">
-                        <thead><tr><th>实体</th><th>类</th><th>提及</th><th>情绪</th></tr></thead>
+                  <div v-else-if="w.type === 'connector_hub'" class="ft-panel-body" style="padding:3px 6px;gap:4px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;font-size:10.5px;padding:2px 2px 4px;border-bottom:1px solid var(--border);flex:none">
+                      <span class="hint">连接器就绪</span>
+                      <span class="ft-mono" style="font-weight:700;color:var(--ok)">{{ readyConnectorCount }} / {{ (cfg.api_connectors || []).length }}</span>
+                    </div>
+                    <div style="flex:1;min-height:0;overflow-y:auto">
+                      <table class="ft-table fixed">
+                        <thead>
+                          <tr><th style="width:46%">连接器</th><th style="width:28%">分类</th><th style="width:26%">状态</th></tr>
+                        </thead>
                         <tbody>
-                          <tr v-for="ent in newsEntities.slice(0, 6)" :key="'et-' + ent.id"
-                              @click="openEntityDossier(ent.canonical_name)">
-                            <td><b>{{ ent.canonical_name }}</b></td>
-                            <td class="ft-mono" style="color:var(--muted-foreground)">{{ ent.entity_type }}</td>
-                            <td class="ft-mono">{{ ent.mentions }}</td>
-                            <td class="ft-mono" :style="{ color: ent.net_sentiment > 0 ? 'var(--up)' : (ent.net_sentiment < 0 ? 'var(--down)' : 'var(--muted-foreground)') }">
-                              {{ ent.net_sentiment >= 0 ? '+' : '' }}{{ ent.net_sentiment }}
+                          <tr v-for="c in (cfg.api_connectors || []).slice(0, 18)" :key="'dc-' + c.id"
+                              @click="jumpToConnectorSettings(c.id)">
+                            <td :title="c.name"><b>{{ c.name }}</b></td>
+                            <td style="color:var(--muted-foreground)" :title="c.category || 'other'">{{ c.category || 'other' }}</td>
+                            <td class="ft-mono">
+                              <span v-if="c.auth_type === 'none'" style="color:var(--ok)">● 免Key</span>
+                              <span v-else-if="c.api_key_set || c.api_secret_set" style="color:var(--ok)">● 已配</span>
+                              <span v-else style="color:var(--warn)">○ 待配</span>
                             </td>
                           </tr>
                         </tbody>
                       </table>
-                    </template>
+                    </div>
+                  </div>
+
+                  <!-- Panel B: 实体热度与交互式共现网络 -->
+                  <div v-else-if="w.type === 'entity_pulse'" class="ft-panel-body ep-body">
+                    <div class="ep-toolbar">
+                      <div class="ep-pills" role="group" aria-label="统计时间窗">
+                        <button v-for="opt in [{ h: 24, l: '24h' }, { h: 168, l: '7天' }, { h: 720, l: '30天' }]"
+                                :key="'eph-' + opt.h" type="button"
+                                :class="['ep-pill', entityPulseHours === opt.h ? 'on' : '']"
+                                @click="setEntityPulseHours(opt.h)">{{ opt.l }}</button>
+                      </div>
+                      <div class="ep-legend" title="节点与资产颜色代表利多/中性/利空，底图着色代表地缘冲突烈度">
+                        <span class="ep-leg-item"><span class="ep-dot" style="background:#059669"></span>利多</span>
+                        <span class="ep-leg-item"><span class="ep-dot" style="background:#2563eb"></span>中性</span>
+                        <span class="ep-leg-item"><span class="ep-dot" style="background:#dc2626"></span>利空/冲突</span>
+                      </div>
+                    </div>
+
+                    <div v-if="!newsEntities.length && !(entityGraph.nodes && entityGraph.nodes.length)"
+                         class="hint" style="flex:1;display:flex;align-items:center;justify-content:center;padding:18px 8px;text-align:center">
+                      {{ panelRefreshing.entity_pulse ? '正在加载全球情报态势图…' : '当前时间窗暂无实体数据' }}
+                    </div>
+                    <div v-else :class="['ep-main', { 'is-max': isMaximized }]">
+                      <div class="ep-graph-wrap">
+                        <div v-if="panelRefreshing.entity_pulse" class="ep-loading-bar"></div>
+                        <entity-geo-atlas
+                          :nodes="entityGraph.nodes || []"
+                          :edges="entityGraph.edges || []"
+                          :countries="entityGraph.countries || []"
+                          :events="entityGraph.events || []"
+                          :assets="entityGraph.assets || []"
+                          :theme="cfg.ui_theme"
+                          :highlight-id="entityHoverId"
+                          :refresh-tick="entityGraphRefreshTick"
+                          :is-maximized="isMaximized"
+                          @pick="openEntityDossier"
+                          @hover="entityHoverId = $event"
+                        />
+                      </div>
+                      <div class="ep-table-wrap">
+                        <table class="ep-table">
+                          <colgroup>
+                            <col />
+                            <col style="width:44px" />
+                            <col style="width:62px" />
+                            <col style="width:58px" />
+                          </colgroup>
+                          <thead>
+                            <tr>
+                              <th>实体</th>
+                              <th style="text-align:center">类型</th>
+                              <th style="text-align:right">提及</th>
+                              <th style="text-align:right">情绪</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="ent in newsEntities.slice(0, isMaximized ? 24 : 10)" :key="'et-' + ent.id"
+                                :class="{ 'is-hl': entityHoverId === ent.id }"
+                                @mouseenter="entityHoverId = ent.id"
+                                @mouseleave="entityHoverId === ent.id && (entityHoverId = null)"
+                                @click="openEntityDossier(ent.canonical_name)">
+                              <td>
+                                <div class="ep-name-cell" :title="ent.canonical_name">
+                                  <span class="ep-dot"
+                                        :style="{ background: ent.net_sentiment > 0.08 ? '#10b981' : (ent.net_sentiment < -0.08 ? '#ef4444' : '#3b82f6') }"></span>
+                                  <span class="ep-name-txt">{{ ent.canonical_name }}</span>
+                                </div>
+                              </td>
+                              <td style="text-align:center">
+                                <span :class="['ep-type-tag', entityTypeMeta(ent.entity_type).cls]"
+                                      :title="entityTypeMeta(ent.entity_type).title">{{ entityTypeMeta(ent.entity_type).label }}</span>
+                              </td>
+                              <td class="ft-mono">
+                                <div class="ep-mentions-cell">
+                                  <span>{{ ent.mentions }}</span>
+                                  <div class="ep-heat-track">
+                                    <div class="ep-heat-fill"
+                                         :style="{
+                                           width: Math.max(8, Math.round((Number(ent.mentions) || 0) / entityMaxMentions * 100)) + '%',
+                                           background: ent.net_sentiment > 0.08 ? '#10b981' : (ent.net_sentiment < -0.08 ? '#ef4444' : '#3b82f6'),
+                                         }"></div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td class="ft-mono" style="text-align:right">
+                                <span :class="['ep-sent-pill', ent.net_sentiment > 0.08 ? 'up' : (ent.net_sentiment < -0.08 ? 'down' : 'flat')]">
+                                  {{ ent.net_sentiment > 0 ? '+' : '' }}{{ Number(ent.net_sentiment || 0).toFixed(2) }}
+                                </span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Panel C: 情报情绪与风险温度计 -->
-                  <div v-else-if="w.type === 'sentiment_gauge'" class="ft-panel-body">
-                    <div style="display:flex;align-items:center;justify-content:center;flex-direction:column;flex:1;min-height:86px">
-                      <svg viewBox="0 0 220 118" preserveAspectRatio="xMidYMid meet" style="width:min(100%, 220px);height:auto;max-height:130px">
+                  <div v-else-if="w.type === 'sentiment_gauge'" class="ft-panel-body sg-layout">
+                    <div class="sg-dial">
+                      <svg viewBox="0 0 220 118" preserveAspectRatio="xMidYMid meet" style="width:min(100%, 210px);height:auto;max-height:122px">
                         <path d="M 20 100 A 90 90 0 0 1 200 100" fill="none" stroke="var(--muted)" stroke-width="14" stroke-linecap="round" />
                         <path d="M 20 100 A 90 90 0 0 1 200 100" fill="none" :stroke="sentimentGauge.color" stroke-width="14" stroke-linecap="round"
                               :stroke-dasharray="sentimentGauge.dash" />
@@ -1101,31 +1305,36 @@ const App = {
                         <text x="110" y="96" text-anchor="middle" font-size="10.5" font-weight="700" :fill="sentimentGauge.color">{{ sentimentGauge.label }}</text>
                       </svg>
                     </div>
-                    <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;flex:none">
+                    <div class="sg-bars">
                       <div v-for="row in sentimentSignals" :key="row.label" style="display:flex;align-items:center;gap:6px">
-                        <span style="width:68px;color:var(--muted-foreground)">{{ row.label }}</span>
-                        <div style="flex:1;height:6px;background:var(--muted);border-radius:2px;overflow:hidden">
+                        <span style="width:68px;flex:none;color:var(--muted-foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.label }}</span>
+                        <div style="flex:1;min-width:0;height:6px;background:var(--muted);border-radius:2px;overflow:hidden">
                           <div :style="{ width: row.pct + '%', height: '100%', background: row.color }"></div>
                         </div>
-                        <span class="ft-mono" style="width:42px;text-align:right">{{ row.val }}</span>
+                        <span class="ft-mono" style="width:38px;flex:none;text-align:right">{{ row.val }}</span>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Panel D: 实时多语种情报流 (LIVE WIRE) -->
+                  <!-- Panel D: 实时多语种情报流（支持单卡独立语种与情绪过滤） -->
                   <div v-else-if="w.type === 'live_wire'" class="ft-panel-body" style="padding:4px 6px;gap:4px">
-                    <div style="display:flex;align-items:center;gap:6px;padding-bottom:4px;border-bottom:1px solid var(--border);flex:none">
+                    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid var(--border);flex:none">
                       <div class="news-lang-pills">
-                        <button v-for="lg in [{id:'all',l:'ALL'},{id:'zh',l:'ZH'},{id:'en',l:'EN'},{id:'ru',l:'RU'},{id:'ja',l:'JA'}]" :key="lg.id"
-                                type="button" :class="['news-pill-btn', newsFilters.lang === lg.id ? 'on' : '']"
-                                @click="newsFilters.lang = lg.id; loadNewsItems(true)">{{ lg.l }}</button>
+                        <button v-for="lg in [{id:'all',l:'全'},{id:'zh',l:'中'},{id:'en',l:'英'},{id:'ru',l:'俄'},{id:'ja',l:'日'}]" :key="lg.id"
+                                type="button" :class="['news-pill-btn', liveWireLang(w) === lg.id ? 'on' : '']"
+                                @click="setLiveWireLang('dashboard', w, lg.id)">{{ lg.l }}</button>
+                      </div>
+                      <div class="news-lang-pills">
+                        <button v-for="st in [{id:'all',l:'全情'},{id:'bullish',l:'多'},{id:'bearish',l:'空'}]" :key="st.id"
+                                type="button" :class="['news-pill-btn', ((w.config && w.config.sentiment) || 'all') === st.id ? 'on' : '']"
+                                @click="onUpdateWidgetConfig('dashboard', w.id, { sentiment: st.id })">{{ st.l }}</button>
                       </div>
                       <span class="spacer"></span>
-                      <span class="hint ft-mono">{{ newsStatus.items_total || 0 }} / {{ newsStatus.pending_l1 || 0 }}</span>
+                      <span class="hint ft-mono">{{ liveWireItemsFor(w).length }} / {{ newsStatus.items_total || 0 }} 条</span>
                     </div>
                     <div style="flex:1;min-height:0;overflow-y:auto">
-                      <o2-empty v-if="!newsItems.length" description="暂无新闻" />
-                      <div v-for="it in newsItems.slice(0, (w.config && w.config.limit) || 24)" :key="'dw-' + it.id"
+                      <o2-empty v-if="!liveWireItemsFor(w).length" description="暂无快讯" />
+                      <div v-for="it in liveWireItemsFor(w)" :key="'dw-' + w.id + '-' + it.id"
                            style="display:grid;grid-template-columns:46px 28px 16px minmax(0,1fr) auto;align-items:center;gap:6px;padding:4px 4px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer"
                            @click="tab = 'news'; selectNewsItem(it)">
                         <span class="ft-mono hint">{{ formatNewsTime(it.published_at) }}</span>
@@ -1141,34 +1350,47 @@ const App = {
                     </div>
                   </div>
 
-                  <!-- Panel E: DESK NOTE · AI 情报简报 -->
+                  <!-- Panel E: 24h 情报简报 -->
                   <div v-else-if="w.type === 'desk_note'" class="ft-panel-body">
                     <div v-if="newsBriefLoading" class="hint">生成中…</div>
-                    <div v-else-if="newsBriefText" class="answer-text" style="font-size:12px;line-height:1.55"
+                    <div v-else-if="newsBriefText" class="answer-text" style="font-size:12px;line-height:1.55;overflow-wrap:anywhere"
                          v-html="renderAnswer(newsBriefText, { sources: [] })"></div>
                     <div v-else style="display:flex;align-items:center;justify-content:center;flex:1">
                       <button type="button" class="ft-btn on" @click="loadNewsBrief(true)">
                         <span class="nav-ico" v-html="ICO.brief" style="width:12px;height:12px"></span>
-                        <span>24h 简报</span>
+                        <span>生成简报</span>
                       </button>
                     </div>
                   </div>
 
+                  <div v-else-if="isQuantWidgetType(w.type)" class="ft-panel-body" style="padding:0;gap:0;overflow:hidden">
+                    <quant-widget :type="w.type" :config="w.config || {}" :theme="cfg.ui_theme"
+                                  :sectors="marketSectors" :chokepoints="geoData.chokepoints"
+                                  :custom-widgets="customWidgets" :watchlist="marketOverview.watchlist"
+                                  :overview="marketOverview" :macro="macroData" :geo="geoData"
+                                  :movers="marketMovers" :news-status="newsStatus" :news-items="newsItems"
+                                  @pick-symbol="openMarketDetail"
+                                  @ask-ai="onAskAiFromWidget"
+                                  @update-thumb="onUpdateCustomThumb"
+                                  @update-config="(patch) => onUpdateWidgetConfig('dashboard', w.id, patch)"
+                                  @toggle-watchlist="toggleWatchlistSymbol" />
+                  </div>
+
                   <div v-else class="ft-panel-body" style="justify-content:center;align-items:center">
-                    <span class="ft-mono hint">[M4] QUANT LAB</span>
+                    <span class="hint">未识别的模块类型：{{ w.type }}</span>
                   </div>
                 </template>
               </free-grid>
             </div>
 
-            <!-- 可拖拽分栏条 + 右侧可折叠 INTEL PULSE 态势窄栏 -->
+            <!-- 可拖拽分栏条 + 右侧可折叠态势窄栏 -->
             <split-resizer v-if="dashPulseOpen" direction="v" :reverse="true"
                            v-model="dashPulseWidth" :min="196" :max="480"
                            @commit="saveDashboardLayoutDebounced" />
             <aside v-if="dashPulseOpen" class="ft-pulse-rail" :style="{ width: dashPulseWidth + 'px' }">
               <div class="ft-pulse-sec" style="background:var(--muted)">
                 <div class="ft-pulse-lbl">
-                  <span>● PULSE</span>
+                  <span>情绪指数</span>
                   <span class="ft-mono">{{ sentimentGauge.label }}</span>
                 </div>
                 <div style="display:flex;align-items:baseline;justify-content:space-between">
@@ -1183,20 +1405,16 @@ const App = {
               </div>
 
               <div class="ft-pulse-sec">
-                <div class="ft-pulse-lbl"><span>ZH / EN / RU</span><span class="ft-mono">{{ (newsStatus.by_lang && newsStatus.by_lang.zh) || 0 }}/{{ (newsStatus.by_lang && newsStatus.by_lang.en) || 0 }}/{{ (newsStatus.by_lang && newsStatus.by_lang.ru) || 0 }}</span></div>
+                <div class="ft-pulse-lbl"><span>语种分布</span><span class="ft-mono">{{ (newsStatus.by_lang && newsStatus.by_lang.zh) || 0 }}/{{ (newsStatus.by_lang && newsStatus.by_lang.en) || 0 }}/{{ (newsStatus.by_lang && newsStatus.by_lang.ru) || 0 }}</span></div>
                 <div class="ft-breadth-bar">
                   <div :style="{ width: langPct('zh') + '%', background: '#3b82f6' }"></div>
                   <div :style="{ width: langPct('en') + '%', background: '#10b981' }"></div>
                   <div :style="{ width: langPct('ru') + '%', background: '#f59e0b' }"></div>
                 </div>
-                <div style="font-size:11px;display:flex;align-items:center;justify-content:space-between;margin-top:2px">
-                  <span class="ft-mono">EMB {{ newsStatus.embedded_total || 0 }}/{{ newsStatus.items_total || 0 }}</span>
-                  <button type="button" class="ft-icon-btn" title="向量化" @click="embedNewsNow()" v-html="ICO.embed"></button>
-                </div>
               </div>
 
               <div class="ft-pulse-sec">
-                <div class="ft-pulse-lbl"><span>ENTITIES (7D)</span><span class="ft-mono">{{ newsStatus.entities_total || 0 }}</span></div>
+                <div class="ft-pulse-lbl"><span>热门实体</span><span class="ft-mono">{{ newsStatus.entities_total || 0 }}</span></div>
                 <div v-for="ent in newsEntities.slice(0, 6)" :key="'pe-' + ent.id"
                      class="ft-mkt-row" style="cursor:pointer" @click="openEntityDossier(ent.canonical_name)">
                   <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)">{{ ent.canonical_name }}</span>
@@ -1207,7 +1425,7 @@ const App = {
               </div>
 
               <div class="ft-pulse-sec">
-                <div class="ft-pulse-lbl"><span>SESSIONS</span></div>
+                <div class="ft-pulse-lbl"><span>交易时段</span></div>
                 <div v-for="mk in marketHours" :key="mk.code" class="ft-mkt-row ft-mono">
                   <span style="font-weight:600;color:var(--foreground)">{{ mk.code }}</span>
                   <span :style="{ color: mk.open ? 'var(--up)' : 'var(--muted-foreground)' }">
@@ -1219,8 +1437,8 @@ const App = {
           </div>
 
           <div class="ft-statusbar ft-mono">
-            <span>MKT: {{ (marketOverview.stats && marketOverview.stats.total) || 0 }} | FEEDS: {{ newsStatus.feeds_enabled || 0 }}/{{ newsStatus.feeds_total || 0 }} | API: {{ readyConnectorCount }}/{{ (cfg.api_connectors || []).length }}</span>
-            <span>{{ dashboardLayout.locked ? 'LOCKED' : '24-COL FREE GRID' }} | EMB: {{ newsStatus.embedded_total || 0 }}/{{ newsStatus.items_total || 0 }} | UNREAD: {{ newsStatus.unread || 0 }}</span>
+            <span>行情 {{ (marketOverview.stats && marketOverview.stats.total) || 0 }} · 订阅源 {{ newsStatus.feeds_enabled || 0 }}/{{ newsStatus.feeds_total || 0 }} · 未读 {{ newsStatus.unread || 0 }}</span>
+            <span>{{ dashboardLayout.locked ? '布局已锁定' : '自由编辑中' }}</span>
           </div>
         </div>
       </template>
@@ -1229,62 +1447,64 @@ const App = {
       <template v-if="tab === 'markets'">
         <div class="mk-shell">
           <div class="ft-cmdbar">
-            <div class="mk-search-wrap" style="flex:none">
-              <a-input v-model:value="mktSearchQuery" size="small" allow-clear style="width:168px"
-                       placeholder="代码/名称…" @input="onMktSearchInput" @focus="mktSearchOpen = !!(mktSearchQuery && mktSearchQuery.trim() && mktSearchHits.length)" />
-              <div v-if="mktSearchOpen && mktSearchHits.length" class="mk-search-pop">
-                <div v-for="hit in mktSearchHits" :key="'msh-' + hit.secid" class="mk-search-item"
-                     @click="selectMarketSymbol(hit); mktSearchOpen = false">
-                  <span class="ft-mono" style="color:var(--primary);font-weight:600">{{ hit.symbol }}</span>
-                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ hit.name }}</span>
-                  <span class="ft-mono hint" style="font-size:10px">{{ hit.market }}</span>
-                  <button type="button" class="ft-icon-btn" style="width:20px;height:20px"
-                          :title="isInWatchlist(hit.secid) ? '移出自选' : '加入自选'"
-                          @click.stop="toggleWatchlistSymbol(hit)"
-                          v-html="isInWatchlist(hit.secid) ? ICO.starFill : ICO.star"></button>
-                </div>
-              </div>
-            </div>
+            <symbol-picker
+              mode="add"
+              :watchlist="marketOverview.watchlist"
+              compact
+              width="176px"
+              placeholder="搜股票/代码/加自选…"
+              @pick="selectMarketSymbol"
+              @toggle-watchlist="toggleWatchlistSymbol"
+            />
             <span class="ft-sep"></span>
-            <div class="ws-tab-strip">
+            <div class="ws-tab-strip" role="tablist" aria-label="行情工作区">
               <div v-for="ws in (marketLayout.workspaces || [])" :key="ws.id"
+                   role="tab" tabindex="0" :aria-selected="marketLayout.activeWorkspace === ws.id"
                    :class="['ws-tab', marketLayout.activeWorkspace === ws.id ? 'on' : '']"
-                   :title="ws.name + '（双击重命名）'"
-                   @click="switchMarketWorkspace(ws.id)">
+                   title="双击重命名"
+                   @click="switchMarketWorkspace(ws.id)"
+                   @keydown.enter.prevent="switchMarketWorkspace(ws.id)">
                 <input v-if="editingWsKey === 'mkt:' + ws.id"
                        v-model="editingWsName"
                        class="ws-tab-input"
+                       aria-label="重命名工作区"
                        @click.stop
                        @keydown.enter.prevent="commitWsRename('mkt', ws)"
                        @keydown.esc.prevent="cancelWsRename()"
                        @blur="commitWsRename('mkt', ws)" />
                 <span v-else class="ws-tab-lbl" @dblclick.stop="startWsRename('mkt', ws)">{{ ws.name }}</span>
                 <button v-if="(marketLayout.workspaces || []).length > 1 && editingWsKey !== 'mkt:' + ws.id"
-                        type="button" class="ws-tab-del" title="删除此工作区"
+                        type="button" class="ws-tab-del" title="删除工作区" aria-label="删除工作区"
                         @click.stop="deleteMarketWorkspaceById(ws.id)">×</button>
               </div>
-              <button type="button" class="ft-icon-btn" style="width:24px;height:24px" title="新建行情工作区"
+              <button type="button" class="ft-icon-btn" style="width:24px;height:24px" title="新建工作区" aria-label="新建工作区"
                       @click="createMarketWorkspace()" v-html="ICO.plus"></button>
             </div>
             <span class="ft-sep"></span>
             <div class="ft-tools-group">
+              <button type="button" class="ft-badge-mini primary" title="打开模块库 / 自定义模块" aria-label="打开模块库"
+                      @click="openWidgetGallery('markets')">
+                <span v-html="ICO.plus" style="display:inline-flex"></span>
+                <span>模块库</span>
+              </button>
               <button type="button"
                       :class="['ft-badge-mini', !marketLayout.locked ? 'warn' : '']"
-                      :title="marketLayout.locked ? '布局已锁定（点击解锁自由拖拽与缩放）' : '布局已解锁（可拖标题栏移动、拖边缘/角缩放）'"
+                      :aria-pressed="!marketLayout.locked"
+                      :title="marketLayout.locked ? '解锁编辑布局' : '完成并锁定布局'"
                       @click="toggleMarketLock()">
                 <span v-html="marketLayout.locked ? ICO.lock : ICO.unlock" style="display:inline-flex"></span>
-                <span>{{ marketLayout.locked ? '已锁定' : '自由调整' }}</span>
+                <span>{{ marketLayout.locked ? '编辑' : '完成' }}</span>
               </button>
               <button type="button" :class="['ft-icon-btn', mktCompact ? 'on' : '']"
-                      :title="mktCompact ? '已开启紧凑间距（点击还原）' : '切换紧凑间距'"
+                      :aria-pressed="mktCompact" title="紧凑间距" aria-label="切换紧凑间距"
                       @click="mktCompact = !mktCompact" v-html="ICO.compact"></button>
               <button type="button" :class="['ft-icon-btn', mktDetailOpen ? 'on' : '']"
-                      :title="mktDetailOpen ? '隐藏右侧详情栏' : '显示右侧详情栏'"
+                      :aria-pressed="mktDetailOpen" title="详情侧栏" aria-label="切换详情侧栏"
                       @click="mktDetailOpen = !mktDetailOpen" v-html="ICO.panelRight"></button>
               <span class="ft-sep"></span>
-              <button type="button" class="ft-icon-btn" title="行情工作区与布局管理"
+              <button type="button" class="ft-icon-btn" title="布局管理" aria-label="布局管理"
                       @click="mktCustomizeOpen = true" v-html="ICO.layers"></button>
-              <button type="button" :class="['ft-icon-btn', marketLoading ? 'on' : '']" title="刷新行情"
+              <button type="button" :class="['ft-icon-btn', marketLoading ? 'on' : '']" title="刷新行情" aria-label="刷新行情"
                       @click="loadMarketOverview(true); loadMarketKline(mktSelectedSecid, true); loadMarketSectors(true); loadMarketMovers(true)" v-html="ICO.reload"></button>
             </div>
           </div>
@@ -1321,75 +1541,217 @@ const App = {
               >
                 <template #item="{ widget: w, isMaximized, toggleMaximize, startDrag }">
                   <div class="ft-panel-head"
-                       :title="marketLayout.locked ? '双击全屏聚焦' : '按住拖动位置 · 双击全屏聚焦'"
+                       :title="marketLayout.locked ? '双击放大' : '拖动调整位置，双击放大'"
                        @pointerdown="startDrag($event)"
                        @dblclick="toggleMaximize()">
                     <div class="ft-panel-title">
                       <span class="ft-badge-sq">{{ (mktWidgetMeta(w.type) && mktWidgetMeta(w.type).badge) || (w.title || 'M').slice(0, 1) }}</span>
                       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ w.title }}</span>
                     </div>
-                    <div style="display:flex;align-items:center;gap:3px;flex:none">
+                    <div style="display:flex;align-items:center;gap:3px;flex:none" @dblclick.stop>
                       <template v-if="w.type === 'kline_main'">
-                        <div style="display:inline-flex;gap:2px;margin-right:2px">
-                          <button v-for="iv in ['1d','1w','1M']" :key="'mkwiv-' + iv" type="button"
-                                  :class="['ft-btn', mktInterval === iv ? 'on' : '']"
+                        <div class="wl-head-extra" style="display:inline-flex;gap:2px;margin-right:2px">
+                          <button v-for="iv in ['1d','1w','1M']" :key="'mkwiv-' + w.id + '-' + iv" type="button"
+                                  :class="['ft-btn', getMktWidgetInterval(w) === iv ? 'on' : '']"
                                   style="height:18px;padding:0 5px;font-size:10px"
-                                  @click="mktInterval = iv; loadMarketKline(mktSelectedSecid, true)">{{ iv.toUpperCase() }}</button>
+                                  @click.stop="setMktWidgetInterval(w, iv)">{{ iv.toUpperCase() }}</button>
                         </div>
-                        <button type="button" class="ft-ico-btn" title="AI 研判该标的"
-                                @click="askAiAboutSymbol(mktKlineData || { secid: mktSelectedSecid, name: mktSelectedName })"
+                        <button type="button" class="ft-ico-btn" title="AI 研判" aria-label="AI 研判"
+                                @click.stop="askAiAboutSymbol(getMktKlineData(w) || { secid: (w.config && w.config.secid) || mktSelectedSecid, name: (w.config && w.config.secidName) || mktSelectedName })"
                                 v-html="ICO.robot"></button>
                       </template>
                       <template v-else-if="w.type === 'sector_heatmap'">
-                        <button type="button" class="ft-ico-btn" title="刷新板块" @click="loadMarketSectors(true)" v-html="ICO.reload"></button>
+                        <button type="button"
+                                :class="['ft-ico-btn', panelRefreshing.mkt_sector_heatmap ? 'is-spinning' : (panelJustRefreshed.mkt_sector_heatmap ? 'is-done' : '')]"
+                                :disabled="!!panelRefreshing.mkt_sector_heatmap"
+                                :title="panelRefreshing.mkt_sector_heatmap ? '正在刷新…' : ('刷新板块' + (panelRefreshedAt.mkt_sector_heatmap ? '（上次 ' + panelRefreshedAt.mkt_sector_heatmap + '）' : ''))"
+                                aria-label="刷新板块"
+                                @click.stop="refreshPanel('mkt_sector_heatmap', () => loadMarketSectors(true), { successText: '板块热力图已刷新' })"
+                                v-html="panelJustRefreshed.mkt_sector_heatmap ? ICO.check : ICO.reload"></button>
+                      </template>
+                      <template v-else-if="w.type === 'macro_curve'">
+                        <button type="button"
+                                :class="['ft-ico-btn', panelRefreshing.mkt_macro_curve ? 'is-spinning' : (panelJustRefreshed.mkt_macro_curve ? 'is-done' : '')]"
+                                :disabled="!!panelRefreshing.mkt_macro_curve"
+                                :title="panelRefreshing.mkt_macro_curve ? '正在刷新…' : ('刷新宏观' + (panelRefreshedAt.mkt_macro_curve ? '（上次 ' + panelRefreshedAt.mkt_macro_curve + '）' : ''))"
+                                aria-label="刷新宏观"
+                                @click.stop="refreshPanel('mkt_macro_curve', () => loadMacroData(true), { successText: '宏观利率与汇率已刷新' })"
+                                v-html="panelJustRefreshed.mkt_macro_curve ? ICO.check : ICO.reload"></button>
+                      </template>
+                      <template v-else-if="w.type === 'geo_odds'">
+                        <button type="button"
+                                :class="['ft-ico-btn', panelRefreshing.mkt_geo_odds ? 'is-spinning' : (panelJustRefreshed.mkt_geo_odds ? 'is-done' : '')]"
+                                :disabled="!!panelRefreshing.mkt_geo_odds"
+                                :title="panelRefreshing.mkt_geo_odds ? '正在刷新…' : ('刷新地缘' + (panelRefreshedAt.mkt_geo_odds ? '（上次 ' + panelRefreshedAt.mkt_geo_odds + '）' : ''))"
+                                aria-label="刷新地缘"
+                                @click.stop="refreshPanel('mkt_geo_odds', () => loadGeoData(true), { successText: '地缘预期概率已刷新' })"
+                                v-html="panelJustRefreshed.mkt_geo_odds ? ICO.check : ICO.reload"></button>
+                      </template>
+                      <template v-else-if="w.type === 'live_wire'">
+                        <button type="button" class="ft-ico-btn" title="打开新闻流" aria-label="打开新闻流" @click.stop="tab = 'news'" v-html="ICO.external"></button>
                       </template>
                       <template v-else-if="w.type.startsWith('movers_')">
-                        <button type="button" class="ft-ico-btn" title="刷新异动" @click="loadMarketMovers(true)" v-html="ICO.reload"></button>
+                        <button type="button"
+                                :class="['ft-ico-btn', panelRefreshing[w.type] ? 'is-spinning' : (panelJustRefreshed[w.type] ? 'is-done' : '')]"
+                                :disabled="!!panelRefreshing[w.type]"
+                                :title="panelRefreshing[w.type] ? '正在刷新…' : ('刷新异动' + (panelRefreshedAt[w.type] ? '（上次 ' + panelRefreshedAt[w.type] + '）' : ''))"
+                                aria-label="刷新异动"
+                                @click.stop="refreshPanel(w.type, () => loadMarketMovers(true), { successText: '涨跌异动已刷新' })"
+                                v-html="panelJustRefreshed[w.type] ? ICO.check : ICO.reload"></button>
                       </template>
                       <span v-else-if="w.type === 'watchlist'" class="ft-mono hint" style="font-size:10.5px;margin-right:2px">{{ (marketOverview.watchlist || []).length }}</span>
-                      <span v-else class="ft-mono hint" style="font-size:10.5px;margin-right:2px">{{ (marketPanelItems(w) || []).length }}</span>
-                      <button type="button" class="ft-ico-btn" :title="isMaximized ? '还原 (Esc)' : '全屏聚焦'"
+                      <span v-else-if="w.type.startsWith('panel_')" class="ft-mono hint" style="font-size:10.5px;margin-right:2px">{{ (marketPanelItems(w) || []).length }}</span>
+                      <button type="button" class="ft-ico-btn" title="自定义模块与叠层" aria-label="自定义模块与叠层"
+                              @click.stop="openWidgetConfig('markets', w)" v-html="ICO.settings"></button>
+                      <button type="button" class="ft-ico-btn" :title="isMaximized ? '还原' : '放大'" :aria-label="isMaximized ? '还原' : '放大'"
                               @click.stop="toggleMaximize()" v-html="isMaximized ? ICO.minimize : ICO.maximize"></button>
+                      <button v-if="!marketLayout.locked" type="button" class="ft-ico-btn danger" title="移除模块" aria-label="移除模块"
+                              @click.stop="removeMarketWidget(w.id)" v-html="ICO.close"></button>
                     </div>
                   </div>
 
-                  <!-- 内嵌 K-Line 自由模块 -->
+                  <!-- 内嵌 K-Line 自由模块（支持单卡独立搜股锁定标的、叠层与多条预警线） -->
                   <div v-if="w.type === 'kline_main'" class="ft-panel-body" style="padding:4px 8px;overflow:hidden">
                     <div class="wl-chart-head">
-                      <b>{{ (mktKlineData && mktKlineData.name) || mktSelectedName || mktSelectedSecid }}</b>
-                      <span class="ft-mono hint">{{ mktSelectedSecid }}</span>
-                      <span v-if="mktKlineData && mktKlineData.price != null" class="ft-mono" style="font-weight:700">
-                        {{ fmtPrice(mktKlineData.price) }}
-                        <span :style="{ color: (mktKlineData.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">{{ fmtPct(mktKlineData.pct) }}</span>
+                      <symbol-picker
+                        :model-value="(w.config && w.config.secid) || mktSelectedSecid"
+                        :label="(getMktKlineData(w) && getMktKlineData(w).name) || (w.config && w.config.secidName) || mktSelectedName || mktSelectedSymbol"
+                        :watchlist="marketOverview.watchlist"
+                        compact
+                        width="132px"
+                        @pick="(it) => setMktWidgetSymbol(w, it)"
+                        @toggle-watchlist="toggleWatchlistSymbol"
+                      />
+                      <button v-if="w.config && w.config.secid" type="button" class="ft-chip" title="恢复跟随当前点击标的"
+                              @click="clearMktWidgetSymbol(w)">跟随</button>
+                      <span v-if="getMktKlineData(w) && getMktKlineData(w).price != null" class="ft-mono" style="font-weight:700">
+                        {{ fmtPrice(getMktKlineData(w).price) }}
+                        <span :style="{ color: (getMktKlineData(w).pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">{{ fmtPct(getMktKlineData(w).pct) }}</span>
                       </span>
                       <span class="spacer"></span>
                       <div style="display:inline-flex;align-items:center;gap:3px">
-                        <button type="button" :class="['ft-chip', chartOpts.ma ? 'on' : '']" title="显示/隐藏均线 MA5/MA20" @click="chartOpts.ma = !chartOpts.ma">MA</button>
-                        <button type="button" :class="['ft-chip', chartOpts.vol ? 'on' : '']" title="显示/隐藏成交量" @click="chartOpts.vol = !chartOpts.vol">VOL</button>
-                        <button type="button" :class="['ft-chip', chartOpts.markers ? 'on' : '']" title="显示/隐藏新闻事件打点" @click="chartOpts.markers = !chartOpts.markers">NEWS</button>
+                        <button type="button" :class="['ft-chip', !(w.config && w.config.showMa === false) ? 'on' : '']" title="均线" @click="onUpdateWidgetConfig('markets', w.id, { showMa: w.config && w.config.showMa === false })">均线</button>
+                        <button type="button" :class="['ft-chip', !!(w.config && w.config.showBoll) ? 'on' : '']" title="布林带" @click="onUpdateWidgetConfig('markets', w.id, { showBoll: !(w.config && w.config.showBoll) })">BOLL</button>
+                        <button type="button" :class="['ft-chip', !(w.config && w.config.showVol === false) ? 'on' : '']" title="成交量" @click="onUpdateWidgetConfig('markets', w.id, { showVol: w.config && w.config.showVol === false })">量能</button>
+                        <button type="button" :class="['ft-chip', !(w.config && w.config.showMarkers === false) ? 'on' : '']" title="快讯事件打点" @click="onUpdateWidgetConfig('markets', w.id, { showMarkers: w.config && w.config.showMarkers === false })">事件</button>
                       </div>
                     </div>
                     <div style="flex:1;min-height:0;position:relative">
-                      <kline-chart :data="mktKlineData" :theme="cfg.ui_theme"
-                                   :show-ma="chartOpts.ma" :show-vol="chartOpts.vol" :show-markers="chartOpts.markers"
+                      <kline-chart :data="getMktKlineData(w)" :theme="cfg.ui_theme"
+                                   :show-ma="!(w.config && w.config.showMa === false)"
+                                   :show-boll="!!(w.config && w.config.showBoll)"
+                                   :show-vol="!(w.config && w.config.showVol === false)"
+                                   :show-markers="!(w.config && w.config.showMarkers === false)"
+                                   :redlines="(w.config && w.config.redlines) || []"
                                    @pick-marker="onPickKlineNewsMarker" />
                     </div>
                   </div>
 
                   <!-- 板块热力图自由模块 -->
-                  <div v-else-if="w.type === 'sector_heatmap'" class="ft-panel-body" style="padding:4px 6px;overflow:hidden">
+                  <div v-else-if="w.type === 'sector_heatmap'" class="ft-panel-body" style="padding:4px 6px;gap:4px;overflow:hidden">
+                    <div v-if="marketSectors.length" style="display:flex;align-items:center;gap:8px;font-size:10.5px;flex:none;padding:0 2px">
+                      <span class="ft-mono" style="color:var(--up);font-weight:700">涨 {{ marketSectors.filter(s => (s.pct || 0) > 0).length }}</span>
+                      <span class="ft-mono" style="color:var(--down);font-weight:700">跌 {{ marketSectors.filter(s => (s.pct || 0) < 0).length }}</span>
+                      <span class="hint ft-mono" style="margin-left:auto">
+                        均幅 {{ ((marketSectors.reduce((a, b) => a + (Number(b.pct) || 0), 0) / marketSectors.length)).toFixed(2) }}%
+                      </span>
+                    </div>
                     <div v-if="marketSectors.length" style="flex:1;min-height:0;display:flex;position:relative">
                       <sector-treemap :items="marketSectors" :theme="cfg.ui_theme" height="100%" @pick="onPickSector" />
                     </div>
                     <div v-else class="hint" style="padding:18px;text-align:center">加载板块中…</div>
                   </div>
 
-                  <!-- 涨跌异动自由模块 -->
+                  <!-- 跨页兼容：宏观利率与汇率 / 地缘概率 / 实时快讯 -->
+                  <div v-else-if="w.type === 'macro_curve'" class="ft-panel-body" style="padding:4px 8px;overflow-y:auto">
+                    <div v-if="macroSpreadSummary" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex:none;font-size:10.5px">
+                      <span class="ft-mono">
+                        <span class="hint">10Y-2Y: </span>
+                        <b :style="{ color: macroSpreadSummary.s10_2 < 0 ? 'var(--down)' : 'var(--up)' }">{{ macroSpreadSummary.s10_2 >= 0 ? '+' : '' }}{{ macroSpreadSummary.s10_2 }}bp</b>
+                      </span>
+                      <span :class="['div-tag', macroSpreadSummary.s10_2 < 0 ? 'high' : (macroSpreadSummary.s10_2 < 25 ? 'warn' : 'ok')]">
+                        {{ macroSpreadSummary.s10_2 < 0 ? '曲线倒挂' : (macroSpreadSummary.s10_2 < 25 ? '平坦' : '正常陡峭') }}
+                      </span>
+                    </div>
+                    <div v-if="macroData.treasury && macroData.treasury.rates && macroData.treasury.rates.length"
+                         style="flex:1 1 110px;min-height:96px;display:flex;position:relative">
+                      <yield-chart :rates="macroData.treasury.rates" :theme="cfg.ui_theme" height="100%" />
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:4px;flex:none">
+                      <div v-for="fx in macroFxGrid" :key="fx.pair"
+                           style="padding:4px 6px;border:1px solid var(--border);border-radius:3px;background:var(--background);min-width:0">
+                        <div class="ft-mono hint" style="font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ fx.pair }}</div>
+                        <div class="ft-mono" style="font-size:12px;font-weight:700;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ fx.val }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-else-if="w.type === 'geo_odds'" class="ft-panel-body" style="padding:4px 8px;gap:5px">
+                    <div style="display:flex;align-items:center;gap:4px;flex:none;padding-bottom:3px;border-bottom:1px solid var(--border)">
+                      <button v-for="tg in [{id:'all',l:'全'},{id:'geopolitics',l:'地缘'},{id:'economy',l:'宏观'}]" :key="tg.id"
+                              type="button" :class="['ft-chip', ((w.config && w.config.tag) || 'all') === tg.id ? 'on' : '']"
+                              @click="onUpdateWidgetConfig('markets', w.id, { tag: tg.id })">{{ tg.l }}</button>
+                      <span class="hint ft-mono" style="margin-left:auto;font-size:10px">Polymarket</span>
+                    </div>
+                    <div style="flex:1;min-height:0;overflow-y:auto">
+                      <div v-for="ev in (geoData.events || []).filter(e => !w.config || !w.config.tag || w.config.tag === 'all' || e.tag === w.config.tag).slice(0, (w.config && Number(w.config.limit)) || 12)" :key="ev.id"
+                           style="display:flex;flex-direction:column;gap:3px;padding:4px 0;border-bottom:1px solid var(--border);cursor:pointer"
+                           @click="openNewsInBrowser(ev.url)">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px">
+                          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)" :title="ev.title">{{ ev.title }}</span>
+                          <span class="ft-mono" style="font-weight:700;flex:none"
+                                :style="{ color: (ev.yes_pct || 0) >= 70 ? 'var(--down)' : ((ev.yes_pct || 0) >= 40 ? 'var(--warn)' : 'var(--primary)') }">
+                            {{ ev.yes_pct != null ? (ev.yes_pct + '%') : '-' }}
+                          </span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px">
+                          <div style="flex:1;height:4px;background:var(--muted);border-radius:2px;overflow:hidden">
+                            <div :style="{ width: Math.min(100, ev.yes_pct || 0) + '%', height: '100%', background: (ev.yes_pct || 0) >= 70 ? '#ef4444' : ((ev.yes_pct || 0) >= 40 ? '#f59e0b' : 'var(--primary)') }"></div>
+                          </div>
+                          <span class="ft-mono hint" style="font-size:10px">\${{ fmtCompact(ev.volume24h) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-else-if="w.type === 'live_wire'" class="ft-panel-body" style="padding:4px 6px;gap:4px">
+                    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid var(--border);flex:none">
+                      <div class="news-lang-pills">
+                        <button v-for="lg in [{id:'all',l:'全'},{id:'zh',l:'中'},{id:'en',l:'英'},{id:'ru',l:'俄'},{id:'ja',l:'日'}]" :key="lg.id"
+                                type="button" :class="['news-pill-btn', liveWireLang(w) === lg.id ? 'on' : '']"
+                                @click="setLiveWireLang('markets', w, lg.id)">{{ lg.l }}</button>
+                      </div>
+                      <div class="news-lang-pills">
+                        <button v-for="st in [{id:'all',l:'全情'},{id:'bullish',l:'多'},{id:'bearish',l:'空'}]" :key="st.id"
+                                type="button" :class="['news-pill-btn', ((w.config && w.config.sentiment) || 'all') === st.id ? 'on' : '']"
+                                @click="onUpdateWidgetConfig('markets', w.id, { sentiment: st.id })">{{ st.l }}</button>
+                      </div>
+                      <span class="spacer"></span>
+                      <span class="hint ft-mono">{{ liveWireItemsFor(w).length }} 条</span>
+                    </div>
+                    <div style="flex:1;min-height:0;overflow-y:auto">
+                      <o2-empty v-if="!liveWireItemsFor(w).length" description="暂无快讯" />
+                      <div v-for="it in liveWireItemsFor(w)" :key="'mlw-' + w.id + '-' + it.id"
+                           style="display:grid;grid-template-columns:46px 28px 16px minmax(0,1fr) auto;align-items:center;gap:6px;padding:4px 4px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer"
+                           @click="tab = 'news'; selectNewsItem(it)">
+                        <span class="ft-mono hint">{{ formatNewsTime(it.published_at) }}</span>
+                        <span :class="['news-lang-badge', it.lang]" style="text-align:center">{{ it.lang }}</span>
+                        <span :style="{ color: it.sentiment === 'bullish' ? 'var(--up)' : (it.sentiment === 'bearish' ? 'var(--down)' : 'var(--muted-foreground)') }">
+                          {{ it.sentiment === 'bullish' ? '▲' : (it.sentiment === 'bearish' ? '▼' : '•') }}
+                        </span>
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)">
+                          {{ it.title_zh || it.title_orig }}
+                        </span>
+                        <span class="hint lw-row-src" style="font-size:10.5px;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.feed_name }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 涨跌异动自由模块（使用专属响应式类，修复容器查询列数错配） -->
                   <div v-else-if="w.type === 'movers_gainers' || w.type === 'movers_losers' || w.type === 'movers_active'"
                        class="ft-panel-body" style="padding:0;gap:0">
                     <div v-for="it in marketMoverItems(w.type)" :key="w.id + '-' + it.secid"
-                         :class="['mk-row', mktSelectedSecid === it.secid ? 'on' : '']"
-                         style="grid-template-columns:10px minmax(0,1fr) 68px 60px 64px"
+                         :class="['mk-row', 'mk-row-mover', mktSelectedSecid === it.secid ? 'on' : '']"
                          @click="selectMarketSymbol(it)">
                       <span class="mk-dot" :style="{ background: (it.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }"></span>
                       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.name }} <span class="hint ft-mono">{{ it.symbol }}</span></span>
@@ -1399,43 +1761,75 @@ const App = {
                     </div>
                   </div>
 
-                  <!-- 自选列表自由模块 -->
+                  <!-- 自选列表自由模块（支持卡内直接搜股加自选 & 行内移出） -->
                   <div v-else-if="w.type === 'watchlist'" class="ft-panel-body" style="padding:0;gap:0">
-                    <div v-for="row in (marketOverview.watchlist || [])" :key="w.id + '-' + row.secid"
-                         :class="['mk-row', mktSelectedSecid === row.secid ? 'on' : '']"
-                         @click="selectMarketSymbol(row)">
-                      <span class="mk-dot" :style="{ background: (row.pct || 0) > 0 ? 'var(--up)' : ((row.pct || 0) < 0 ? 'var(--down)' : 'var(--muted-foreground)') }"></span>
-                      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500" :title="row.symbol">
-                        {{ row.name }}
-                      </span>
-                      <span class="ft-mono" style="text-align:right;font-weight:600">{{ fmtPrice(row.price) }}</span>
-                      <span class="ft-mono mk-col-chg" style="text-align:right" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
-                        {{ (row.chg || 0) >= 0 ? '+' : '' }}{{ fmtPrice(row.chg) }}
-                      </span>
-                      <span class="ft-mono" style="text-align:right;font-weight:600" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
-                        {{ fmtPct(row.pct) }}
-                      </span>
-                      <span class="mk-col-spark"><spark-line :values="row.spark" :up="(row.pct || 0) >= 0" /></span>
+                    <div style="padding:5px 6px;border-bottom:1px solid var(--border);background:var(--background);flex:none">
+                      <symbol-picker
+                        mode="add"
+                        :watchlist="marketOverview.watchlist"
+                        compact
+                        placeholder="+ 搜索股票加入自选…"
+                        @pick="(it) => addSymbolToWatchlistAndPick(it, null)"
+                        @toggle-watchlist="toggleWatchlistSymbol"
+                      />
                     </div>
+                    <div style="flex:1;min-height:0;overflow-y:auto">
+                      <div v-for="row in (marketOverview.watchlist || [])" :key="w.id + '-' + row.secid"
+                           :class="['mk-row', 'mk-row-wl', mktSelectedSecid === row.secid ? 'on' : '', (w.config && w.config.hideChg) ? 'no-chg' : '', (w.config && w.config.hideSpark) ? 'no-spark' : '']"
+                           @click="selectMarketSymbol(row)">
+                        <span class="mk-dot" :style="{ background: (row.pct || 0) > 0 ? 'var(--up)' : ((row.pct || 0) < 0 ? 'var(--down)' : 'var(--muted-foreground)') }"></span>
+                        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500" :title="row.symbol">
+                          {{ row.name }}
+                        </span>
+                        <span class="ft-mono" style="text-align:right;font-weight:600">{{ fmtPrice(row.price) }}</span>
+                        <span v-if="!(w.config && w.config.hideChg)" class="ft-mono mk-col-chg" style="text-align:right" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
+                          {{ (row.chg || 0) >= 0 ? '+' : '' }}{{ fmtPrice(row.chg) }}
+                        </span>
+                        <span class="ft-mono" style="text-align:right;font-weight:600" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
+                          {{ fmtPct(row.pct) }}
+                        </span>
+                        <span v-if="!(w.config && w.config.hideSpark)" class="mk-col-spark"><spark-line :values="row.spark" :up="(row.pct || 0) >= 0" /></span>
+                        <span class="wl-row-acts">
+                          <button type="button" class="wl-pin-btn" title="置顶" aria-label="置顶"
+                                  @click.stop="pinWatchlistSymbol(row)">↑</button>
+                          <button type="button" class="wl-del-btn" title="移出自选" aria-label="移出自选"
+                                  @click.stop="toggleWatchlistSymbol(row)">×</button>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 高级量化与自定义 ECharts 模块 -->
+                  <div v-else-if="isQuantWidgetType(w.type)" class="ft-panel-body" style="padding:0;gap:0;overflow:hidden">
+                    <quant-widget :type="w.type" :config="w.config || {}" :theme="cfg.ui_theme"
+                                  :sectors="marketSectors" :chokepoints="geoData.chokepoints"
+                                  :custom-widgets="customWidgets" :watchlist="marketOverview.watchlist"
+                                  :overview="marketOverview" :macro="macroData" :geo="geoData"
+                                  :movers="marketMovers" :news-status="newsStatus" :news-items="newsItems"
+                                  @pick-symbol="selectMarketSymbol"
+                                  @ask-ai="onAskAiFromWidget"
+                                  @update-thumb="onUpdateCustomThumb"
+                                  @update-config="(patch) => onUpdateWidgetConfig('markets', w.id, patch)"
+                                  @toggle-watchlist="toggleWatchlistSymbol" />
                   </div>
 
                   <!-- 多市场行情面板自由模块 -->
                   <div v-else class="ft-panel-body" style="padding:0;gap:0">
                     <div v-for="row in marketPanelItems(w)" :key="w.id + '-' + row.secid"
-                         :class="['mk-row', mktSelectedSecid === row.secid ? 'on' : '']"
+                         :class="['mk-row', mktSelectedSecid === row.secid ? 'on' : '', (w.config && w.config.hideChg) ? 'no-chg' : '', (w.config && w.config.hideSpark) ? 'no-spark' : '']"
                          @click="selectMarketSymbol(row)">
                       <span class="mk-dot" :style="{ background: (row.pct || 0) > 0 ? 'var(--up)' : ((row.pct || 0) < 0 ? 'var(--down)' : 'var(--muted-foreground)') }"></span>
                       <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500" :title="row.symbol">
                         {{ row.name }}
                       </span>
                       <span class="ft-mono" style="text-align:right;font-weight:600">{{ fmtPrice(row.price) }}</span>
-                      <span class="ft-mono mk-col-chg" style="text-align:right" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
+                      <span v-if="!(w.config && w.config.hideChg)" class="ft-mono mk-col-chg" style="text-align:right" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
                         {{ (row.chg || 0) >= 0 ? '+' : '' }}{{ fmtPrice(row.chg) }}
                       </span>
                       <span class="ft-mono" style="text-align:right;font-weight:600" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
                         {{ fmtPct(row.pct) }}
                       </span>
-                      <span class="mk-col-spark"><spark-line :values="row.spark" :up="(row.pct || 0) >= 0" /></span>
+                      <span v-if="!(w.config && w.config.hideSpark)" class="mk-col-spark"><spark-line :values="row.spark" :up="(row.pct || 0) >= 0" /></span>
                     </div>
                   </div>
                 </template>
@@ -1450,25 +1844,26 @@ const App = {
               <div class="mk-detail-head">
                 <div style="min-width:0">
                   <div style="display:flex;align-items:center;gap:6px">
-                    <b style="font-size:14px;color:var(--foreground)">{{ (mktKlineData && mktKlineData.name) || mktSelectedName || mktSelectedSecid }}</b>
-                    <span class="ft-mono hint" style="font-size:11px">{{ mktSelectedSecid }}</span>
+                    <b style="font-size:14px;color:var(--foreground)">{{ (mktKlineData && mktKlineData.name) || mktSelectedName || mktSelectedSymbol }}</b>
+                    <span class="ft-mono hint" style="font-size:11px">{{ mktSelectedSymbol }}</span>
                   </div>
                   <div v-if="mktKlineData && mktKlineData.price != null" class="ft-mono" style="font-size:12px;margin-top:2px">
                     <b>{{ fmtPrice(mktKlineData.price) }}</b>
                     <span style="margin-left:6px" :style="{ color: (mktKlineData.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
-                      {{ (mktKlineData.chg || 0) >= 0 ? '+' : '' }}{{ fmtPrice(mktKlineData.chg) }} ({{ fmtPct(mktKlineData.pct) }})
+                      {{ (mktKlineData.chg || 0) >= 0 ? '+' : '' }}{{ fmtPrice(mktKlineData.chg) }} · {{ fmtPct(mktKlineData.pct) }}
                     </span>
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:4px">
                   <button type="button" :class="['ft-icon-btn', isInWatchlist(mktSelectedSecid) ? 'on' : '']"
                           :title="isInWatchlist(mktSelectedSecid) ? '移出自选' : '加入自选'"
+                          :aria-label="isInWatchlist(mktSelectedSecid) ? '移出自选' : '加入自选'"
                           @click="toggleWatchlistSymbol({ secid: mktSelectedSecid, symbol: mktSelectedSymbol || mktSelectedSecid, name: (mktKlineData && mktKlineData.name) || mktSelectedName })"
                           v-html="isInWatchlist(mktSelectedSecid) ? ICO.starFill : ICO.star"></button>
-                  <button type="button" class="ft-icon-btn" title="AI 研判该标的"
+                  <button type="button" class="ft-icon-btn" title="AI 研判" aria-label="AI 研判"
                           @click="askAiAboutSymbol(mktKlineData || { secid: mktSelectedSecid, name: mktSelectedName })"
                           v-html="ICO.robot"></button>
-                  <button type="button" class="ft-icon-btn" title="收起" @click="mktDetailOpen = false" v-html="ICO.close"></button>
+                  <button type="button" class="ft-icon-btn" title="收起" aria-label="收起详情侧栏" @click="mktDetailOpen = false" v-html="ICO.close"></button>
                 </div>
               </div>
 
@@ -1480,9 +1875,9 @@ const App = {
                 </div>
                 <span class="spacer"></span>
                 <div style="display:inline-flex;align-items:center;gap:3px">
-                  <button type="button" :class="['ft-chip', chartOpts.ma ? 'on' : '']" title="显示/隐藏均线 MA5/MA20" @click="chartOpts.ma = !chartOpts.ma">MA</button>
-                  <button type="button" :class="['ft-chip', chartOpts.vol ? 'on' : '']" title="显示/隐藏成交量" @click="chartOpts.vol = !chartOpts.vol">VOL</button>
-                  <button type="button" :class="['ft-chip', chartOpts.markers ? 'on' : '']" title="显示/隐藏新闻事件打点" @click="chartOpts.markers = !chartOpts.markers">NEWS</button>
+                  <button type="button" :class="['ft-chip', chartOpts.ma ? 'on' : '']" :aria-pressed="chartOpts.ma" title="均线" @click="chartOpts.ma = !chartOpts.ma">均线</button>
+                  <button type="button" :class="['ft-chip', chartOpts.vol ? 'on' : '']" :aria-pressed="chartOpts.vol" title="成交量" @click="chartOpts.vol = !chartOpts.vol">量能</button>
+                  <button type="button" :class="['ft-chip', chartOpts.markers ? 'on' : '']" :aria-pressed="chartOpts.markers" title="快讯事件打点" @click="chartOpts.markers = !chartOpts.markers">事件</button>
                 </div>
               </div>
 
@@ -1497,14 +1892,14 @@ const App = {
                              @commit="saveMarketLayoutDebounced" />
 
               <div v-if="mktTechSummary" class="ft-telemetry ft-mono" style="justify-content:space-between">
-                <span>RSI14: <b>{{ mktTechSummary.rsi }}</b></span>
-                <span>MACD: <b>{{ mktTechSummary.macd }}</b></span>
+                <span>RSI14 <b>{{ mktTechSummary.rsi }}</b></span>
+                <span>MACD <b>{{ mktTechSummary.macd }}</b></span>
                 <span>{{ (mktKlineData && mktKlineData.source) || '' }}</span>
               </div>
 
               <div style="flex:1;min-height:0;overflow-y:auto;padding:6px 10px;display:flex;flex-direction:column;gap:4px">
                 <div class="ft-pulse-lbl" style="margin-bottom:2px">
-                  <span>NEWS EVENTS</span>
+                  <span>关联快讯</span>
                   <span class="ft-mono">{{ ((mktKlineData && mktKlineData.news_events) || []).length }}</span>
                 </div>
                 <div v-for="ev in ((mktKlineData && mktKlineData.news_events) || [])" :key="'ke-' + ev.id"
@@ -1519,25 +1914,34 @@ const App = {
           </div>
 
           <div class="ft-statusbar ft-mono">
-            <span>QUOTES: {{ (marketOverview.stats && marketOverview.stats.total) || 0 }} | ▲ {{ (marketOverview.stats && marketOverview.stats.up) || 0 }} ▼ {{ (marketOverview.stats && marketOverview.stats.down) || 0 }}</span>
-            <span>{{ marketLayout.locked ? 'LOCKED' : '24-COL FREE GRID' }} | {{ ((marketOverview.stats && marketOverview.stats.sources) || []).join(' · ') }}</span>
+            <span>共 {{ (marketOverview.stats && marketOverview.stats.total) || 0 }} 项 · 涨 {{ (marketOverview.stats && marketOverview.stats.up) || 0 }} · 跌 {{ (marketOverview.stats && marketOverview.stats.down) || 0 }}</span>
+            <span>{{ ((marketOverview.stats && marketOverview.stats.sources) || []).join(' · ') }}</span>
           </div>
         </div>
+      </template>
+
+      <!-- 量化回测与成熟因子实验室 -->
+      <template v-if="tab === 'backtest'">
+        <backtest-lab
+          :dark="cfg.ui_theme === 'dark'"
+          :watchlist="(marketOverview && marketOverview.watchlist) || []"
+          @ask-ai="onAskAiFromWidget"
+        />
       </template>
 
       <!-- 新闻流主页面 -->
       <template v-if="tab === 'news'">
         <div class="news-shell">
-          <!-- Row 1: 单行指令过滤条 (图标按钮与滑钮化) -->
+          <!-- Row 1: 单行指令过滤条 -->
           <div class="ft-news-cmd">
-            <span class="dash-ticker-badge">INTEL</span>
-            <a-input v-model:value="newsFilters.q" size="small" allow-clear style="width:168px"
-                     placeholder="检索…" @pressEnter="runNewsSearch(true)" />
-            <span class="ft-sw-wrap" title="语义向量检索">
-              <span>语义</span>
-              <a-switch size="small" :checked="newsSearchMode === 'semantic'"
-                        @change="(v) => { newsSearchMode = v ? 'semantic' : 'keyword'; if ((newsFilters.q || '').trim()) runNewsSearch(true) }" />
-            </span>
+            <span class="dash-ticker-badge">快讯</span>
+            <a-input v-model:value="newsFilters.q" size="small" allow-clear style="width:176px"
+                     placeholder="搜索快讯…" @pressEnter="runNewsSearch(true)" />
+            <button type="button" :class="['ft-btn', newsSearchMode === 'semantic' ? 'on' : '']"
+                    :aria-pressed="newsSearchMode === 'semantic'" title="切换混合语义检索"
+                    @click="newsSearchMode = newsSearchMode === 'semantic' ? 'keyword' : 'semantic'; if ((newsFilters.q || '').trim()) runNewsSearch(true)">
+              语义检索
+            </button>
             <a-select v-model:value="newsFilters.category" style="width:98px" size="small" @change="runNewsSearch(true)">
               <a-select-option value="all">全部分类</a-select-option>
               <a-select-option v-for="cat in newsCategories" :key="cat" :value="cat">{{ cat }}</a-select-option>
@@ -1552,43 +1956,39 @@ const App = {
                       type="button" :class="['news-pill-btn', newsFilters.lang === lg.id ? 'on' : '']"
                       @click="newsFilters.lang = lg.id; runNewsSearch(true)">{{ lg.l }}</button>
             </div>
-            <span class="ft-sw-wrap" title="仅看未读">
-              <span>未读({{ newsStatus.unread || 0 }})</span>
-              <a-switch size="small" :checked="newsFilters.unread" @change="(v) => { newsFilters.unread = !!v; runNewsSearch(true) }" />
-            </span>
-            <button type="button" class="ft-icon-btn" title="全部标为已读" @click="markAllNewsRead()" v-html="ICO.checkAll"></button>
-            <button type="button" :class="['ft-icon-btn', newsFilters.starred ? 'on' : '']" title="仅看收藏"
+            <button type="button" :class="['ft-btn', newsFilters.unread ? 'on' : '']"
+                    :aria-pressed="!!newsFilters.unread" title="仅看未读"
+                    @click="newsFilters.unread = !newsFilters.unread; runNewsSearch(true)">
+              未读<span v-if="newsStatus.unread" class="ft-mono" style="margin-left:3px">{{ newsStatus.unread }}</span>
+            </button>
+            <button type="button" class="ft-icon-btn" title="全部已读" aria-label="全部标为已读" @click="markAllNewsRead()" v-html="ICO.checkAll"></button>
+            <button type="button" :class="['ft-icon-btn', newsFilters.starred ? 'on' : '']" :aria-pressed="!!newsFilters.starred" title="仅看收藏" aria-label="仅看收藏"
                     @click="newsFilters.starred = !newsFilters.starred; runNewsSearch(true)"
                     v-html="newsFilters.starred ? ICO.starFill : ICO.star"></button>
             <span class="spacer"></span>
+            <span v-if="newsFetching || newsStatus.fetching || newsStatus.translating || newsStatus.embedding" class="ft-sync-pill" aria-live="polite">
+              <span class="ft-sync-dot"></span>自动处理中
+            </span>
             <div class="news-lang-pills">
               <button v-for="vm in [{id:'zh',l:'译'},{id:'bilingual',l:'双'},{id:'orig',l:'原'}]" :key="vm.id"
                       type="button" :class="['news-pill-btn', newsViewMode === vm.id ? 'on' : '']"
                       @click="newsViewMode = vm.id">{{ vm.l }}</button>
             </div>
-            <button type="button" class="ft-icon-btn" title="24h AI 简报" @click="openBriefModal()" v-html="ICO.brief"></button>
-            <button type="button" :class="['ft-icon-btn', newsEmbedding ? 'on' : '']" title="向量化待索引新闻"
-                    @click="embedNewsNow()" v-html="ICO.embed"></button>
-            <button type="button" :class="['ft-badge-mini warn']" title="翻译与实体抽取"
-                    @click="translatePendingNews()">
-              <span v-html="ICO.translate"></span>
-              <span>{{ newsTranslating ? '…' : (newsStatus.pending_l1 || 0) }}</span>
-            </button>
-            <button type="button" :class="['ft-icon-btn', newsFetching ? 'on' : '']" title="抓取最新新闻"
+            <button type="button" class="ft-icon-btn" title="情报简报" aria-label="情报简报" @click="openBriefModal()" v-html="ICO.brief"></button>
+            <button type="button" :class="['ft-icon-btn', newsFetching ? 'on' : '']" title="刷新快讯" aria-label="刷新快讯"
                     @click="fetchNewsNow()" v-html="ICO.reload"></button>
-            <button type="button" class="ft-icon-btn" title="新闻源与模型设置" @click="openNewsSettings" v-html="ICO.settings"></button>
+            <button type="button" class="ft-icon-btn" title="新闻设置" aria-label="新闻设置" @click="openNewsSettings" v-html="ICO.settings"></button>
           </div>
 
-          <!-- Row 2: 遥测统计带 + 红黄绿 Tone 条 -->
+          <!-- Row 2: 态势统计带 -->
           <div class="ft-telemetry ft-mono">
-            <span>FEEDS <b>{{ newsStatus.feeds_enabled || 0 }}/{{ newsStatus.feeds_total || 0 }}</b></span>
-            <span>ARTS <b>{{ newsStatus.items_total || 0 }}</b></span>
-            <span v-if="newsStatus.dedup_saved > 0" :title="'已去重折叠 ' + newsStatus.dedup_saved + ' 条重复报道（总抓取 ' + (newsStatus.raw_items_total || 0) + '）'">DEDUP <b style="color:var(--ok)">-{{ newsStatus.dedup_saved }}</b></span>
-            <span>CLST <b>{{ newsStatus.clusters_total || 0 }}</b></span>
-            <span>ENT <b>{{ newsStatus.entities_total || 0 }}</b></span>
-            <span>EMB <b>{{ newsStatus.embedded_total || 0 }}</b></span>
+            <span>订阅源 <b>{{ newsStatus.feeds_enabled || 0 }}/{{ newsStatus.feeds_total || 0 }}</b></span>
+            <span>快讯 <b>{{ newsStatus.items_total || 0 }}</b></span>
+            <span v-if="newsStatus.dedup_saved > 0" :title="'已去重折叠 ' + newsStatus.dedup_saved + ' 条重复报道'">去重 <b style="color:var(--ok)">-{{ newsStatus.dedup_saved }}</b></span>
+            <span>事件簇 <b>{{ newsStatus.clusters_total || 0 }}</b></span>
+            <span>实体 <b>{{ newsStatus.entities_total || 0 }}</b></span>
             <span style="display:inline-flex;align-items:center;gap:6px">
-              <span>TONE</span>
+              <span>情绪</span>
               <span class="ft-tone-bar">
                 <span :style="{ width: toneRatio.bullish + '%', background: 'var(--up)' }"></span>
                 <span :style="{ width: toneRatio.neutral + '%', background: '#94a3b8' }"></span>
@@ -1600,14 +2000,13 @@ const App = {
               实体: {{ newsFilters.entity }}
             </a-tag>
             <span class="spacer"></span>
-            <span v-if="newsLastSearchMode === 'hybrid+rerank'" style="color:var(--ok)">● HYBRID + RERANK</span>
-            <span v-else-if="newsLastSearchMode === 'hybrid'" style="color:var(--ok)">● HYBRID VECTOR SEARCH</span>
+            <span v-if="newsLastSearchMode === 'hybrid+rerank' || newsLastSearchMode === 'hybrid'" style="color:var(--ok)">● 混合语义精排</span>
           </div>
 
-          <!-- Row 3: BREAKING 高优突发横幅（支持多源/跨语种共振评分与切换） -->
+          <!-- Row 3: 突发横幅 -->
           <div v-if="showBreakingBanner && currentBreaking"
                class="ft-breaking" @click="selectNewsItem(currentBreaking)">
-            <span class="ft-breaking-tag">BREAKING</span>
+            <span class="ft-breaking-tag">突发</span>
             <span :class="['news-lang-badge', currentBreaking.lang]">{{ currentBreaking.lang }}</span>
             <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--foreground)">
               {{ currentBreaking.title_zh || currentBreaking.title_orig }}
@@ -1616,15 +2015,15 @@ const App = {
                   class="ft-ent-pill" style="color:var(--down);border-color:rgba(239,68,68,.35)">{{ bt }}</span>
             <span class="hint ft-mono">{{ currentBreaking.feed_name }}</span>
             <button v-if="newsStatus.breaking && newsStatus.breaking.length > 1" type="button"
-                    class="ft-ico-btn ft-mono" style="width:auto;padding:0 5px;font-size:10.5px" title="切换下一条突发"
+                    class="ft-ico-btn ft-mono" style="width:auto;padding:0 5px;font-size:10.5px" title="下一条突发" aria-label="下一条突发"
                     @click.stop="nextBreaking()">{{ (breakingIdx % newsStatus.breaking.length) + 1 }}/{{ newsStatus.breaking.length }} ›</button>
-            <button type="button" class="ft-ico-btn" @click.stop="showBreakingBanner = false">×</button>
+            <button type="button" class="ft-ico-btn" aria-label="关闭突发横幅" @click.stop="showBreakingBanner = false">×</button>
           </div>
 
           <!-- 主区：全宽单行虚拟滚动快讯表 + 右侧滑出式详情栏 -->
           <div class="ft-wire-wrap">
             <div class="ft-wire-list" ref="newsListEl" @scroll="onNewsListScroll">
-              <o2-empty v-if="!newsLoading && !newsItems.length" description="暂无匹配新闻" style="margin-top:48px" />
+              <o2-empty v-if="!newsLoading && !newsItems.length" description="暂无匹配快讯" style="margin-top:48px" />
               <div v-else :style="{ height: (newsItems.length * 31) + 'px', position: 'relative' }">
                 <div :style="{ transform: 'translateY(' + (newsVirtStart * 31) + 'px)', willChange: 'transform' }">
                   <div v-for="it in newsVirtRows" :key="it.id"
@@ -1658,9 +2057,9 @@ const App = {
                 </div>
               </div>
               <div v-if="newsItems.length" class="ft-mono hint" style="height:28px;display:flex;align-items:center;justify-content:center;font-size:11px">
-                <span v-if="newsLoadingMore">LOADING…</span>
+                <span v-if="newsLoadingMore">加载中…</span>
                 <span v-else-if="newsHasMore">↓ {{ newsItems.length }} / {{ newsTotal }}</span>
-                <span v-else>END · {{ newsItems.length }}</span>
+                <span v-else>共 {{ newsItems.length }} 条</span>
               </div>
             </div>
 
@@ -1673,7 +2072,7 @@ const App = {
                   <span>· {{ newsSelectedItem.category }}</span>
                   <span class="ft-mono">· {{ formatNewsTime(newsSelectedItem.published_at) }}</span>
                 </div>
-                <button type="button" class="ft-ico-btn" title="收起详情面板" @click="newsSelectedItem = null">×</button>
+                <button type="button" class="ft-ico-btn" title="收起" aria-label="收起详情" @click="newsSelectedItem = null">×</button>
               </div>
               <div>
                 <h3 style="margin:0;font-size:16px;line-height:1.45;color:var(--foreground)">
@@ -1686,13 +2085,13 @@ const App = {
               </div>
 
               <div class="news-detail-actions">
-                <button type="button" class="ft-icon-btn on" title="AI 研判" @click="sendNewsToChat([newsSelectedItem])" v-html="ICO.robot"></button>
+                <button type="button" class="ft-icon-btn on" title="AI 研判" aria-label="AI 研判" @click="sendNewsToChat([newsSelectedItem])" v-html="ICO.robot"></button>
                 <button v-if="newsSelectedItem.lang !== 'zh'" type="button" :class="['ft-icon-btn', newsDetailLoading ? 'on' : '']"
-                        :title="newsSelectedItem.l2_status === 'done' ? '重翻全文' : '精翻全文 (L2)'"
+                        :title="newsSelectedItem.l2_status === 'done' ? '重新翻译全文' : '翻译全文'" aria-label="翻译全文"
                         @click="translateNewsFull(newsSelectedItem.id, true)" v-html="ICO.translate"></button>
-                <button v-if="newsSelectedItem.url" type="button" class="ft-icon-btn" title="原文浏览器"
+                <button v-if="newsSelectedItem.url" type="button" class="ft-icon-btn" title="打开原文网页" aria-label="打开原文网页"
                         @click="openNewsInBrowser(newsSelectedItem.url)" v-html="ICO.external"></button>
-                <button type="button" :class="['ft-icon-btn', newsSelectedItem.starred ? 'on' : '']" title="收藏"
+                <button type="button" :class="['ft-icon-btn', newsSelectedItem.starred ? 'on' : '']" title="收藏" aria-label="收藏"
                         @click="toggleNewsStar(newsSelectedItem)" v-html="newsSelectedItem.starred ? ICO.starFill : ICO.star"></button>
               </div>
 
@@ -1707,7 +2106,7 @@ const App = {
 
               <div v-if="newsSelectedItem.cluster_items && newsSelectedItem.cluster_items.length" class="news-cluster-box">
                 <div style="font-size:11.5px;font-weight:600;color:var(--foreground)">
-                  同事件跨语种/跨媒体报道 ({{ newsSelectedItem.cluster_items.length }})
+                  相关报道 · {{ newsSelectedItem.cluster_items.length }}
                 </div>
                 <div v-for="sib in newsSelectedItem.cluster_items" :key="'sib-' + sib.id"
                      style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"
@@ -1722,11 +2121,11 @@ const App = {
 
               <div v-if="newsViewMode === 'bilingual'" style="display:flex;flex-direction:column;gap:10px">
                 <div class="news-bilingual-col">
-                  <div class="hint" style="margin-bottom:4px;font-weight:600">中文译文</div>
-                  {{ newsSelectedItem.content_zh || newsSelectedItem.summary_zh || '尚未精翻全文，可点击上方「精翻全文 (L2)」' }}
+                  <div class="hint" style="margin-bottom:4px;font-weight:600">译文</div>
+                  {{ newsSelectedItem.content_zh || newsSelectedItem.summary_zh || '点击上方翻译按钮可翻译全文' }}
                 </div>
                 <div class="news-bilingual-col">
-                  <div class="hint" style="margin-bottom:4px;font-weight:600">原文 ({{ newsSelectedItem.lang }})</div>
+                  <div class="hint" style="margin-bottom:4px;font-weight:600">原文</div>
                   {{ newsSelectedItem.content_orig || newsSelectedItem.summary_orig || '无原文正文' }}
                 </div>
               </div>
@@ -1740,8 +2139,8 @@ const App = {
           </div>
 
           <div class="ft-statusbar ft-mono">
-            <span>DISPLAY {{ newsItems.length }} / {{ newsTotal }} | MODE: {{ newsLastSearchMode === 'hybrid+rerank' ? 'USEARCH+TANTIVY+RERANK' : (newsLastSearchMode === 'hybrid' ? 'USEARCH+TANTIVY' : (newsLastSearchMode === 'bm25' ? 'TANTIVY BM25' : 'TANTIVY+SQL')) }}</span>
-            <span>● {{ (newsStatus.engine && newsStatus.engine.vec_backend === 'usearch-cpp') ? 'USEARCH + TANTIVY' : 'NEWS WIRE' }}{{ (newsStatus.engine && newsStatus.engine.local_gpu && newsStatus.engine.local_gpu.device === 'cuda') ? ' · CUDA FP16' : '' }}</span>
+            <span>显示 {{ newsItems.length }} / {{ newsTotal }}</span>
+            <span>未读 {{ newsStatus.unread || 0 }} · 收藏 {{ newsStatus.starred || 0 }}</span>
           </div>
         </div>
       </template>
@@ -1859,15 +2258,15 @@ const App = {
               <span class="spacer"></span>
               <a-input v-model:value="catQuery" allow-clear placeholder="筛选标题、文号、属性或摘要…"
                        class="cat-search-input" />
-              <a-tooltip v-if="catProject" title="由 AI 自动分析当前项目下的杂项文件，按主题与性质归入子文件夹">
+              <a-tooltip v-if="catProject" title="按主题与性质自动归入子文件夹">
                 <a-button :loading="organizing" @click="organizeCurrentProject">
-                  AI 智能归档
+                  智能归档
                 </a-button>
               </a-tooltip>
               <input ref="folderUploadInput" type="file" webkitdirectory directory multiple
                      style="display:none" @change="onFolderInputPicked" />
-              <a-button class="cat-action-btn" @click="triggerFolderUpload">导入整个文件夹</a-button>
-              <a-button class="cat-action-btn" type="primary" @click="openIngest()">+ 新增 / 批量导入</a-button>
+              <a-button class="cat-action-btn" @click="triggerFolderUpload">导入文件夹</a-button>
+              <a-button class="cat-action-btn" type="primary" @click="openIngest()">导入文件</a-button>
             </div>
 
             <!-- 文件性质透视胶囊：混合视图使用多态属性列，选中单一性质时展开专属分列 -->
@@ -2124,12 +2523,12 @@ const App = {
                     </div>
 
                     <div class="oc-group">
-                      <h4 class="oc-group-title">智能体工具与执行权限</h4>
+                      <h4 class="oc-group-title">工具与权限</h4>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">内置持久化浏览器 (Chromium)</div>
-                            <div class="oc-row-desc">允许 AI 在问答界面上方同屏展开共享浏览器窗口，模拟鼠标操作网页与查询实时信息</div>
+                            <div class="oc-row-title">内置浏览器</div>
+                            <div class="oc-row-desc">允许 AI 在问答界面同屏展开共享浏览器窗口，模拟操作网页与查询实时信息</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-switch v-model:checked="cfg.browser" />
@@ -2138,8 +2537,8 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">本机命令行终端 (PowerShell)</div>
-                            <div class="oc-row-desc">允许 AI 调用 pwsh 查看本机文件目录、环境状态或运行数据处理脚本</div>
+                            <div class="oc-row-title">命令行终端</div>
+                            <div class="oc-row-desc">允许 AI 调用本机终端查看目录状态或运行数据处理脚本</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-switch v-model:checked="cfg.shell" />
@@ -2148,8 +2547,8 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">外部 API 连接器调用</div>
-                            <div class="oc-row-desc">允许 AI 根据「外部 API」中登记的接口说明自动发起 REST / GraphQL / JSON-RPC 请求</div>
+                            <div class="oc-row-title">外部接口调用</div>
+                            <div class="oc-row-desc">允许 AI 根据已登记的外部连接器自动发起接口请求</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-switch v-model:checked="cfg.api_call" />
@@ -2159,28 +2558,28 @@ const App = {
                     </div>
 
                     <div class="oc-group">
-                      <h4 class="oc-group-title">批量导入与性能加速</h4>
+                      <h4 class="oc-group-title">批量导入</h4>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">批量文件导入并发通道数</div>
-                            <div class="oc-row-desc">批量拖入多份文件或整个文件夹时的并行解析与入库 Worker 数量（3~4 路兼顾速度与接口配额）</div>
+                            <div class="oc-row-title">并发通道数</div>
+                            <div class="oc-row-desc">批量导入多份文件或文件夹时的并行解析任务数量</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-select v-model:value="cfg.batch_concurrency" style="width: 170px">
-                              <a-select-option :value="1">1 路（串行队列）</a-select-option>
-                              <a-select-option :value="2">2 路并发</a-select-option>
-                              <a-select-option :value="3">3 路并发（推荐）</a-select-option>
-                              <a-select-option :value="4">4 路并发</a-select-option>
-                              <a-select-option :value="6">6 路极速并发</a-select-option>
+                              <a-select-option :value="1">1 路</a-select-option>
+                              <a-select-option :value="2">2 路</a-select-option>
+                              <a-select-option :value="3">3 路</a-select-option>
+                              <a-select-option :value="4">4 路</a-select-option>
+                              <a-select-option :value="6">6 路</a-select-option>
                             </a-select>
                           </div>
                         </div>
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">批量导入快速规则识别模式</div>
-                            <div class="oc-row-desc">开启后跳过远程大模型元数据调用，直接使用本地高速规则引擎提取文号、日期与摘要，实现毫秒级入库</div>
+                            <div class="oc-row-title">快速元数据识别</div>
+                            <div class="oc-row-desc">使用本地高速规则提取文号、日期与摘要，跳过远程模型调用以加速大批量入库</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-switch v-model:checked="cfg.batch_fast_meta" />
@@ -2193,17 +2592,17 @@ const App = {
                   <!-- 2. 外观与参数 (appearance) -->
                   <template v-if="showSettingsSec('appearance')">
                     <div class="oc-group">
-                      <h4 class="oc-group-title">主题模式</h4>
+                      <h4 class="oc-group-title">主题</h4>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">界面明暗主题</div>
-                            <div class="oc-row-desc">支持在清爽浅色工作台与 Fincept 风格深色金融终端之间一键切换</div>
+                            <div class="oc-row-title">外观模式</div>
+                            <div class="oc-row-desc">在浅色界面与深色终端界面之间切换</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-select v-model:value="cfg.ui_theme" style="width: 170px">
-                              <a-select-option value="light">浅色模式 (Light)</a-select-option>
-                              <a-select-option value="dark">深色终端 (Terminal Dark)</a-select-option>
+                              <a-select-option value="light">浅色</a-select-option>
+                              <a-select-option value="dark">深色</a-select-option>
                             </a-select>
                           </div>
                         </div>
@@ -2211,12 +2610,12 @@ const App = {
                     </div>
 
                     <div class="oc-group">
-                      <h4 class="oc-group-title">问答与检索生成参数</h4>
+                      <h4 class="oc-group-title">生成与检索参数</h4>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">默认思考推理强度 (Reasoning Effort)</div>
-                            <div class="oc-row-desc">控制支持深度思考的模型（如 DeepSeek-R1、Claude、o3 等）在回答前的推理深度</div>
+                            <div class="oc-row-title">默认思考深度</div>
+                            <div class="oc-row-desc">控制推理模型在回答前的思考强度</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-select v-model:value="cfg.effort" style="width: 170px">
@@ -2227,46 +2626,31 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">生成温度 (Temperature)</div>
-                            <div class="oc-row-desc">数值越低回答越严谨稳定；制度条文、合同与财报核对建议保持 0.0 ~ 0.1</div>
+                            <div class="oc-row-title">生成温度</div>
+                            <div class="oc-row-desc">数值越低回答越严谨稳定，制度与数据核对建议保持 0.0 ~ 0.1</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-select v-model:value="cfg.temperature" style="width: 170px">
-                              <a-select-option :value="0">0.0（最严谨精确）</a-select-option>
-                              <a-select-option :value="0.1">0.1（制度核对推荐）</a-select-option>
-                              <a-select-option :value="0.3">0.3（标准均衡）</a-select-option>
-                              <a-select-option :value="0.7">0.7（发散撰写）</a-select-option>
+                              <a-select-option :value="0">0.0 严谨</a-select-option>
+                              <a-select-option :value="0.1">0.1 精准</a-select-option>
+                              <a-select-option :value="0.3">0.3 均衡</a-select-option>
+                              <a-select-option :value="0.7">0.7 发散</a-select-option>
                             </a-select>
                           </div>
                         </div>
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">单次检索召回片段数 (Top-K)</div>
-                            <div class="oc-row-desc">每次检索向模型上下文注入的高相关性文档切片或数据表格数量</div>
+                            <div class="oc-row-title">单次检索片段数</div>
+                            <div class="oc-row-desc">每次检索注入上下文的高相关文档切片数量</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-select v-model:value="cfg.top_k" style="width: 170px">
-                              <a-select-option :value="6">6 条切片</a-select-option>
-                              <a-select-option :value="8">8 条切片（推荐）</a-select-option>
-                              <a-select-option :value="12">12 条切片</a-select-option>
-                              <a-select-option :value="16">16 条切片（长上下文）</a-select-option>
+                              <a-select-option :value="6">6 条</a-select-option>
+                              <a-select-option :value="8">8 条</a-select-option>
+                              <a-select-option :value="12">12 条</a-select-option>
+                              <a-select-option :value="16">16 条</a-select-option>
                             </a-select>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="oc-group">
-                      <h4 class="oc-group-title">画布与交互体验</h4>
-                      <div class="oc-card">
-                        <div class="oc-row">
-                          <div class="oc-row-info">
-                            <div class="oc-row-title">双指与 Ctrl + 滚轮无级缩放</div>
-                            <div class="oc-row-desc">允许在文档原文抽屉中通过触控板捏合或按住 Ctrl + 鼠标滚轮缩放 PDF 原页与图纸</div>
-                          </div>
-                          <div class="oc-row-ctrl">
-                            <a-switch :checked="true" disabled />
                           </div>
                         </div>
                       </div>
@@ -2277,8 +2661,11 @@ const App = {
                   <template v-if="showSettingsSec('shortcuts')">
                     <div class="oc-group">
                       <div class="oc-group-head">
-                        <h4 class="oc-group-title">快捷键自定义（右键点击任意可编辑项即可录制新键位）</h4>
-                        <a-button size="small" :disabled="!hasCustomShortcuts" @click="resetAllShortcuts">恢复全部默认</a-button>
+                        <div>
+                          <h4 class="oc-group-title" style="margin-bottom:2px">快捷键</h4>
+                          <span class="hint" style="font-size:12px">右键点击任意可编辑项即可录制新快捷键</span>
+                        </div>
+                        <a-button size="small" :disabled="!hasCustomShortcuts" @click="resetAllShortcuts">恢复默认</a-button>
                       </div>
                     </div>
 
@@ -2287,7 +2674,7 @@ const App = {
                       <div class="oc-card">
                         <div v-for="s in grp.items" :key="s.id"
                              :class="['oc-row', s.editable ? 'oc-kbd-editable' : '']"
-                             :title="s.editable ? '右键点击录制新的快捷键' : '鼠标手势（不支持重绑定）'"
+                             :title="s.editable ? '右键录制新快捷键' : '固定手势'"
                              @contextmenu="s.editable && onShortcutContext($event, s)">
                           <div class="oc-row-info">
                             <div class="oc-row-title">{{ s.title }}</div>
@@ -2297,7 +2684,7 @@ const App = {
                             <button v-if="s.editable && isShortcutModified(s.id) && recordingShortcutId !== s.id"
                                     type="button" class="oc-kbd-reset-btn" @click.stop="resetShortcut(s.id)">重置</button>
                             <span v-if="recordingShortcutId === s.id" class="oc-kbd-recording">
-                              <span>请按下新快捷键… (Esc 取消)</span>
+                              <span>按下新快捷键，Esc 取消</span>
                             </span>
                             <span v-else class="oc-kbd-group">
                               <template v-for="(tok, idx) in shortcutTokens(getShortcutCombo(s.id))" :key="idx">
@@ -2315,8 +2702,8 @@ const App = {
                   <template v-if="showSettingsSec('llm')">
                     <div class="oc-group">
                       <div class="oc-group-head">
-                        <h4 class="oc-group-title">已接入服务商渠道</h4>
-                        <a-button size="small" type="primary" @click="openAddProvider">+ 添加渠道</a-button>
+                        <h4 class="oc-group-title">服务商渠道</h4>
+                        <a-button size="small" type="primary" @click="openAddProvider">添加渠道</a-button>
                       </div>
                       <div class="oc-chip-bar" style="padding:2px 0 4px">
                         <button type="button" v-for="p in cfg.providers" :key="p.id"
@@ -2336,7 +2723,7 @@ const App = {
                                 {{ currentProvider.api_key_set ? '已配置密钥' : '未配置密钥' }}
                               </span>
                             </div>
-                            <div class="oc-row-desc">配置该渠道的接口地址、协议标准与访问密钥</div>
+                            <div class="oc-row-desc">配置接口地址、通信协议与访问密钥</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-button size="small" danger @click="removeProvider(currentProvider)">删除渠道</a-button>
@@ -2346,7 +2733,7 @@ const App = {
                         <div class="oc-row">
                           <div class="oc-row-info">
                             <div class="oc-row-title">Base URL</div>
-                            <div class="oc-row-desc">服务端接口根地址（留空则使用官方默认地址）</div>
+                            <div class="oc-row-desc">服务端接口根地址，留空则使用官方默认地址</div>
                           </div>
                           <div class="oc-row-ctrl oc-ctrl-wide">
                             <a-input v-model:value="currentProvider.base_url"
@@ -2388,13 +2775,13 @@ const App = {
                               <div class="oc-row-desc">添加或同步模型后，即可在对话顶部或「模型」设置中选用</div>
                             </div>
                             <div class="model-list-actions">
-                              <a-button size="small" v-if="currentProvider.api_key_set" @click="syncProviderModels(currentProvider)">从接口同步</a-button>
-                              <a-button size="small" type="primary" @click="openAddModel">+ 添加模型</a-button>
+                              <a-button size="small" v-if="currentProvider.api_key_set" @click="syncProviderModels(currentProvider)">同步列表</a-button>
+                              <a-button size="small" type="primary" @click="openAddModel">添加模型</a-button>
                             </div>
                           </div>
                           <div v-if="!(currentProvider.models && currentProvider.models.length)" class="model-empty">
                             <span class="model-empty-ico" v-html="ICO.info"></span>
-                            <span>当前渠道还没有登记模型，点击「从接口同步」或「+ 添加模型」后可在问答中使用。</span>
+                            <span>当前渠道还没有模型，点击「同步列表」或「添加模型」后即可选用。</span>
                           </div>
                           <div v-else class="model-rows">
                             <div v-for="m in currentProvider.models" :key="m.id" class="model-row">
@@ -2438,8 +2825,8 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">默认推理强度</div>
-                            <div class="oc-row-desc">新建对话时的默认思考深度档位（也可在输入框左下角随时切换）</div>
+                            <div class="oc-row-title">默认思考深度</div>
+                            <div class="oc-row-desc">新建对话时的默认推理强度，也可在对话输入框底部随时切换</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-select v-model:value="cfg.effort" style="width: 170px">
@@ -2451,7 +2838,7 @@ const App = {
                     </div>
 
                     <div class="oc-group" v-if="modelList.length">
-                      <h4 class="oc-group-title">已启用模型列表 ({{ modelList.length }})</h4>
+                      <h4 class="oc-group-title">已启用模型 · {{ modelList.length }}</h4>
                       <div class="oc-card">
                         <div v-for="m in modelList" :key="m.provider_id + '::' + m.id" class="oc-row">
                           <div class="oc-row-info">
@@ -2459,7 +2846,7 @@ const App = {
                               <span>{{ m.label || m.id }}</span>
                               <span class="oc-stat-badge">{{ m.provider }}</span>
                               <span v-if="m.reasoning" class="oc-stat-badge">推理</span>
-                              <span v-if="m.image" class="oc-stat-badge">视觉多模态</span>
+                              <span v-if="m.image" class="oc-stat-badge">视觉</span>
                               <span v-if="m.context_label" class="oc-stat-badge">{{ m.context_label }}</span>
                             </div>
                             <div class="oc-row-desc">{{ m.id }}</div>
@@ -2476,24 +2863,18 @@ const App = {
                   <!-- 6. 向量引擎 (embed) -->
                   <template v-if="showSettingsSec('embed')">
                     <div class="oc-group">
-                      <h4 class="oc-group-title">语义向量化开关与任务</h4>
+                      <h4 class="oc-group-title">语义向量检索</h4>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">在搜索和回答中使用语义向量</div>
-                            <div class="oc-row-desc">结合 FTS5 关键词匹配与 Embedding 语义向量进行混合检索，提升跨表述召回率</div>
+                            <div class="oc-row-title">
+                              <span>启用语义向量检索</span>
+                              <span :class="['oc-stat-badge', cfg.embed_use ? 'ok' : '']">{{ embedStatusText }}</span>
+                            </div>
+                            <div class="oc-row-desc">开启后系统会在后台自动为知识库切片构建并同步语义向量，实现关键词与语义混合检索</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-switch v-model:checked="cfg.embed_use" />
-                          </div>
-                        </div>
-
-                        <div class="oc-row">
-                          <div class="oc-row-info">
-                            <div class="oc-row-title">运行后台向量化引擎</div>
-                          </div>
-                          <div class="oc-row-ctrl">
-                            <a-switch :checked="cfg.embed_running" @change="toggleEmbedRun" />
                           </div>
                         </div>
                       </div>
@@ -2501,8 +2882,8 @@ const App = {
 
                     <div class="oc-group">
                       <div class="oc-group-head">
-                        <h4 class="oc-group-title">Embedding 渠道与模型配置</h4>
-                        <a-button size="small" type="primary" @click="openAddEmbedProvider">+ 添加向量渠道</a-button>
+                        <h4 class="oc-group-title">向量渠道与模型</h4>
+                        <a-button size="small" type="primary" @click="openAddEmbedProvider">添加渠道</a-button>
                       </div>
                       <div class="oc-chip-bar" style="padding:2px 0 4px">
                         <button type="button" v-for="p in cfg.embed_providers" :key="p.id"
@@ -2542,7 +2923,7 @@ const App = {
                         <div class="oc-row">
                           <div class="oc-row-info">
                             <div class="oc-row-title">API 格式</div>
-                            <div class="oc-row-desc">支持 OpenAI 兼容 (v1/embeddings) 与通义 DashScope 原生格式</div>
+                            <div class="oc-row-desc">支持 OpenAI 兼容标准与通义 DashScope 原生格式</div>
                           </div>
                           <div class="oc-row-ctrl oc-ctrl-wide">
                             <a-select v-model:value="currentEmbedProvider.protocol" style="width: 100%">
@@ -2568,8 +2949,8 @@ const App = {
 
                         <div class="oc-row" v-if="currentEmbedProvider.models && currentEmbedProvider.models.length">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">当前生效向量模型</div>
-                            <div class="oc-row-desc">切换模型后建议重新运行向量化以保持维度一致</div>
+                            <div class="oc-row-title">当前向量模型</div>
+                            <div class="oc-row-desc">切换模型后系统会自动按新模型同步向量索引</div>
                           </div>
                           <div class="oc-row-ctrl oc-ctrl-wide">
                             <a-select v-model:value="cfg.embed_model" style="width: 100%"
@@ -2585,11 +2966,11 @@ const App = {
                           <div class="model-list-head" style="margin-bottom:4px">
                             <div>
                               <div class="oc-row-title">向量模型列表</div>
-                              <div class="oc-row-desc">点击任意一行即可选为当前生效向量模型</div>
+                              <div class="oc-row-desc">点击任意一行即可选为当前生效模型</div>
                             </div>
                             <div class="model-list-actions">
-                              <a-button size="small" v-if="currentEmbedProvider.api_key_set" @click="syncEmbedModels(currentEmbedProvider)">从接口同步</a-button>
-                              <a-button size="small" type="primary" @click="openAddEmbedModel">+ 添加模型</a-button>
+                              <a-button size="small" v-if="currentEmbedProvider.api_key_set" @click="syncEmbedModels(currentEmbedProvider)">同步列表</a-button>
+                              <a-button size="small" type="primary" @click="openAddEmbedModel">添加模型</a-button>
                             </div>
                           </div>
                           <div v-if="!(currentEmbedProvider.models && currentEmbedProvider.models.length)" class="model-empty">
@@ -2619,8 +3000,8 @@ const App = {
                   <template v-if="showSettingsSec('api')">
                     <div class="oc-group">
                       <div class="oc-group-head">
-                        <h4 class="oc-group-title">外部 API 连接器目录 ({{ (cfg.api_connectors || []).length }})</h4>
-                        <a-button size="small" type="primary" @click="openAddApiConnector">+ 添加连接</a-button>
+                        <h4 class="oc-group-title">外部 API 连接器 · {{ (cfg.api_connectors || []).length }}</h4>
+                        <a-button size="small" type="primary" @click="openAddApiConnector">添加连接</a-button>
                       </div>
                       <div class="oc-card oc-card-pad settings-llm" style="padding:0;overflow:hidden">
                         <div class="provider-layout" style="border:0;border-radius:0">
@@ -2681,7 +3062,7 @@ const App = {
                               <a-form-item v-if="currentApiConnector.auth_type !== 'none'" :label="apiKeyLabel(currentApiConnector.auth_type)">
                                 <div class="field-with-action">
                                   <a-input-password v-model:value="currentApiConnector.api_key"
-                                    :placeholder="currentApiConnector.api_key_set ? '已保存，留空保持不变' : '填入密钥（运行时自动注入，不回显给模型）'"
+                                    :placeholder="currentApiConnector.api_key_set ? '已保存，留空保持不变' : '填入密钥，运行时自动注入'"
                                     @blur="saveApiConnectorKey(currentApiConnector)" @pressEnter="saveApiConnectorKey(currentApiConnector)" />
                                   <a-button v-if="currentApiConnector.api_key_set" danger @click="clearApiConnectorKey(currentApiConnector)">清除</a-button>
                                 </div>
@@ -2768,17 +3149,17 @@ const App = {
                   <!-- 7.5 新闻流与情报终端 (news) -->
                   <template v-if="showSettingsSec('news')">
                     <div class="oc-group">
-                      <h4 class="oc-group-title">情报终端总开关与抓取策略</h4>
+                      <h4 class="oc-group-title">情报终端与抓取策略</h4>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
                             <div class="oc-row-title">
-                              <span>启用新闻流与情报金融分析终端</span>
+                              <span>启用情报与行情终端</span>
                               <span :class="['oc-stat-badge', cfg.news_enabled ? 'ok' : '']">
                                 {{ cfg.news_enabled ? '已启用' : '已关闭' }}
                               </span>
                             </div>
-                            <div class="oc-row-desc">开启后侧边栏解锁「终端看板」「新闻流」，对话页可唤出新闻浮动窗；关闭时后台零拉取零开销</div>
+                            <div class="oc-row-desc">开启后侧边栏显示看板、行情与新闻流，关闭时后台零网络与算力消耗</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-switch v-model:checked="cfg.news_enabled" />
@@ -2787,8 +3168,8 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">入库自动 L1 翻译与情绪评分</div>
-                            <div class="oc-row-desc">抓取到英/俄文新闻时自动翻译标题、核心导语并评估情绪与冲击烈度（中文源零消耗直通）</div>
+                            <div class="oc-row-title">自动翻译与实体抽取</div>
+                            <div class="oc-row-desc">抓取外文快讯后在后台自动完成中文摘要翻译、实体抽取与情绪评估，中文源直接提取零模型消耗</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-switch v-model:checked="cfg.news_auto_translate" />
@@ -2797,13 +3178,13 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">后台定时抓取频率</div>
-                            <div class="oc-row-desc">启用新闻流后，每隔指定分钟在后台并发增量拉取（支持 ETag/304 省流）</div>
+                            <div class="oc-row-title">定时抓取频率</div>
+                            <div class="oc-row-desc">启用新闻流后按设定间隔在后台增量同步订阅源</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-select v-model:value="cfg.news_refresh_minutes" style="width: 170px">
                               <a-select-option :value="5">每 5 分钟</a-select-option>
-                              <a-select-option :value="15">每 15 分钟（推荐）</a-select-option>
+                              <a-select-option :value="15">每 15 分钟</a-select-option>
                               <a-select-option :value="30">每 30 分钟</a-select-option>
                               <a-select-option :value="60">每 60 分钟</a-select-option>
                               <a-select-option :value="0">仅手动刷新</a-select-option>
@@ -2813,8 +3194,8 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">RSSHub 路由网关地址</div>
-                            <div class="oc-row-desc">填写公共或自建 RSSHub 地址，订阅 rsshub:// 开头的路径时会自动展开</div>
+                            <div class="oc-row-title">RSSHub 网关地址</div>
+                            <div class="oc-row-desc">填写公共或自建 RSSHub 地址，自动解析 rsshub:// 订阅路由</div>
                           </div>
                           <div class="oc-row-ctrl oc-ctrl-wide">
                             <a-input v-model:value="cfg.news_rsshub_base" placeholder="https://rsshub.app" />
@@ -2823,8 +3204,8 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">本地 GPU 跨语种去重与向量引擎 (BGE-M3 + USearch)</div>
-                            <div class="oc-row-desc">抓取后在调用 LLM 翻译前自动对中/英/俄/日同题报道做语义归簇与代表稿竞选，零 API 费用</div>
+                            <div class="oc-row-title">本地跨语种向量与语义去重</div>
+                            <div class="oc-row-desc">抓取后在后台自动生成跨语种向量并折叠同事件重复报道，无需消耗远程 API</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-switch v-model:checked="cfg.news_local_embed" />
@@ -2833,8 +3214,8 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">本地 GPU 混合检索精排 (BGE-Reranker-v2-m3)</div>
-                            <div class="oc-row-desc">USearch 向量 + Tantivy 全文融合召回后使用本地跨语种 Reranker 精排</div>
+                            <div class="oc-row-title">本地混合检索精排</div>
+                            <div class="oc-row-desc">向量与全文融合召回后使用本地跨语种重排模型提升相关性</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-switch v-model:checked="cfg.news_local_rerank" />
@@ -2843,11 +3224,11 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">全库去重与索引维护</div>
-                            <div class="oc-row-desc">当前代表稿 {{ newsStatus.items_total || 0 }} 条（已去重折叠 {{ newsStatus.dedup_saved || 0 }} 条）· USearch {{ (newsStatus.engine && newsStatus.engine.vec_docs) || 0 }} · Tantivy {{ (newsStatus.engine && newsStatus.engine.fts_docs) || 0 }}</div>
+                            <div class="oc-row-title">索引维护</div>
+                            <div class="oc-row-desc">代表稿 {{ newsStatus.items_total || 0 }} 条 · 已去重折叠 {{ newsStatus.dedup_saved || 0 }} 条 · 向量索引 {{ (newsStatus.engine && newsStatus.engine.vec_docs) || 0 }} 条</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-button size="small" :loading="newsReindexing" @click="reindexNewsAll">全库去重并重建索引</a-button>
+                            <a-button size="small" :loading="newsReindexing" @click="reindexNewsAll">重建索引</a-button>
                           </div>
                         </div>
                       </div>
@@ -2858,13 +3239,13 @@ const App = {
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">行情主源分工</div>
+                            <div class="oc-row-title">行情主源</div>
                           </div>
                           <div class="oc-row-ctrl oc-ctrl-wide">
                             <a-select v-model:value="cfg.market_source_mode" style="width: 100%">
-                              <a-select-option value="auto">全球 yfinance + A股/回测 Tushare（推荐）</a-select-option>
-                              <a-select-option value="yfinance">全局 yfinance 优先</a-select-option>
-                              <a-select-option value="tushare">全局 Tushare 优先</a-select-option>
+                              <a-select-option value="auto">全球 Yahoo + A 股 Tushare</a-select-option>
+                              <a-select-option value="yfinance">Yahoo 优先</a-select-option>
+                              <a-select-option value="tushare">Tushare 优先</a-select-option>
                             </a-select>
                           </div>
                         </div>
@@ -2878,9 +3259,9 @@ const App = {
                           <div class="oc-row-ctrl oc-ctrl-wide">
                             <div class="field-with-action" style="width:100%">
                               <a-input v-model:value="cfg.market_proxy"
-                                       :placeholder="cfg.detected_system_proxy ? ('自动: ' + cfg.detected_system_proxy) : '留空自动读取系统代理（如 http://127.0.0.1:7890）'" />
+                                       :placeholder="cfg.detected_system_proxy ? ('自动: ' + cfg.detected_system_proxy) : '留空自动使用系统代理'" />
                               <button type="button" :class="['ft-icon-btn', mktProxyTesting ? 'on' : '']"
-                                      style="width:32px;height:32px" title="测试 Yahoo Finance 代理连通"
+                                      style="width:32px;height:32px" title="测试连通性" aria-label="测试行情代理连通性"
                                       @click="testMarketProxy()" v-html="ICO.shortcut"></button>
                             </div>
                           </div>
@@ -2889,16 +3270,16 @@ const App = {
                     </div>
 
                     <div class="oc-group">
-                      <h4 class="oc-group-title">翻译与情报抽取专用模型（独立于主对话）</h4>
+                      <h4 class="oc-group-title">后台翻译与实体抽取模型</h4>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">后台新闻处理模型</div>
-                            <div class="oc-row-desc">推荐单独选用 Flash 等低成本、高并发小模型处理海量中/英/俄 RSS 翻译与抽取；留空则跟随主对话模型</div>
+                            <div class="oc-row-title">专用处理模型</div>
+                            <div class="oc-row-desc">建议选用轻量高速模型在后台处理批量快讯翻译与实体抽取，留空则跟随主对话模型</div>
                           </div>
                           <div class="oc-row-ctrl oc-ctrl-wide">
                             <a-select :value="newsModelSelectVal" style="width:100%" show-search @change="onNewsModelPick">
-                              <a-select-option value="">跟随主对话模型（{{ modelLabel || '未设置' }}）</a-select-option>
+                              <a-select-option value="">跟随主对话模型</a-select-option>
                               <a-select-opt-group v-for="g in groupedModels" :key="'nm-' + g.id" :label="g.name">
                                 <a-select-option v-for="m in g.models" :key="g.id + '::' + m.id" :value="g.id + '::' + m.id">
                                   {{ m.label }}
@@ -2912,18 +3293,18 @@ const App = {
 
                     <div class="oc-group">
                       <div class="oc-group-head">
-                        <h4 class="oc-group-title">RSS 订阅源管理（共 {{ newsFeeds.length }} 个）</h4>
+                        <h4 class="oc-group-title">RSS 订阅源 · {{ newsFeeds.length }}</h4>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
-                          <a-button size="small" @click="importPresetFeeds()">导入推荐信息源</a-button>
+                          <a-button size="small" @click="importPresetFeeds()">导入预设源</a-button>
                           <a-button size="small" @click="triggerOpmlImport">导入 OPML</a-button>
                           <a-button size="small" @click="exportOpml">导出 OPML</a-button>
-                          <a-button size="small" type="primary" :loading="newsFetching" @click="fetchNewsNow()">立即抓取全部</a-button>
+                          <a-button size="small" type="primary" :loading="newsFetching" @click="fetchNewsNow()">立即抓取</a-button>
                           <input ref="opmlInput" type="file" accept=".opml,.xml" style="display:none" @change="onOpmlFilePicked" />
                         </div>
                       </div>
                       <div class="oc-card oc-card-pad" style="display:flex;flex-direction:column;gap:12px">
                         <div style="display:grid;grid-template-columns:1.1fr 1.8fr 110px 95px auto;gap:8px;align-items:center">
-                          <a-input v-model:value="newFeedForm.name" placeholder="源名称（如 TASS）" />
+                          <a-input v-model:value="newFeedForm.name" placeholder="源名称" />
                           <a-input v-model:value="newFeedForm.url" placeholder="RSS / Atom URL 或 rsshub://..." @pressEnter="saveNewFeed" />
                           <a-input v-model:value="newFeedForm.category" placeholder="分类" />
                           <a-select v-model:value="newFeedForm.lang">
@@ -2950,7 +3331,7 @@ const App = {
                               </div>
                               <div class="hint" style="font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                                 {{ fd.url }}
-                                <span v-if="fd.last_error" style="color:var(--down)"> · 失败({{ fd.fail_count }}): {{ fd.last_error }}</span>
+                                <span v-if="fd.last_error" style="color:var(--down)"> · 失败 {{ fd.fail_count }} 次: {{ fd.last_error }}</span>
                               </div>
                             </div>
                             <div style="display:flex;align-items:center;gap:8px;flex:none">
@@ -2965,22 +3346,22 @@ const App = {
 
                     <div class="oc-group">
                       <div class="oc-group-head">
-                        <h4 class="oc-group-title">中/英/俄专有术语表 (Glossary)</h4>
-                        <a-button size="small" @click="loadDefaultGlossary">加载常用财经/俄语术语</a-button>
+                        <h4 class="oc-group-title">专有术语表</h4>
+                        <a-button size="small" @click="loadDefaultGlossary">加载预设术语</a-button>
                       </div>
                       <div class="oc-card oc-card-pad" style="display:flex;flex-direction:column;gap:10px">
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px">
-                          <a-input v-model:value="newGlossaryForm.term" placeholder="外文原文（如 ОАО РЖД）" />
-                          <a-input v-model:value="newGlossaryForm.zh" placeholder="标准中文译名（如 俄铁）" />
-                          <a-input v-model:value="newGlossaryForm.note" placeholder="备注（可选）" @pressEnter="addGlossaryTerm" />
-                          <a-button type="primary" @click="addGlossaryTerm">添加术语</a-button>
+                          <a-input v-model:value="newGlossaryForm.term" placeholder="外文原文" />
+                          <a-input v-model:value="newGlossaryForm.zh" placeholder="标准中文译名" />
+                          <a-input v-model:value="newGlossaryForm.note" placeholder="备注" @pressEnter="addGlossaryTerm" />
+                          <a-button type="primary" @click="addGlossaryTerm">添加</a-button>
                         </div>
                         <div v-if="(cfg.news_glossary || []).length" style="display:flex;flex-wrap:wrap;gap:6px">
                           <a-tag v-for="(g, gi) in cfg.news_glossary" :key="gi" closable @close="removeGlossaryTerm(gi)">
                             {{ g.term }} → {{ g.zh }}
                           </a-tag>
                         </div>
-                        <div v-else class="hint">当前未自定义术语，后台翻译将自动使用内置默认术语表（俄铁、美联储、俄罗斯央行、Brent、OPEC+ 等）。</div>
+                        <div v-else class="hint">未设置自定义术语时将自动采用内置财经与航运术语表。</div>
                       </div>
                     </div>
                   </template>
@@ -2988,7 +3369,7 @@ const App = {
                   <!-- 8. 文档与识别 (ocr / index) -->
                   <template v-if="showSettingsSec('ocr')">
                     <div class="oc-group">
-                      <h4 class="oc-group-title">版面与文字识别 (PaddleOCR-VL)</h4>
+                      <h4 class="oc-group-title">版面与文字识别</h4>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
@@ -2998,7 +3379,7 @@ const App = {
                                 {{ cfg.paddle_token_set ? '已配置' : '未配置' }}
                               </span>
                             </div>
-                            <div class="oc-row-desc">用于识别无内置文本层的扫描件 PDF 以及图片中的复杂表格与文字</div>
+                            <div class="oc-row-desc">用于识别扫描件 PDF 及图片中的复杂表格与文字</div>
                           </div>
                           <div class="oc-row-ctrl oc-ctrl-wide">
                             <div class="field-with-action" style="width:100%">
@@ -3012,13 +3393,13 @@ const App = {
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">PDF 解析与 OCR 调度策略</div>
-                            <div class="oc-row-desc">「智能加速」下，自带文本层的原生 PDF 直接本地毫秒级提取正文与表格，仅扫描件调用云端 OCR（大幅提升批量导入速度）</div>
+                            <div class="oc-row-title">PDF 解析策略</div>
+                            <div class="oc-row-desc">智能加速模式下原生文本层 PDF 直接本地高速解析，仅扫描件调用云端识别</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-select v-model:value="cfg.pdf_ocr_mode" style="width: 240px">
-                              <a-select-option value="smart">智能加速（原生文本免云端 OCR）</a-select-option>
-                              <a-select-option value="always">全部走云端版面识别（慢）</a-select-option>
+                            <a-select v-model:value="cfg.pdf_ocr_mode" style="width: 190px">
+                              <a-select-option value="smart">智能加速</a-select-option>
+                              <a-select-option value="always">全量云端识别</a-select-option>
                             </a-select>
                           </div>
                         </div>
@@ -3026,12 +3407,12 @@ const App = {
                     </div>
 
                     <div class="oc-group">
-                      <h4 class="oc-group-title">文件源目录与索引重建</h4>
+                      <h4 class="oc-group-title">文件源目录与索引</h4>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
                             <div class="oc-row-title">文件源文件夹</div>
-                            <div class="oc-row-desc">所有入库文档与多级项目子目录的本地物理存储根路径</div>
+                            <div class="oc-row-desc">所有入库文档与多级项目子目录的本地存储根路径</div>
                           </div>
                           <div class="oc-row-ctrl oc-ctrl-wide">
                             <div class="field-with-action" style="width:100%">
@@ -3044,10 +3425,10 @@ const App = {
                         <div class="oc-row">
                           <div class="oc-row-info">
                             <div class="oc-row-title">全库索引状态</div>
-                            <div class="oc-row-desc">当前已索引 {{ stats.docs }} 份文件 · {{ stats.chunks }} 个知识切片{{ stats.built_at ? (' · 上次构建: ' + stats.built_at) : '' }}</div>
+                            <div class="oc-row-desc">已索引 {{ stats.docs }} 份文件 · {{ stats.chunks }} 个切片{{ stats.built_at ? (' · 上次构建: ' + stats.built_at) : '' }}</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-button :loading="stats.rebuilding" @click="rebuild">重建全库索引</a-button>
+                            <a-button :loading="stats.rebuilding" @click="rebuild">重建索引</a-button>
                           </div>
                         </div>
                       </div>
@@ -3057,35 +3438,35 @@ const App = {
                   <!-- 9. 浏览器与存储 (storage) -->
                   <template v-if="showSettingsSec('storage')">
                     <div class="oc-group">
-                      <h4 class="oc-group-title">AI 浏览器下载处理策略</h4>
+                      <h4 class="oc-group-title">浏览器下载</h4>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">浏览器下载文件存放位置</div>
-                            <div class="oc-row-desc">选择 AI 或用户在内置浏览器中下载文件时的落盘目录（推荐独立沙箱目录，避免弄乱系统个人下载夹）</div>
+                            <div class="oc-row-title">下载存放位置</div>
+                            <div class="oc-row-desc">选择内置浏览器下载文件的保存目录，独立沙箱目录可避免与个人下载文件夹混杂</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-select v-model:value="cfg.browser_download_mode" style="width: 240px">
-                              <a-select-option value="sandbox">O2 专属下载沙箱目录（推荐）</a-select-option>
-                              <a-select-option value="system">系统默认「下载」文件夹</a-select-option>
+                            <a-select v-model:value="cfg.browser_download_mode" style="width: 190px">
+                              <a-select-option value="sandbox">独立沙箱目录</a-select-option>
+                              <a-select-option value="system">系统下载文件夹</a-select-option>
                             </a-select>
                           </div>
                         </div>
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">当前生效下载路径</div>
+                            <div class="oc-row-title">当前下载路径</div>
                             <div class="oc-row-desc">{{ cacheReport.active_download_dir || '加载中…' }}</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-button size="small" @click="openCacheDir('downloads')">打开下载目录</a-button>
+                            <a-button size="small" @click="openCacheDir('downloads')">打开目录</a-button>
                           </div>
                         </div>
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">启动时自动回收过期临时文件</div>
-                            <div class="oc-row-desc">每次启动自动清理超过 12 小时的未提交上传暂存、AI 浏览器临时截图与命令行溢出日志</div>
+                            <div class="oc-row-title">自动清理过期临时文件</div>
+                            <div class="oc-row-desc">每次启动时自动回收超过 12 小时的未提交上传暂存、临时截图与运行日志</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-switch v-model:checked="cfg.auto_clean_temp" />
@@ -3096,77 +3477,77 @@ const App = {
 
                     <div class="oc-group">
                       <div class="oc-group-head">
-                        <h4 class="oc-group-title">临时文件与缓存空间管理</h4>
-                        <a-button size="small" @click="loadCacheStatus">刷新统计</a-button>
+                        <h4 class="oc-group-title">缓存与空间</h4>
+                        <a-button size="small" @click="loadCacheStatus">刷新</a-button>
                       </div>
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
                             <div class="oc-row-title">
-                              <span>上传暂存与运行临时文件</span>
-                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.temp_logs.bytes) }} · {{ cacheReport.temp_logs.files }} 个文件</span>
+                              <span>上传暂存与临时文件</span>
+                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.temp_logs.bytes) }} · {{ cacheReport.temp_logs.files }} 项</span>
                             </div>
-                            <div class="oc-row-desc">包含未确认入库的上传孤儿文件 (build/uploads)、AI 浏览器截图 (%TEMP%\o2-browser-shots) 与工具溢出日志</div>
+                            <div class="oc-row-desc">包含未确认入库的上传暂存文件、浏览器临时截图与工具日志</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-button size="small" :loading="cacheClearing === 'temp'"
                                       :disabled="!cacheReport.temp_logs.files"
-                                      @click="clearCacheTarget('temp', '上传暂存与临时文件')">立即清理</a-button>
+                                      @click="clearCacheTarget('temp', '上传暂存与临时文件')">清理</a-button>
                           </div>
                         </div>
 
                         <div class="oc-row">
                           <div class="oc-row-info">
                             <div class="oc-row-title">
-                              <span>AI 浏览器沙箱下载文件</span>
-                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.downloads.bytes) }} · {{ cacheReport.downloads.files }} 个文件</span>
+                              <span>沙箱下载文件</span>
+                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.downloads.bytes) }} · {{ cacheReport.downloads.files }} 项</span>
                             </div>
-                            <div class="oc-row-desc">存放在 O2 专属下载沙箱目录 (%LOCALAPPDATA%\O2\downloads) 中的下载附件</div>
+                            <div class="oc-row-desc">存放在独立下载沙箱目录中的浏览器下载附件</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-button size="small" :loading="cacheClearing === 'downloads'"
                                       :disabled="!cacheReport.downloads.files"
-                                      @click="clearCacheTarget('downloads', '沙箱下载文件')">清空下载文件</a-button>
+                                      @click="clearCacheTarget('downloads', '沙箱下载文件')">清空</a-button>
                           </div>
                         </div>
 
                         <div class="oc-row">
                           <div class="oc-row-info">
                             <div class="oc-row-title">
-                              <span>内置浏览器网页缓存</span>
+                              <span>浏览器网页缓存</span>
                               <span class="oc-stat-badge">{{ formatBytes(cacheReport.browser_cache.bytes) }}</span>
                             </div>
-                            <div class="oc-row-desc">Chromium 静态资源与脚本缓存（清理后可释放空间，不会清除 Cookie 与已登录网站状态）</div>
+                            <div class="oc-row-desc">网页静态资源缓存，清理后不会影响网站登录状态</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-button size="small" :loading="cacheClearing === 'browser_cache'"
-                                      @click="clearCacheTarget('browser_cache', '浏览器网页缓存')">清理网页缓存</a-button>
+                                      @click="clearCacheTarget('browser_cache', '浏览器网页缓存')">清理</a-button>
                           </div>
                         </div>
 
                         <div class="oc-row">
                           <div class="oc-row-info">
                             <div class="oc-row-title">
-                              <span>云端 OCR 版面识别缓存</span>
-                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.ocr_cache.bytes) }} · {{ cacheReport.ocr_cache.files }} 个文件</span>
+                              <span>OCR 版面识别缓存</span>
+                              <span class="oc-stat-badge">{{ formatBytes(cacheReport.ocr_cache.bytes) }} · {{ cacheReport.ocr_cache.files }} 项</span>
                             </div>
-                            <div class="oc-row-desc">build/ocr_cloud 下已缓存的 PDF 版面与表格 JSON，保留可避免重建索引时重复调用云端识别</div>
+                            <div class="oc-row-desc">已缓存的扫描件版面识别结果，保留可避免重建索引时重复调用接口</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-button size="small" :loading="cacheClearing === 'ocr_cache'"
                                       :disabled="!cacheReport.ocr_cache.files"
-                                      @click="clearCacheTarget('ocr_cache', '云端 OCR 缓存')">清空 OCR 缓存</a-button>
+                                      @click="clearCacheTarget('ocr_cache', 'OCR 缓存')">清空</a-button>
                           </div>
                         </div>
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">重置内置浏览器登录态与 Cookie</div>
-                            <div class="oc-row-desc">清除内置浏览器中所有网站的 Cookie、LocalStorage 与会话数据（需重新登录各网站）</div>
+                            <div class="oc-row-title">重置浏览器登录状态</div>
+                            <div class="oc-row-desc">清除内置浏览器中所有网站的 Cookie 与本地会话数据</div>
                           </div>
                           <div class="oc-row-ctrl">
                             <a-button size="small" danger :loading="cacheClearing === 'browser_cookies'"
-                                      @click="clearCacheTarget('browser_cookies', '所有网站登录态与 Cookie', true)">重置登录态</a-button>
+                                      @click="clearCacheTarget('browser_cookies', '所有网站登录状态', true)">重置</a-button>
                           </div>
                         </div>
                       </div>
@@ -3180,34 +3561,34 @@ const App = {
                       <div class="oc-card">
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">O2 多模态知识与智能分析工作台</div>
-                            <div class="oc-row-desc">集成多模态文档库、混合向量检索、持久化 AI 协同浏览器、本机 PowerShell 与外部 API 连接器</div>
+                            <div class="oc-row-title">O2 智能分析与知识工作台</div>
+                            <div class="oc-row-desc">集成多模态文档库、混合向量检索、金融行情看板、全球快讯终端与协同浏览器</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <span class="oc-stat-badge ok">v2.4 Desktop</span>
+                            <span class="oc-stat-badge ok">v2.5</span>
                           </div>
                         </div>
 
                         <div class="oc-row">
                           <div class="oc-row-info">
                             <div class="oc-row-title">
-                              <span>本地 SQLite 知识库数据库</span>
+                              <span>本地知识库数据库</span>
                               <span class="oc-stat-badge">{{ formatBytes(cacheReport.database.bytes) }}</span>
                             </div>
                             <div class="oc-row-desc">{{ cfg.db_path || cacheReport.database.path || 'data/zdl.sqlite' }}</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-button size="small" @click="openCacheDir('data')">打开数据目录</a-button>
+                            <a-button size="small" @click="openCacheDir('data')">打开目录</a-button>
                           </div>
                         </div>
 
                         <div class="oc-row">
                           <div class="oc-row-info">
-                            <div class="oc-row-title">内置浏览器 Profile 目录</div>
-                            <div class="oc-row-desc">{{ cacheReport.browser_cache.path || '%LOCALAPPDATA%\\O2\\browser-profile' }}（总占用 {{ formatBytes(cacheReport.browser_cache.profile_bytes) }}）</div>
+                            <div class="oc-row-title">浏览器数据目录</div>
+                            <div class="oc-row-desc">{{ cacheReport.browser_cache.path || '%LOCALAPPDATA%\\O2\\browser-profile' }} · {{ formatBytes(cacheReport.browser_cache.profile_bytes) }}</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <span class="oc-stat-badge">persist:o2-browser</span>
+                            <span class="oc-stat-badge">持久化</span>
                           </div>
                         </div>
                       </div>
@@ -3246,9 +3627,9 @@ const App = {
     </div>
 
     <div class="docview-bar">
-      <span class="seg">
-        <span :class="['seg-item', docView === 'pdf' ? 'on' : '']" @click="setDocView('pdf')">原文视图</span>
-        <span :class="['seg-item', docView === 'text' ? 'on' : '']" @click="setDocView('text')">结构化切片 ({{ (doc.chunks || []).length }})</span>
+      <span class="seg" role="tablist">
+        <span role="tab" tabindex="0" :aria-selected="docView === 'pdf'" :class="['seg-item', docView === 'pdf' ? 'on' : '']" @click="setDocView('pdf')" @keydown.enter.prevent="setDocView('pdf')">原页</span>
+        <span role="tab" tabindex="0" :aria-selected="docView === 'text'" :class="['seg-item', docView === 'text' ? 'on' : '']" @click="setDocView('text')" @keydown.enter.prevent="setDocView('text')">切片 {{ (doc.chunks || []).length }}</span>
       </span>
       <template v-if="docView === 'pdf' && canPdf">
         <span class="pager-num">第 {{ originPage || 1 }} / {{ doc.n_pages || 1 }} 页</span>
@@ -3345,7 +3726,7 @@ const App = {
       </a-form-item>
       <a-form-item label="文件夹">
         <a-auto-complete v-model:value="ingest.folder" :options="folderOptions"
-                         placeholder="留空则由 AI 归类" />
+                         placeholder="留空放入当前根目录（点击「智能归档」后再自动分类）" />
       </a-form-item>
     </div>
 
@@ -3398,22 +3779,22 @@ const App = {
     <!-- 单文件精修表单 -->
     <a-form v-if="!ingest.batchMode && ingest.tmp_id" layout="vertical" class="ingest-form">
       <div class="form-grid-3">
-        <a-form-item label="文件性质（AI 智能判定）">
+        <a-form-item label="文件性质">
           <a-select v-model:value="ingest.doc_type" @change="onIngestTypeChange">
             <a-select-option v-for="t in DOC_TYPE_SPECS" :key="t.id" :value="t.id">{{ t.label }}</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="切分与索引策略">
+        <a-form-item label="切分策略">
           <a-select v-model:value="ingest.chunk_profile">
-            <a-select-option value="auto">智能自动路由</a-select-option>
-            <a-select-option value="laws">条文切分 (章/节/条)</a-select-option>
-            <a-select-option value="report">层级章节切分 (标题树)</a-select-option>
-            <a-select-option value="table">表格结构化切分 (带表头)</a-select-option>
-            <a-select-option value="image">视觉与OCR双轨索引</a-select-option>
-            <a-select-option value="one">整篇不切分</a-select-option>
+            <a-select-option value="auto">智能自动</a-select-option>
+            <a-select-option value="laws">条文切分</a-select-option>
+            <a-select-option value="report">章节切分</a-select-option>
+            <a-select-option value="table">表格切分</a-select-option>
+            <a-select-option value="image">视觉与 OCR</a-select-option>
+            <a-select-option value="one">整篇索引</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="发布/归档日期">
+        <a-form-item label="日期">
           <a-input v-model:value="ingest.issued_date" placeholder="YYYY-MM-DD" />
         </a-form-item>
       </div>
@@ -3428,7 +3809,7 @@ const App = {
           <a-auto-complete v-model:value="ingest.dept" :options="deptOptions" />
         </a-form-item>
         <a-form-item label="发文字号 / 编号">
-          <a-input v-model:value="ingest.doc_no" placeholder="如：南物流发〔2025〕142号" />
+          <a-input v-model:value="ingest.doc_no" placeholder="如：发文字号或制度编号" />
         </a-form-item>
         <a-form-item label="效力状态">
           <a-select v-model:value="ingest.status">
@@ -3441,7 +3822,7 @@ const App = {
 
       <div v-else-if="ingest.doc_type === 'finance'" class="form-grid-3">
         <a-form-item label="公司主体">
-          <a-input v-model:value="ingest.meta.entity" placeholder="如：物流集团本部" />
+          <a-input v-model:value="ingest.meta.entity" placeholder="如：公司或主体名称" />
         </a-form-item>
         <a-form-item label="报告期">
           <a-input v-model:value="ingest.meta.period" placeholder="如：2025年报 / 2025Q3" />
@@ -3504,11 +3885,11 @@ const App = {
     <a-form layout="vertical">
       <a-form-item label="项目名称">
         <a-auto-complete v-model:value="folderModal.project" :options="projectOptions" size="large"
-                         placeholder="选择已有项目或输入新项目名（如：南宁冷链物流园项目）" />
+                         placeholder="选择已有项目或输入新项目名" />
       </a-form-item>
-      <a-form-item :label="folderModal.mode === 'rename' ? '新的文件夹路径（多级用 / 分隔，也可修改所属项目）' : '子文件夹路径（可选，多级目录用 / 分隔）'">
+      <a-form-item :label="folderModal.mode === 'rename' ? '新文件夹路径' : '子文件夹路径'">
         <a-input v-model:value="folderModal.path" size="large"
-                 placeholder="如：01-立项与批复 或 02-合同协议/采购合同（留空则仅创建项目）" />
+                 placeholder="多级目录用 / 分隔，留空则仅创建项目" />
       </a-form-item>
       <p v-if="folderModal.mode === 'rename'" class="ingest-hint">
         下级文件夹和文件会同步更新路径与归属。
@@ -3706,9 +4087,9 @@ const App = {
           </a-select>
         </a-form-item>
       </div>
-      <a-form-item label="Base URL（或 OpenAPI JSON 地址）">
+      <a-form-item label="Base URL">
         <div class="field-with-action">
-          <a-input v-model:value="addApiConnector.base_url" size="large" placeholder="https://api.example.com" />
+          <a-input v-model:value="addApiConnector.base_url" size="large" placeholder="https://api.example.com 或 OpenAPI 地址" />
           <a-button :loading="apiDiscovering" @click="discoverIntoModal">解析 OpenAPI</a-button>
         </div>
       </a-form-item>
@@ -3730,7 +4111,7 @@ const App = {
     </a-form>
   </a-modal>
 
-  <a-drawer v-model:open="dashCustomizeOpen" title="看板工作区与自由布局" :width="440" placement="right">
+  <a-drawer v-model:open="dashCustomizeOpen" title="看板布局管理" :width="420" placement="right">
     <div style="display:flex;flex-direction:column;gap:12px">
       <div v-if="activeWorkspaceObj" style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--muted);display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -3743,29 +4124,35 @@ const App = {
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <a-input v-model:value="activeWorkspaceObj.name" size="small" placeholder="工作区名称" @blur="saveDashboardLayout()" @pressEnter="saveDashboardLayout()" />
-          <a-button size="small" @click="toggleDashboardLock()">{{ dashboardLayout.locked ? '解锁拖拽' : '锁定布局' }}</a-button>
+          <a-button size="small" @click="toggleDashboardLock()">{{ dashboardLayout.locked ? '解锁编辑' : '锁定布局' }}</a-button>
           <a-button size="small" @click="compactWorkspaceWidgets(activeWorkspaceObj); saveDashboardLayout()">紧凑对齐</a-button>
         </div>
-        <div class="hint" style="font-size:11.5px">提示：解锁后可直接在画布按住标题栏拖拽位置，拉住左右/底边或边角无级缩放（24 列网格）。</div>
+        <div class="hint" style="font-size:11.5px">解锁后可直接拖动卡片标题栏移动位置，拖动边框或四角自由缩放。</div>
       </div>
 
       <div v-if="activeWorkspaceObj" style="display:flex;flex-direction:column;gap:8px">
         <div v-for="w in activeWorkspaceObj.widgets" :key="w.id"
              style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--card)">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-            <b style="font-size:12.5px">{{ w.title }}</b>
-            <a-switch size="small" :checked="w.enabled !== false"
-                      @change="(v) => { w.enabled = !!v; saveDashboardLayout() }" />
+            <b style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ w.title }}</b>
+            <div style="display:flex;align-items:center;gap:6px;flex:none">
+              <button type="button" :class="['ft-chip', w.enabled !== false ? 'on' : '']"
+                      @click="w.enabled = w.enabled === false; saveDashboardLayout()">
+                {{ w.enabled !== false ? '显示' : '隐藏' }}
+              </button>
+              <button type="button" class="ft-ico-btn danger" title="移除模块" aria-label="移除模块"
+                      @click="removeDashboardWidget(w.id)" v-html="ICO.trash"></button>
+            </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;font-size:11.5px">
-            <span class="hint ft-mono">宽(列)</span>
+            <span class="hint ft-mono">宽度</span>
             <a-input-number size="small" :min="w.minW || 4" :max="24" :value="w.w || 8" style="width:62px"
-                            @change="(v) => { if (v) { w.w = Math.max(w.minW || 4, Math.min(24, Number(v))); if (w.x + w.w > 24) w.x = 24 - w.w; saveDashboardLayoutDebounced() } }" />
-            <span class="hint ft-mono">高(行)</span>
+                            @change="(v) => { if (v) { w.w = Math.max(w.minW || 4, Math.min(24, Number(v))); if (w.x + w.w > 24) w.x = 24 - w.w; resolveWidgetOverlap(activeWorkspaceObj, w); saveDashboardLayoutDebounced() } }" />
+            <span class="hint ft-mono">高度</span>
             <a-input-number size="small" :min="w.minH || 5" :max="40" :value="w.h || 10" style="width:62px"
-                            @change="(v) => { if (v) { w.h = Math.max(w.minH || 5, Math.min(40, Number(v))); saveDashboardLayoutDebounced() } }" />
+                            @change="(v) => { if (v) { w.h = Math.max(w.minH || 5, Math.min(40, Number(v))); resolveWidgetOverlap(activeWorkspaceObj, w); saveDashboardLayoutDebounced() } }" />
             <span class="spacer"></span>
-            <span class="hint ft-mono">({{ w.x || 0 }},{{ w.y || 0 }})</span>
+            <span class="hint ft-mono">列 {{ w.x || 0 }} · 行 {{ w.y || 0 }}</span>
           </div>
         </div>
       </div>
@@ -3782,7 +4169,7 @@ const App = {
     </div>
   </a-drawer>
 
-  <a-drawer v-model:open="mktCustomizeOpen" title="行情工作区与自由布局" :width="440" placement="right">
+  <a-drawer v-model:open="mktCustomizeOpen" title="行情布局管理" :width="420" placement="right">
     <div style="display:flex;flex-direction:column;gap:12px">
       <div v-if="activeMarketWorkspaceObj" style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--muted);display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -3795,29 +4182,35 @@ const App = {
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <a-input v-model:value="activeMarketWorkspaceObj.name" size="small" placeholder="工作区名称" @blur="saveMarketLayout()" @pressEnter="saveMarketLayout()" />
-          <a-button size="small" @click="toggleMarketLock()">{{ marketLayout.locked ? '解锁拖拽' : '锁定布局' }}</a-button>
+          <a-button size="small" @click="toggleMarketLock()">{{ marketLayout.locked ? '解锁编辑' : '锁定布局' }}</a-button>
           <a-button size="small" @click="compactWorkspaceWidgets(activeMarketWorkspaceObj); saveMarketLayout()">紧凑对齐</a-button>
         </div>
-        <div class="hint" style="font-size:11.5px">支持自由组合任意市场面板、K线终端、热力图、涨跌异动与自选，拖拽边缘即可无级缩放。</div>
+        <div class="hint" style="font-size:11.5px">支持自由组合市场面板、K 线、热力图与量化模块，拖动边框即可调整尺寸。</div>
       </div>
 
       <div v-if="activeMarketWorkspaceObj" style="display:flex;flex-direction:column;gap:8px">
         <div v-for="w in activeMarketWorkspaceObj.widgets" :key="w.id"
              style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--card)">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-            <b style="font-size:12.5px">{{ w.title }}</b>
-            <a-switch size="small" :checked="w.enabled !== false"
-                      @change="(v) => { w.enabled = !!v; saveMarketLayout() }" />
+            <b style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ w.title }}</b>
+            <div style="display:flex;align-items:center;gap:6px;flex:none">
+              <button type="button" :class="['ft-chip', w.enabled !== false ? 'on' : '']"
+                      @click="w.enabled = w.enabled === false; saveMarketLayout()">
+                {{ w.enabled !== false ? '显示' : '隐藏' }}
+              </button>
+              <button type="button" class="ft-ico-btn danger" title="移除模块" aria-label="移除模块"
+                      @click="removeMarketWidget(w.id)" v-html="ICO.trash"></button>
+            </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;font-size:11.5px">
-            <span class="hint ft-mono">宽(列)</span>
+            <span class="hint ft-mono">宽度</span>
             <a-input-number size="small" :min="w.minW || 4" :max="24" :value="w.w || 8" style="width:62px"
-                            @change="(v) => { if (v) { w.w = Math.max(w.minW || 4, Math.min(24, Number(v))); if (w.x + w.w > 24) w.x = 24 - w.w; saveMarketLayoutDebounced() } }" />
-            <span class="hint ft-mono">高(行)</span>
+                            @change="(v) => { if (v) { w.w = Math.max(w.minW || 4, Math.min(24, Number(v))); if (w.x + w.w > 24) w.x = 24 - w.w; resolveWidgetOverlap(activeMarketWorkspaceObj, w); saveMarketLayoutDebounced() } }" />
+            <span class="hint ft-mono">高度</span>
             <a-input-number size="small" :min="w.minH || 5" :max="40" :value="w.h || 10" style="width:62px"
-                            @change="(v) => { if (v) { w.h = Math.max(w.minH || 5, Math.min(40, Number(v))); saveMarketLayoutDebounced() } }" />
+                            @change="(v) => { if (v) { w.h = Math.max(w.minH || 5, Math.min(40, Number(v))); resolveWidgetOverlap(activeMarketWorkspaceObj, w); saveMarketLayoutDebounced() } }" />
             <span class="spacer"></span>
-            <span class="hint ft-mono">({{ w.x || 0 }},{{ w.y || 0 }})</span>
+            <span class="hint ft-mono">列 {{ w.x || 0 }} · 行 {{ w.y || 0 }}</span>
           </div>
         </div>
       </div>
@@ -3834,27 +4227,53 @@ const App = {
     </div>
   </a-drawer>
 
+  <widget-gallery-modal
+    v-model:open="widgetGalleryOpen"
+    :target-scope="widgetGalleryScope"
+    :theme="cfg.ui_theme"
+    :custom-widgets="customWidgets"
+    :sectors="marketSectors"
+    :chokepoints="geoData.chokepoints"
+    :watchlist="marketOverview.watchlist"
+    @add-builtin="onAddBuiltinFromGallery"
+    @add-custom="onAddCustomFromGallery"
+    @save-custom="onSaveCustomFromStudio"
+    @delete-custom="onDeleteCustomWidget"
+    @ask-ai-build="onAskAiFromWidget"
+    @toggle-watchlist="toggleWatchlistSymbol"
+  />
+
+  <widget-config-drawer
+    v-model:open="widgetCfgOpen"
+    :widget="widgetCfgTarget"
+    :scope="widgetCfgScope"
+    :watchlist="marketOverview.watchlist"
+    @patch-widget="onPatchWidgetFromDrawer"
+    @save-as-custom="onSaveWidgetAsCustom"
+    @toggle-watchlist="toggleWatchlistSymbol"
+  />
+
   <!-- 实体情报画像抽屉 -->
-  <a-drawer v-model:open="entityDrawerOpen" :title="entityProfile ? (entityProfile.canonical_name + ' · 实体情报画像') : '实体情报画像'" :width="520" placement="right">
+  <a-drawer v-model:open="entityDrawerOpen" :title="entityProfile ? entityProfile.canonical_name : '实体详情'" :width="500" placement="right">
     <a-spin :spinning="entityLoading">
       <div v-if="entityProfile" style="display:flex;flex-direction:column;gap:14px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <a-tag color="blue">{{ entityProfile.entity_type }}</a-tag>
-          <span class="hint ft-mono">7日提及 {{ entityProfile.mentions }} 次 · 历史 {{ entityProfile.total_mentions }} 次</span>
+          <span class="hint ft-mono">近 7 日提及 {{ entityProfile.mentions }} 次 · 累计 {{ entityProfile.total_mentions }} 次</span>
           <span class="ft-mono" :style="{ color: entityProfile.net_sentiment > 0 ? 'var(--up)' : (entityProfile.net_sentiment < 0 ? 'var(--down)' : 'var(--muted-foreground)') }">
             净情绪 {{ entityProfile.net_sentiment >= 0 ? '+' : '' }}{{ entityProfile.net_sentiment }}
           </span>
         </div>
         <div v-if="entityProfile.aliases && entityProfile.aliases.length" class="hint" style="font-size:12px">
-          多语种别名：{{ entityProfile.aliases.join(' / ') }}
+          别名：{{ entityProfile.aliases.join(' / ') }}
         </div>
         <div style="display:flex;gap:8px">
-          <a-button type="primary" size="small" @click="askAiAboutEntity()">让 AI 结合本地制度库研判该实体</a-button>
-          <a-button size="small" @click="filterNewsByEntity(entityProfile.canonical_name)">在新闻流中仅看该实体</a-button>
+          <a-button type="primary" size="small" @click="askAiAboutEntity()">AI 深度研判</a-button>
+          <a-button size="small" @click="filterNewsByEntity(entityProfile.canonical_name)">查看相关快讯</a-button>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:12px;font-weight:600;color:var(--foreground)">情绪构成（利多 {{ entityProfile.bullish }} / 中性 {{ entityProfile.neutral }} / 利空 {{ entityProfile.bearish }}）</div>
+          <div style="font-size:12px;font-weight:600;color:var(--foreground)">情绪分布 · 利多 {{ entityProfile.bullish }} · 中性 {{ entityProfile.neutral }} · 利空 {{ entityProfile.bearish }}</div>
           <div class="ft-breadth-bar" style="height:8px">
             <div :style="{ width: Math.round((entityProfile.bullish / Math.max(1, entityProfile.bullish + entityProfile.neutral + entityProfile.bearish)) * 100) + '%', background: 'var(--up)' }"></div>
             <div :style="{ width: Math.round((entityProfile.neutral / Math.max(1, entityProfile.bullish + entityProfile.neutral + entityProfile.bearish)) * 100) + '%', background: '#94a3b8' }"></div>
@@ -3863,17 +4282,17 @@ const App = {
         </div>
 
         <div v-if="entityProfile.co_entities && entityProfile.co_entities.length" style="display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:12px;font-weight:600;color:var(--foreground)">高频共现关联实体</div>
+          <div style="font-size:12px;font-weight:600;color:var(--foreground)">关联实体</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">
             <span v-for="ce in entityProfile.co_entities" :key="ce.id" class="ft-ent-pill"
                   @click="openEntityDossier(ce.canonical_name)">
-              {{ ce.canonical_name }} ({{ ce.co_count }})
+              {{ ce.canonical_name }} · {{ ce.co_count }}
             </span>
           </div>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:12px;font-weight:600;color:var(--foreground)">近期关联多语种新闻 ({{ (entityProfile.items || []).length }})</div>
+          <div style="font-size:12px;font-weight:600;color:var(--foreground)">关联快讯 · {{ (entityProfile.items || []).length }}</div>
           <div v-for="nit in (entityProfile.items || [])" :key="'ep-' + nit.id"
                class="news-card" style="padding:8px 10px"
                @click="entityDrawerOpen = false; tab = 'news'; selectNewsItem(nit)">
@@ -3890,14 +4309,14 @@ const App = {
   </a-drawer>
 
   <!-- AI 情报简报弹窗 -->
-  <a-modal v-model:open="briefModalOpen" title="DESK NOTE · 近 24 小时多语种情报简报" :width="640" :footer="null">
+  <a-modal v-model:open="briefModalOpen" title="24 小时情报简报" :width="640" :footer="null">
     <a-spin :spinning="newsBriefLoading">
       <div v-if="newsBriefText" class="answer-text" style="font-size:13.5px;line-height:1.65"
            v-html="renderAnswer(newsBriefText, { sources: [] })"></div>
       <o2-empty v-else description="暂无简报内容" />
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
         <a-button @click="loadNewsBrief(true)">重新生成</a-button>
-        <a-button type="primary" :disabled="!newsBriefText" @click="briefModalOpen = false; question = '请结合以下今日情报简报与本地文档库做深度研判：\\n\\n' + newsBriefText; tab = 'ask'">带入对话深挖</a-button>
+        <a-button type="primary" :disabled="!newsBriefText" @click="briefModalOpen = false; question = '请结合以下今日情报简报与本地文档库做深度研判：\\n\\n' + newsBriefText; tab = 'ask'">带入对话</a-button>
       </div>
     </a-spin>
   </a-modal>
@@ -3989,7 +4408,10 @@ const App = {
       if (cfg.news_enabled) {
         list.push({ key: 'dashboard', label: '看板', icon: ICO.dashboard })
         list.push({ key: 'markets', label: '行情', icon: ICO.chart })
+        list.push({ key: 'backtest', label: '回测', icon: ICO.backtest })
         list.push({ key: 'news', label: '新闻流', icon: ICO.rss })
+      } else {
+        list.push({ key: 'backtest', label: '回测', icon: ICO.backtest })
       }
       list.push(
         { key: 'browser', label: '浏览器', icon: ICO.globe },
@@ -4022,7 +4444,7 @@ const App = {
       '检索本地文档库中与当前主题相关的资料',
     ]
     const pageTitle = computed(() => (
-      { search: '检索', ask: '问答', dashboard: '看板', markets: '行情', news: '新闻流', browser: '浏览器', catalog: '文件', settings: '设置' }[tab.value] || 'O2'
+      { search: '检索', ask: '问答', dashboard: '看板', markets: '行情', backtest: '回测', news: '新闻流', browser: '浏览器', catalog: '文件', settings: '设置' }[tab.value] || 'O2'
     ))
 
     function pageUrl(docId, page, chunkId, zoom) {
@@ -4095,6 +4517,7 @@ const App = {
         reasoning: m.reasoning || '',
         files: (m.files || []).map((f) => ({ name: f.name, source: f.source || '' })),
         sources: m.sources || [],
+        visuals: Array.isArray(m.visuals) ? m.visuals : [],
         tools: (m.tools || []).map((t) => ({
           kind: t.kind || 'search',
           query: t.query || '',
@@ -4157,6 +4580,7 @@ const App = {
           ((m.content || '').trim() || (m.packed || '').trim())
           || (m.files && m.files.length)
           || (m.tools && m.tools.length)
+          || (m.visuals && m.visuals.length)
         )
       ))
     }
@@ -6271,6 +6695,15 @@ const App = {
           }
         }
         noteStream(cur)
+      } else if (ev.type === 'visual') {
+        if (!Array.isArray(cur.visuals)) cur.visuals = []
+        if (ev.visual) {
+          cur.visuals.push(ev.visual)
+          ensureMarketBoot()
+          if (ev.visual.savedWidgetId) loadCustomWidgets()
+          if (ev.visual.pinned) loadDashboardLayout()
+        }
+        noteStream(cur)
       } else if (ev.type === 'sources') {
         ev.items.forEach((s) => {
           if (!cur.sources.some((x) => x.n === s.n)) cur.sources.push(s)
@@ -7330,7 +7763,7 @@ const App = {
       { id: 'query', label: 'Query 参数 (api_key / key 等)' },
       { id: 'basic', label: 'HTTP Basic (账号 + 密码)' },
       { id: 'hmac_sha256', label: 'HMAC-SHA256 签名 (交易所 / 企业网关)' },
-      { id: 'oauth2_client_credentials', label: 'OAuth2 / 企业令牌 (自动换取 access_token)' },
+      { id: 'oauth2_client_credentials', label: 'OAuth2 企业令牌' },
       { id: 'cookie', label: 'Cookie 凭证' },
     ])
     const apiCategories = [
@@ -7803,10 +8236,10 @@ const App = {
       if (embedStatus.error) return embedStatus.error
       if (embedStatus.job) {
         const p = embedStatus.progress || {}
-        return `正在嵌入 ${p.done || 0} / ${p.total || tot}`
+        return `索引中 ${p.done || 0} / ${p.total || tot}`
       }
-      if (cfg.embed_running) return `已启动 · 已嵌入 ${done} / ${tot}`
-      return `已停止 · 已嵌入 ${done} / ${tot}`
+      if (cfg.embed_use) return tot > 0 ? `自动运行 · ${done}/${tot}` : '自动运行'
+      return '已关闭'
     })
     let embedTimer = 0
     const cfgSaveHint = ref('')
@@ -7945,6 +8378,7 @@ const App = {
         loadDashboardLayout()
         loadMarketLayout()
       }
+      loadCustomWidgets()
       cfg.temperature = c.temperature != null ? Number(c.temperature) : 0.1
       cfg.top_k = c.top_k != null ? Number(c.top_k) : 8
       if (!settingsPid.value || !providers.some((p) => p.id === settingsPid.value)) {
@@ -9088,7 +9522,8 @@ const App = {
     function applyIngestMeta(j, file) {
       ingest.tmp_id = j.tmp_id
       ingest.project = j.project || ingest.project || '集团制度库'
-      ingest.folder = j.folder || ingest.folder || ''
+      // 仅当用户手动指定文件夹或上传本地子文件夹时才保留 folder，不自动分类
+      ingest.folder = ingest.folder || ((file && file.webkitRelativePath && file.webkitRelativePath.includes('/')) ? (j.folder || '') : '')
       ingest.dept = j.dept || ''
       ingest.doc_type = j.doc_type || 'general'
       ingest.chunk_profile = j.chunk_profile || 'auto'
@@ -9226,13 +9661,14 @@ const App = {
         return
       }
       item.doc_type = parsed.doc_type || 'general'
-      item.folder = parsed.folder || ingest.folder || ''
+      const hasLocalSubdir = !!(item.file && item.file.webkitRelativePath && item.file.webkitRelativePath.split('/').length > 2)
+      item.folder = ingest.folder || (hasLocalSubdir ? (parsed.folder || '') : '')
       if (!parsed.committed) {
         item.statusText = '正在入库…'
         const committed = await api.post('/api/docs/commit', {
           tmp_id: parsed.tmp_id,
           project: parsed.project || ingest.project || '集团制度库',
-          folder: parsed.folder || ingest.folder || '',
+          folder: item.folder,
           dept: parsed.dept || '',
           doc_type: parsed.doc_type || 'general',
           chunk_profile: parsed.chunk_profile || 'auto',
@@ -10375,7 +10811,7 @@ const App = {
     const terminalClock = computed(() => {
       const d = new Date(clockNow.value)
       const p = (n) => String(n).padStart(2, '0')
-      return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())} UTC`
+      return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
     })
     const marketHours = computed(() => {
       const d = new Date(clockNow.value)
@@ -10420,17 +10856,72 @@ const App = {
       nextTick(() => navSlide.schedule(tab.value))
     })
 
+    const QUANT_WIDGET_TYPES = new Set([
+      'pro_kline', 'rebased_compare', 'formula_spread', 'percentile_barcode',
+      'capital_flow', 'rotation_quadrant', 'chokepoint_watch', 'analog_finder',
+      'event_study', 'divergence_radar', 'custom_echarts',
+      'macro_clock', 'corr_matrix', 'risk_drawdown', 'market_breadth',
+      'style_factor', 'commodity_dashboard', 'rate_spread_watch', 'intel_catalyst',
+    ])
+    function isQuantWidgetType(t) {
+      return QUANT_WIDGET_TYPES.has(t)
+    }
+
+    const LEGACY_EN_TITLE_MAP = {
+      'WATCHLIST & K-LINE': '自选与 K 线',
+      'SECTOR HEATMAP': '板块热力图',
+      'MACRO YIELDS & FX': '宏观利率与汇率',
+      'GEO & PORTWATCH': '地缘事件概率',
+      'DATA BUS': '数据源状态',
+      'ENTITY GRAPH': '实体关系网络',
+      'RISK PULSE': '情绪温度计',
+      'LIVE WIRE': '实时快讯',
+      'DESK NOTE': '情报简报',
+      'QUANT LAB [M4]': '量化回测',
+      'INDICES': '核心指数',
+      'CN LOGISTICS & CORE': 'A 股核心资产',
+      'A 股物流与龙头': 'A 股核心资产',
+      'US & HK EQUITIES': '美港核心资产',
+      'FOREX': '全球外汇',
+      'COMMODITIES': '大宗商品',
+      'ETF & BONDS': 'ETF 与债券',
+      'CRYPTO': '加密资产',
+      'WATCHLIST': '自选标的',
+      'K-LINE TERMINAL': 'K 线主图',
+      'TOP GAINERS': '领涨异动',
+      'TOP LOSERS': '领跌异动',
+      'MOST ACTIVE': '成交活跃',
+    }
+
     const DASHBOARD_WIDGET_REGISTRY = {
-      watchlist_slot: { type: 'watchlist_slot', badge: 'M', title: 'WATCHLIST & K-LINE', defaultW: 16, defaultH: 12, minW: 8, minH: 8 },
-      sector_heatmap: { type: 'sector_heatmap', badge: 'H', title: 'SECTOR HEATMAP', defaultW: 12, defaultH: 10, minW: 6, minH: 7 },
-      macro_curve: { type: 'macro_curve', badge: 'Y', title: 'MACRO YIELDS & FX', defaultW: 12, defaultH: 10, minW: 6, minH: 7 },
-      geo_odds: { type: 'geo_odds', badge: 'G', title: 'GEO & PORTWATCH', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
-      connector_hub: { type: 'connector_hub', badge: 'A', title: 'DATA BUS', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
-      entity_pulse: { type: 'entity_pulse', badge: 'E', title: 'ENTITY GRAPH', defaultW: 8, defaultH: 10, minW: 5, minH: 7 },
-      sentiment_gauge: { type: 'sentiment_gauge', badge: 'S', title: 'RISK PULSE', defaultW: 8, defaultH: 10, minW: 5, minH: 7 },
-      live_wire: { type: 'live_wire', badge: 'N', title: 'LIVE WIRE', defaultW: 16, defaultH: 11, minW: 7, minH: 6 },
-      desk_note: { type: 'desk_note', badge: 'D', title: 'DESK NOTE', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
-      backtest_slot: { type: 'backtest_slot', badge: 'Q', title: 'QUANT LAB [M4]', defaultW: 24, defaultH: 6, minW: 6, minH: 5 },
+      watchlist_slot: { type: 'watchlist_slot', badge: 'M', title: '自选与 K 线', defaultW: 16, defaultH: 12, minW: 8, minH: 8 },
+      pro_kline: { type: 'pro_kline', badge: 'PK', title: '多指标共振 K 线', defaultW: 16, defaultH: 14, minW: 8, minH: 9 },
+      rebased_compare: { type: 'rebased_compare', badge: 'RB', title: '多标的相对收益', defaultW: 12, defaultH: 11, minW: 6, minH: 7 },
+      formula_spread: { type: 'formula_spread', badge: 'FS', title: '跨资产比价与利差', defaultW: 12, defaultH: 11, minW: 6, minH: 7 },
+      percentile_barcode: { type: 'percentile_barcode', badge: 'PB', title: '全景资产分位数', defaultW: 12, defaultH: 12, minW: 6, minH: 7 },
+      event_study: { type: 'event_study', badge: 'EF', title: '事件因子回测', defaultW: 12, defaultH: 12, minW: 7, minH: 8 },
+      analog_finder: { type: 'analog_finder', badge: 'AN', title: '历史相似形态', defaultW: 12, defaultH: 11, minW: 6, minH: 7 },
+      capital_flow: { type: 'capital_flow', badge: 'CF', title: '主力资金流向', defaultW: 12, defaultH: 11, minW: 6, minH: 7 },
+      rotation_quadrant: { type: 'rotation_quadrant', badge: 'RQ', title: '板块轮动四象限', defaultW: 12, defaultH: 11, minW: 6, minH: 7 },
+      chokepoint_watch: { type: 'chokepoint_watch', badge: 'CP', title: '全球航运咽喉监控', defaultW: 12, defaultH: 10, minW: 5, minH: 6 },
+      divergence_radar: { type: 'divergence_radar', badge: 'DR', title: '跨市场背离雷达', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      macro_clock: { type: 'macro_clock', badge: 'MC', title: '美林时钟与流动性仪表', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      corr_matrix: { type: 'corr_matrix', badge: 'CM', title: '跨资产相关性矩阵', defaultW: 10, defaultH: 11, minW: 6, minH: 7 },
+      risk_drawdown: { type: 'risk_drawdown', badge: 'RD', title: '波动率与最大回撤监控', defaultW: 10, defaultH: 10, minW: 5, minH: 6 },
+      market_breadth: { type: 'market_breadth', badge: 'MB', title: '市场广度与赚钱效应', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      style_factor: { type: 'style_factor', badge: 'SF', title: '风格轮动雷达', defaultW: 10, defaultH: 10, minW: 5, minH: 6 },
+      commodity_dashboard: { type: 'commodity_dashboard', badge: 'CD', title: '大宗商品与通胀链', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      rate_spread_watch: { type: 'rate_spread_watch', badge: 'RS', title: '利差与汇率压力计', defaultW: 8, defaultH: 9, minW: 5, minH: 6 },
+      intel_catalyst: { type: 'intel_catalyst', badge: 'IC', title: '热点催化与多空脉搏', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      custom_echarts: { type: 'custom_echarts', badge: 'AI', title: '自定义图表', defaultW: 12, defaultH: 10, minW: 4, minH: 5 },
+      sector_heatmap: { type: 'sector_heatmap', badge: 'H', title: '板块热力图', defaultW: 12, defaultH: 10, minW: 6, minH: 7 },
+      macro_curve: { type: 'macro_curve', badge: 'Y', title: '宏观利率与汇率', defaultW: 12, defaultH: 10, minW: 6, minH: 7 },
+      geo_odds: { type: 'geo_odds', badge: 'G', title: '地缘事件概率', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      connector_hub: { type: 'connector_hub', badge: 'A', title: '数据源状态', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      entity_pulse: { type: 'entity_pulse', badge: 'E', title: '实体关系网络', defaultW: 8, defaultH: 10, minW: 5, minH: 7 },
+      sentiment_gauge: { type: 'sentiment_gauge', badge: 'S', title: '情绪温度计', defaultW: 8, defaultH: 10, minW: 5, minH: 7 },
+      live_wire: { type: 'live_wire', badge: 'N', title: '实时快讯', defaultW: 16, defaultH: 11, minW: 7, minH: 6 },
+      desk_note: { type: 'desk_note', badge: 'D', title: '情报简报', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
     }
 
     const FALLBACK_DASHBOARD_LAYOUT = {
@@ -10445,35 +10936,56 @@ const App = {
           id: 'intel_overview',
           name: '终端总览',
           widgets: [
-            { id: 'w_watchlist_slot', type: 'watchlist_slot', title: 'WATCHLIST & K-LINE', x: 0, y: 0, w: 16, h: 12, minW: 8, minH: 8, enabled: true, config: {} },
-            { id: 'w_sentiment_gauge', type: 'sentiment_gauge', title: 'RISK PULSE', x: 16, y: 0, w: 8, h: 12, minW: 5, minH: 7, enabled: true, config: {} },
-            { id: 'w_sector_heatmap', type: 'sector_heatmap', title: 'SECTOR HEATMAP', x: 0, y: 12, w: 12, h: 10, minW: 6, minH: 7, enabled: true, config: {} },
-            { id: 'w_macro_curve', type: 'macro_curve', title: 'MACRO YIELDS & FX', x: 12, y: 12, w: 12, h: 10, minW: 6, minH: 7, enabled: true, config: {} },
-            { id: 'w_live_wire', type: 'live_wire', title: 'LIVE WIRE', x: 0, y: 22, w: 16, h: 11, minW: 7, minH: 6, enabled: true, config: { limit: 24 } },
-            { id: 'w_desk_note', type: 'desk_note', title: 'DESK NOTE', x: 16, y: 22, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
-            { id: 'w_entity_pulse', type: 'entity_pulse', title: 'ENTITY GRAPH', x: 0, y: 33, w: 8, h: 10, minW: 5, minH: 7, enabled: true, config: {} },
-            { id: 'w_geo_odds', type: 'geo_odds', title: 'GEO & PORTWATCH', x: 8, y: 33, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: {} },
-            { id: 'w_connector_hub', type: 'connector_hub', title: 'DATA BUS', x: 16, y: 33, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: {} },
-            { id: 'w_backtest_slot', type: 'backtest_slot', title: 'QUANT LAB [M4]', x: 0, y: 43, w: 24, h: 6, minW: 6, minH: 5, enabled: true, config: {} },
+            { id: 'w_watchlist_slot', type: 'watchlist_slot', title: '自选与 K 线', x: 0, y: 0, w: 16, h: 12, minW: 8, minH: 8, enabled: true, config: {} },
+            { id: 'w_divergence_radar', type: 'divergence_radar', title: '跨市场背离雷达', x: 16, y: 0, w: 8, h: 12, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'w_sector_heatmap', type: 'sector_heatmap', title: '板块热力图', x: 0, y: 12, w: 12, h: 10, minW: 6, minH: 7, enabled: true, config: {} },
+            { id: 'w_macro_curve', type: 'macro_curve', title: '宏观利率与汇率', x: 12, y: 12, w: 12, h: 10, minW: 6, minH: 7, enabled: true, config: {} },
+            { id: 'w_live_wire', type: 'live_wire', title: '实时快讯', x: 0, y: 22, w: 16, h: 11, minW: 7, minH: 6, enabled: true, config: { limit: 24 } },
+            { id: 'w_desk_note', type: 'desk_note', title: '情报简报', x: 16, y: 22, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'w_entity_pulse', type: 'entity_pulse', title: '实体关系网络', x: 0, y: 33, w: 8, h: 10, minW: 5, minH: 7, enabled: true, config: {} },
+            { id: 'w_geo_odds', type: 'geo_odds', title: '地缘事件概率', x: 8, y: 33, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'w_connector_hub', type: 'connector_hub', title: '数据源状态', x: 16, y: 33, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: {} },
           ],
         },
       ],
     }
 
     const MARKET_WIDGET_REGISTRY = {
-      panel_indices: { type: 'panel_indices', badge: 'I', title: 'INDICES', panelId: 'indices', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
-      panel_cn_logistics: { type: 'panel_cn_logistics', badge: 'L', title: 'CN LOGISTICS & CORE', panelId: 'cn_logistics', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
-      panel_us_hk: { type: 'panel_us_hk', badge: 'U', title: 'US & HK EQUITIES', panelId: 'us_hk', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
-      panel_forex: { type: 'panel_forex', badge: 'F', title: 'FOREX', panelId: 'forex', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
-      panel_commodities: { type: 'panel_commodities', badge: 'C', title: 'COMMODITIES', panelId: 'commodities', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
-      panel_etf_bonds: { type: 'panel_etf_bonds', badge: 'E', title: 'ETF & BONDS', panelId: 'etf_bonds', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
-      panel_crypto: { type: 'panel_crypto', badge: 'B', title: 'CRYPTO', panelId: 'crypto', defaultW: 12, defaultH: 10, minW: 5, minH: 6 },
-      watchlist: { type: 'watchlist', badge: 'W', title: 'WATCHLIST', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
-      kline_main: { type: 'kline_main', badge: 'K', title: 'K-LINE TERMINAL', defaultW: 16, defaultH: 14, minW: 8, minH: 8 },
-      sector_heatmap: { type: 'sector_heatmap', badge: 'H', title: 'SECTOR HEATMAP', defaultW: 12, defaultH: 10, minW: 6, minH: 7 },
-      movers_gainers: { type: 'movers_gainers', badge: '▲', title: 'TOP GAINERS', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
-      movers_losers: { type: 'movers_losers', badge: '▼', title: 'TOP LOSERS', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
-      movers_active: { type: 'movers_active', badge: '⚡', title: 'MOST ACTIVE', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
+      panel_indices: { type: 'panel_indices', badge: 'I', title: '核心指数', panelId: 'indices', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
+      panel_cn_logistics: { type: 'panel_cn_logistics', badge: 'A', title: 'A 股核心资产', panelId: 'cn_logistics', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
+      panel_us_hk: { type: 'panel_us_hk', badge: 'U', title: '美港核心资产', panelId: 'us_hk', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
+      panel_forex: { type: 'panel_forex', badge: 'F', title: '全球外汇', panelId: 'forex', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      panel_commodities: { type: 'panel_commodities', badge: 'C', title: '大宗商品', panelId: 'commodities', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      panel_etf_bonds: { type: 'panel_etf_bonds', badge: 'E', title: 'ETF 与债券', panelId: 'etf_bonds', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      panel_crypto: { type: 'panel_crypto', badge: 'B', title: '加密资产', panelId: 'crypto', defaultW: 12, defaultH: 10, minW: 5, minH: 6 },
+      watchlist: { type: 'watchlist', badge: 'W', title: '自选标的', defaultW: 8, defaultH: 12, minW: 5, minH: 6 },
+      kline_main: { type: 'kline_main', badge: 'K', title: 'K 线主图', defaultW: 16, defaultH: 14, minW: 8, minH: 8 },
+      sector_heatmap: { type: 'sector_heatmap', badge: 'H', title: '板块热力图', defaultW: 12, defaultH: 10, minW: 6, minH: 7 },
+      macro_curve: { type: 'macro_curve', badge: 'Y', title: '宏观利率与汇率', defaultW: 12, defaultH: 10, minW: 6, minH: 7 },
+      geo_odds: { type: 'geo_odds', badge: 'G', title: '地缘事件概率', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      live_wire: { type: 'live_wire', badge: 'N', title: '实时快讯', defaultW: 16, defaultH: 11, minW: 7, minH: 6 },
+      movers_gainers: { type: 'movers_gainers', badge: '▲', title: '领涨异动', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
+      movers_losers: { type: 'movers_losers', badge: '▼', title: '领跌异动', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
+      movers_active: { type: 'movers_active', badge: '⚡', title: '成交活跃', defaultW: 8, defaultH: 11, minW: 5, minH: 6 },
+      pro_kline: { type: 'pro_kline', badge: 'PK', title: '多指标共振 K 线', defaultW: 16, defaultH: 14, minW: 8, minH: 9 },
+      rebased_compare: { type: 'rebased_compare', badge: 'RB', title: '多标的相对收益', defaultW: 12, defaultH: 11, minW: 6, minH: 7 },
+      formula_spread: { type: 'formula_spread', badge: 'FS', title: '跨资产比价与利差', defaultW: 12, defaultH: 11, minW: 6, minH: 7 },
+      percentile_barcode: { type: 'percentile_barcode', badge: 'PB', title: '全景资产分位数', defaultW: 12, defaultH: 12, minW: 6, minH: 7 },
+      event_study: { type: 'event_study', badge: 'EF', title: '事件因子回测', defaultW: 12, defaultH: 12, minW: 7, minH: 8 },
+      analog_finder: { type: 'analog_finder', badge: 'AN', title: '历史相似形态', defaultW: 12, defaultH: 11, minW: 6, minH: 7 },
+      capital_flow: { type: 'capital_flow', badge: 'CF', title: '主力资金流向', defaultW: 12, defaultH: 11, minW: 6, minH: 7 },
+      rotation_quadrant: { type: 'rotation_quadrant', badge: 'RQ', title: '板块轮动四象限', defaultW: 12, defaultH: 11, minW: 6, minH: 7 },
+      chokepoint_watch: { type: 'chokepoint_watch', badge: 'CP', title: '全球航运咽喉监控', defaultW: 12, defaultH: 10, minW: 5, minH: 6 },
+      divergence_radar: { type: 'divergence_radar', badge: 'DR', title: '跨市场背离雷达', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      macro_clock: { type: 'macro_clock', badge: 'MC', title: '美林时钟与流动性仪表', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      corr_matrix: { type: 'corr_matrix', badge: 'CM', title: '跨资产相关性矩阵', defaultW: 10, defaultH: 11, minW: 6, minH: 7 },
+      risk_drawdown: { type: 'risk_drawdown', badge: 'RD', title: '波动率与最大回撤监控', defaultW: 10, defaultH: 10, minW: 5, minH: 6 },
+      market_breadth: { type: 'market_breadth', badge: 'MB', title: '市场广度与赚钱效应', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      style_factor: { type: 'style_factor', badge: 'SF', title: '风格轮动雷达', defaultW: 10, defaultH: 10, minW: 5, minH: 6 },
+      commodity_dashboard: { type: 'commodity_dashboard', badge: 'CD', title: '大宗商品与通胀链', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      rate_spread_watch: { type: 'rate_spread_watch', badge: 'RS', title: '利差与汇率压力计', defaultW: 8, defaultH: 9, minW: 5, minH: 6 },
+      intel_catalyst: { type: 'intel_catalyst', badge: 'IC', title: '热点催化与多空脉搏', defaultW: 8, defaultH: 10, minW: 5, minH: 6 },
+      custom_echarts: { type: 'custom_echarts', badge: 'AI', title: '自定义图表', defaultW: 12, defaultH: 10, minW: 4, minH: 5 },
     }
 
     const FALLBACK_MARKET_LAYOUT = {
@@ -10488,34 +11000,34 @@ const App = {
           id: 'mkt_overview',
           name: '多市场网格',
           widgets: [
-            { id: 'mw_indices', type: 'panel_indices', title: 'INDICES', x: 0, y: 0, w: 8, h: 12, minW: 5, minH: 6, enabled: true, config: { panelId: 'indices' } },
-            { id: 'mw_cn_logistics', type: 'panel_cn_logistics', title: 'CN LOGISTICS & CORE', x: 8, y: 0, w: 8, h: 12, minW: 5, minH: 6, enabled: true, config: { panelId: 'cn_logistics' } },
-            { id: 'mw_us_hk', type: 'panel_us_hk', title: 'US & HK EQUITIES', x: 16, y: 0, w: 8, h: 12, minW: 5, minH: 6, enabled: true, config: { panelId: 'us_hk' } },
-            { id: 'mw_forex', type: 'panel_forex', title: 'FOREX', x: 0, y: 12, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'forex' } },
-            { id: 'mw_commodities', type: 'panel_commodities', title: 'COMMODITIES', x: 8, y: 12, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'commodities' } },
-            { id: 'mw_etf_bonds', type: 'panel_etf_bonds', title: 'ETF & BONDS', x: 16, y: 12, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'etf_bonds' } },
-            { id: 'mw_crypto', type: 'panel_crypto', title: 'CRYPTO', x: 0, y: 22, w: 12, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'crypto' } },
-            { id: 'mw_heatmap', type: 'sector_heatmap', title: 'SECTOR HEATMAP', x: 12, y: 22, w: 12, h: 10, minW: 6, minH: 7, enabled: true, config: {} },
+            { id: 'mw_indices', type: 'panel_indices', title: '核心指数', x: 0, y: 0, w: 8, h: 12, minW: 5, minH: 6, enabled: true, config: { panelId: 'indices' } },
+            { id: 'mw_cn_logistics', type: 'panel_cn_logistics', title: 'A 股核心资产', x: 8, y: 0, w: 8, h: 12, minW: 5, minH: 6, enabled: true, config: { panelId: 'cn_logistics' } },
+            { id: 'mw_us_hk', type: 'panel_us_hk', title: '美港核心资产', x: 16, y: 0, w: 8, h: 12, minW: 5, minH: 6, enabled: true, config: { panelId: 'us_hk' } },
+            { id: 'mw_forex', type: 'panel_forex', title: '全球外汇', x: 0, y: 12, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'forex' } },
+            { id: 'mw_commodities', type: 'panel_commodities', title: '大宗商品', x: 8, y: 12, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'commodities' } },
+            { id: 'mw_etf_bonds', type: 'panel_etf_bonds', title: 'ETF 与债券', x: 16, y: 12, w: 8, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'etf_bonds' } },
+            { id: 'mw_crypto', type: 'panel_crypto', title: '加密资产', x: 0, y: 22, w: 12, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'crypto' } },
+            { id: 'mw_heatmap', type: 'sector_heatmap', title: '板块热力图', x: 12, y: 22, w: 12, h: 10, minW: 6, minH: 7, enabled: true, config: {} },
           ],
         },
         {
           id: 'mkt_heatmap',
           name: '热力图与异动',
           widgets: [
-            { id: 'mw_hm_full', type: 'sector_heatmap', title: 'SECTOR HEATMAP', x: 0, y: 0, w: 24, h: 13, minW: 6, minH: 7, enabled: true, config: {} },
-            { id: 'mw_mv_gain', type: 'movers_gainers', title: 'TOP GAINERS', x: 0, y: 13, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
-            { id: 'mw_mv_lose', type: 'movers_losers', title: 'TOP LOSERS', x: 8, y: 13, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
-            { id: 'mw_mv_act', type: 'movers_active', title: 'MOST ACTIVE', x: 16, y: 13, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'mw_hm_full', type: 'sector_heatmap', title: '板块热力图', x: 0, y: 0, w: 24, h: 13, minW: 6, minH: 7, enabled: true, config: {} },
+            { id: 'mw_mv_gain', type: 'movers_gainers', title: '领涨异动', x: 0, y: 13, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'mw_mv_lose', type: 'movers_losers', title: '领跌异动', x: 8, y: 13, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'mw_mv_act', type: 'movers_active', title: '成交活跃', x: 16, y: 13, w: 8, h: 11, minW: 5, minH: 6, enabled: true, config: {} },
           ],
         },
         {
           id: 'mkt_kline_desk',
-          name: 'K线研判台',
+          name: 'K 线研判台',
           widgets: [
-            { id: 'mw_kline_main', type: 'kline_main', title: 'K-LINE TERMINAL', x: 0, y: 0, w: 16, h: 14, minW: 8, minH: 8, enabled: true, config: {} },
-            { id: 'mw_watchlist', type: 'watchlist', title: 'WATCHLIST', x: 16, y: 0, w: 8, h: 14, minW: 5, minH: 6, enabled: true, config: {} },
-            { id: 'mw_cn_log_2', type: 'panel_cn_logistics', title: 'CN LOGISTICS & CORE', x: 0, y: 14, w: 12, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'cn_logistics' } },
-            { id: 'mw_indices_2', type: 'panel_indices', title: 'INDICES', x: 12, y: 14, w: 12, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'indices' } },
+            { id: 'mw_kline_main', type: 'kline_main', title: 'K 线主图', x: 0, y: 0, w: 16, h: 14, minW: 8, minH: 8, enabled: true, config: {} },
+            { id: 'mw_watchlist', type: 'watchlist', title: '自选标的', x: 16, y: 0, w: 8, h: 14, minW: 5, minH: 6, enabled: true, config: {} },
+            { id: 'mw_cn_log_2', type: 'panel_cn_logistics', title: 'A 股核心资产', x: 0, y: 14, w: 12, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'cn_logistics' } },
+            { id: 'mw_indices_2', type: 'panel_indices', title: '核心指数', x: 12, y: 14, w: 12, h: 10, minW: 5, minH: 6, enabled: true, config: { panelId: 'indices' } },
           ],
         },
       ],
@@ -10530,12 +11042,16 @@ const App = {
       out.cols = 24
       if (typeof out.locked !== 'boolean') out.locked = false
       for (const ws of out.workspaces) {
-        const list = Array.isArray(ws.widgets) ? ws.widgets : []
+        const list = (Array.isArray(ws.widgets) ? ws.widgets : []).filter((it) => it && it.type !== 'backtest_slot')
+        ws.widgets = list
         let curX = 0, curY = 0, rowH = 0
         for (const it of list) {
           const meta = registry[it.type] || {}
-          it.minW = Number(it.minW) || meta.minW || 5
-          it.minH = Number(it.minH) || meta.minH || 6
+          if (it.title && LEGACY_EN_TITLE_MAP[it.title]) {
+            it.title = LEGACY_EN_TITLE_MAP[it.title]
+          }
+          it.minW = it.type === 'custom_echarts' ? 4 : (Number(it.minW) || meta.minW || 5)
+          it.minH = it.type === 'custom_echarts' ? 5 : (Number(it.minH) || meta.minH || 6)
           if (typeof it.x !== 'number' || typeof it.y !== 'number' || typeof it.w !== 'number' || typeof it.h !== 'number') {
             const span12 = Number(it.colSpan) || 0
             const gw = span12 ? Math.max(it.minW, Math.min(24, span12 * 2)) : (meta.defaultW || 12)
@@ -10576,6 +11092,24 @@ const App = {
           }
         }
       }
+    }
+
+    function resolveWidgetOverlap(ws, changed) {
+      if (!ws || !Array.isArray(ws.widgets) || !changed) return
+      const active = ws.widgets.filter((w) => w.enabled !== false)
+      const hits = (a, b) => a.id !== b.id && !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y)
+      const queue = [changed]
+      let iter = 0
+      while (queue.length && iter++ < 120) {
+        const cur = queue.shift()
+        for (const other of active) {
+          if (hits(cur, other)) {
+            other.y = (cur.y || 0) + (cur.h || 8)
+            queue.push(other)
+          }
+        }
+      }
+      compactWorkspaceWidgets(ws)
     }
 
     const dashboardLayout = ref(JSON.parse(JSON.stringify(FALLBACK_DASHBOARD_LAYOUT)))
@@ -10634,6 +11168,22 @@ const App = {
       mktMaximizedId.value = ''
       saveMarketLayout()
       message.success('已删除行情工作区')
+    }
+    function removeDashboardWidget(wid) {
+      const ws = activeWorkspaceObj.value
+      if (!ws || !Array.isArray(ws.widgets)) return
+      ws.widgets = ws.widgets.filter((w) => w.id !== wid)
+      if (dashMaximizedId.value === wid) dashMaximizedId.value = ''
+      compactWorkspaceWidgets(ws)
+      saveDashboardLayout()
+    }
+    function removeMarketWidget(wid) {
+      const ws = activeMarketWorkspaceObj.value
+      if (!ws || !Array.isArray(ws.widgets)) return
+      ws.widgets = ws.widgets.filter((w) => w.id !== wid)
+      if (mktMaximizedId.value === wid) mktMaximizedId.value = ''
+      compactWorkspaceWidgets(ws)
+      saveMarketLayout()
     }
 
     const dashPulseWidth = computed({
@@ -10721,8 +11271,8 @@ const App = {
         id,
         name: '工作区 ' + idx,
         widgets: [
-          { id: 'w_wl_' + id, type: 'watchlist_slot', title: 'WATCHLIST & K-LINE', x: 0, y: 0, w: 16, h: 12, minW: 8, minH: 8, enabled: true, config: {} },
-          { id: 'w_lw_' + id, type: 'live_wire', title: 'LIVE WIRE', x: 16, y: 0, w: 8, h: 12, minW: 7, minH: 6, enabled: true, config: { limit: 24 } },
+          { id: 'w_wl_' + id, type: 'watchlist_slot', title: '自选与 K 线', x: 0, y: 0, w: 16, h: 12, minW: 8, minH: 8, enabled: true, config: {} },
+          { id: 'w_lw_' + id, type: 'live_wire', title: '实时快讯', x: 16, y: 0, w: 8, h: 12, minW: 7, minH: 6, enabled: true, config: { limit: 24 } },
         ],
       }
       dashboardLayout.value.workspaces.push(ws)
@@ -10815,7 +11365,21 @@ const App = {
     function marketPanelItems(w) {
       const pid = (w && w.config && w.config.panelId) || String((w && w.type) || '').replace(/^panel_/, '')
       const p = (marketOverview.panels || []).find((x) => x.id === pid)
-      return (p && p.items) || []
+      const base = ((p && p.items) || []).slice()
+      const extras = (w && w.config && Array.isArray(w.config.extraSymbols)) ? w.config.extraSymbols : []
+      if (!extras.length) return base
+      const seen = new Set(base.map((x) => x.secid))
+      const wlMap = Object.fromEntries((marketOverview.watchlist || []).map((x) => [x.secid, x]))
+      const allMap = {}
+      for (const pn of (marketOverview.panels || [])) {
+        for (const it of (pn.items || [])) allMap[it.secid] = it
+      }
+      for (const ex of extras) {
+        if (!ex || !ex.secid || seen.has(ex.secid)) continue
+        seen.add(ex.secid)
+        base.push(wlMap[ex.secid] || allMap[ex.secid] || { secid: ex.secid, symbol: ex.symbol || ex.secid, name: ex.name || ex.secid })
+      }
+      return base
     }
     function marketMoverItems(type) {
       if (type === 'movers_gainers') return marketMovers.gainers || []
@@ -10871,6 +11435,9 @@ const App = {
       const ws = activeMarketWorkspaceObj.value
       if (ws && Array.isArray(ws.widgets)) {
         if (ws.widgets.some((w) => w.type === 'sector_heatmap' && w.enabled !== false)) loadMarketSectors(false)
+        if (ws.widgets.some((w) => w.type === 'macro_curve' && w.enabled !== false)) loadMacroData(false)
+        if (ws.widgets.some((w) => w.type === 'geo_odds' && w.enabled !== false)) loadGeoData(false)
+        if (ws.widgets.some((w) => w.type === 'live_wire' && w.enabled !== false) && !newsItems.value.length) loadNewsItems(true)
         if (ws.widgets.some((w) => String(w.type).startsWith('movers_') && w.enabled !== false)) loadMarketMovers(false)
         if (ws.widgets.some((w) => w.type === 'kline_main' && w.enabled !== false) && !mktKlineData.value) loadMarketKline(mktSelectedSecid.value, false)
       }
@@ -10889,8 +11456,8 @@ const App = {
         id,
         name: '行情区 ' + idx,
         widgets: [
-          { id: 'mw_kl_' + id, type: 'kline_main', title: 'K-LINE TERMINAL', x: 0, y: 0, w: 16, h: 13, minW: 8, minH: 8, enabled: true, config: {} },
-          { id: 'mw_wl_' + id, type: 'watchlist', title: 'WATCHLIST', x: 16, y: 0, w: 8, h: 13, minW: 5, minH: 6, enabled: true, config: {} },
+          { id: 'mw_kl_' + id, type: 'kline_main', title: 'K 线主图', x: 0, y: 0, w: 16, h: 13, minW: 8, minH: 8, enabled: true, config: {} },
+          { id: 'mw_wl_' + id, type: 'watchlist', title: '自选标的', x: 16, y: 0, w: 8, h: 13, minW: 5, minH: 6, enabled: true, config: {} },
         ],
       }
       marketLayout.value.workspaces.push(ws)
@@ -10936,6 +11503,282 @@ const App = {
       } catch (e) {
         message.error(String(e))
       }
+    }
+
+    // ============== 右上角『+ 模块库』、自定义工坊与对话内嵌可视化动作 ==============
+    const customWidgets = ref([])
+    const widgetGalleryOpen = ref(false)
+    const widgetGalleryScope = ref('dashboard')
+
+    async function loadCustomWidgets() {
+      try {
+        const res = await api.get('/api/widgets')
+        if (res && res.ok && Array.isArray(res.items)) {
+          customWidgets.value = res.items
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    function openWidgetGallery(scope) {
+      widgetGalleryScope.value = scope || (tab.value === 'markets' ? 'markets' : 'dashboard')
+      ensureMarketBoot()
+      loadCustomWidgets()
+      widgetGalleryOpen.value = true
+    }
+
+    function appendWidgetToScope(scope, entry) {
+      const isMkt = scope === 'markets'
+      const ws = isMkt ? activeMarketWorkspaceObj.value : activeWorkspaceObj.value
+      if (!ws) return
+      const maxY = (ws.widgets || []).reduce((m, it) => Math.max(m, (Number(it.y) || 0) + (Number(it.h) || 8)), 0)
+      ws.widgets = [...(ws.widgets || []), {
+        id: (isMkt ? 'mw_' : 'w_') + entry.type + '_' + Date.now().toString(36),
+        type: entry.type,
+        title: entry.title,
+        x: 0,
+        y: maxY,
+        w: entry.defaultW || 12,
+        h: entry.defaultH || 10,
+        minW: entry.minW || 6,
+        minH: entry.minH || 6,
+        enabled: true,
+        config: entry.config || {},
+      }]
+      if (isMkt) saveMarketLayout()
+      else saveDashboardLayout()
+    }
+
+    function onAddBuiltinFromGallery(meta) {
+      if (!meta) return
+      const scope = widgetGalleryScope.value
+      const regMeta = scope === 'markets' ? MARKET_WIDGET_REGISTRY[meta.type] : DASHBOARD_WIDGET_REGISTRY[meta.type]
+      appendWidgetToScope(scope, {
+        type: meta.type,
+        title: meta.title,
+        defaultW: meta.defaultW,
+        defaultH: meta.defaultH,
+        minW: meta.minW,
+        minH: meta.minH,
+        config: (regMeta && regMeta.panelId) ? { panelId: regMeta.panelId } : {},
+      })
+      if (meta.type === 'sector_heatmap' || meta.type === 'market_breadth') loadMarketSectors(false)
+      if (meta.type === 'macro_curve' || meta.type === 'rate_spread_watch') loadMacroData(false)
+      if (meta.type === 'geo_odds' || meta.type === 'chokepoint_watch' || meta.type === 'commodity_dashboard') loadGeoData(false)
+      if ((meta.type === 'live_wire' || meta.type === 'intel_catalyst') && !newsItems.value.length) loadNewsItems(true)
+      if (String(meta.type).startsWith('movers_') || meta.type === 'market_breadth') loadMarketMovers(false)
+      if (meta.type === 'kline_main' && !mktKlineData.value) loadMarketKline(mktSelectedSecid.value, false)
+      widgetGalleryOpen.value = false
+      message.success(`已添加「${meta.title}」到当前工作区`)
+    }
+
+    function onUpdateWidgetConfig(scope, widgetId, patch) {
+      if (!widgetId || !patch || typeof patch !== 'object') return
+      const ws = scope === 'markets' ? activeMarketWorkspaceObj.value : activeWorkspaceObj.value
+      if (!ws || !Array.isArray(ws.widgets)) return
+      const target = ws.widgets.find((x) => x.id === widgetId)
+      if (!target) return
+      target.config = { ...(target.config || {}), ...patch }
+      if (scope === 'markets') saveMarketLayoutDebounced()
+      else saveDashboardLayoutDebounced()
+    }
+
+    const widgetCfgOpen = ref(false)
+    const widgetCfgScope = ref('dashboard')
+    const widgetCfgId = ref('')
+    const widgetCfgTarget = computed(() => {
+      if (!widgetCfgId.value) return null
+      const ws = widgetCfgScope.value === 'markets' ? activeMarketWorkspaceObj.value : activeWorkspaceObj.value
+      return (ws && Array.isArray(ws.widgets) ? ws.widgets.find((x) => x.id === widgetCfgId.value) : null) || null
+    })
+    function openWidgetConfig(scope, w) {
+      if (!w || !w.id) return
+      widgetCfgScope.value = scope || 'dashboard'
+      widgetCfgId.value = w.id
+      widgetCfgOpen.value = true
+    }
+    function onPatchWidgetFromDrawer(patch) {
+      const target = widgetCfgTarget.value
+      if (!target || !patch) return
+      if (patch.title !== undefined) target.title = patch.title
+      if (patch.config && typeof patch.config === 'object') {
+        target.config = { ...(target.config || {}), ...patch.config }
+      }
+      if (widgetCfgScope.value === 'markets') saveMarketLayoutDebounced()
+      else saveDashboardLayoutDebounced()
+    }
+    async function onSaveWidgetAsCustom(w) {
+      if (!w) return
+      const isEcharts = w.type === 'custom_echarts'
+      try {
+        const res = await api.post('/api/widgets/save', {
+          title: w.title || '自定义模块',
+          description: '从当前工作区保存的自定义模块配置',
+          category: 'custom',
+          renderer: isEcharts ? 'echarts' : w.type,
+          spec: isEcharts
+            ? { option: (w.config && w.config.option) || {} }
+            : { widgetType: w.type, config: { ...(w.config || {}) } },
+          defaultW: w.w || 12,
+          defaultH: w.h || 10,
+        })
+        if (res && res.ok) {
+          await loadCustomWidgets()
+          message.success(`已将「${w.title}」存入模块库`)
+        }
+      } catch (e) {
+        message.error(String(e))
+      }
+    }
+
+    function onAddCustomFromGallery(cw) {
+      if (!cw) return
+      const isEcharts = cw.renderer === 'echarts'
+      const bType = isEcharts ? 'custom_echarts' : ((cw.spec && cw.spec.widgetType) || cw.renderer || 'pro_kline')
+      const bCfg = isEcharts
+        ? { customWidgetId: cw.id, description: cw.description || '', option: cw.spec && cw.spec.option }
+        : { ...((cw.spec && cw.spec.config) || {}), customWidgetId: cw.id }
+      appendWidgetToScope(widgetGalleryScope.value, {
+        type: bType,
+        title: cw.title,
+        defaultW: cw.defaultW || 12,
+        defaultH: cw.defaultH || 10,
+        minW: isEcharts ? 4 : 5,
+        minH: isEcharts ? 5 : 6,
+        config: bCfg,
+      })
+      widgetGalleryOpen.value = false
+      message.success(`已添加「${cw.title}」到当前工作区`)
+    }
+
+    async function onSaveCustomFromStudio({ payload, alsoAdd }) {
+      try {
+        const res = await api.post('/api/widgets/save', payload)
+        if (res && res.ok && res.item) {
+          await loadCustomWidgets()
+          if (alsoAdd) {
+            onAddCustomFromGallery(res.item)
+          } else {
+            message.success(`已保存「${res.item.title}」到模块库`)
+          }
+        }
+      } catch (e) {
+        message.error(String(e))
+      }
+    }
+
+    async function onDeleteCustomWidget(id) {
+      try {
+        const res = await api.post('/api/widgets/delete', { id })
+        if (res && res.ok) {
+          customWidgets.value = customWidgets.value.filter((x) => x.id !== id)
+          message.success('已从模块库移除')
+        }
+      } catch (e) {
+        message.error(String(e))
+      }
+    }
+
+    async function onUpdateCustomThumb({ id, thumbnail }) {
+      const target = customWidgets.value.find((x) => x.id === id)
+      if (!target || !thumbnail) return
+      target.thumbnail = thumbnail
+      try {
+        await api.post('/api/widgets/save', { ...target, thumbnail })
+      } catch (e) { /* ignore */ }
+    }
+
+    async function onSaveVisualToLibrary({ visual, thumbnail }) {
+      if (!visual) return
+      try {
+        const res = await api.post('/api/widgets/save', {
+          id: visual.savedWidgetId || '',
+          title: visual.title || 'AI 图表模块',
+          description: visual.description || '由 AI 问答生成的交互式可视化模块',
+          category: visual.category || 'ai',
+          renderer: visual.mode === 'cite_widget' ? visual.widget_type : 'echarts',
+          spec: visual.mode === 'cite_widget'
+            ? { widgetType: visual.widget_type, config: visual.config || {} }
+            : { option: visual.option },
+          thumbnail: thumbnail || '',
+          defaultW: 12,
+          defaultH: 10,
+        })
+        if (res && res.ok && res.item) {
+          visual.savedWidgetId = res.item.id
+          await loadCustomWidgets()
+          message.success(`已存入模块库：「${res.item.title}」`)
+        }
+      } catch (e) {
+        message.error(String(e))
+      }
+    }
+
+    async function onPinVisualToDashboard({ visual, thumbnail }) {
+      if (!visual) return
+      let savedId = visual.savedWidgetId || ''
+      if (visual.mode === 'echarts') {
+        try {
+          const res = await api.post('/api/widgets/save', {
+            id: savedId,
+            title: visual.title || 'AI 图表模块',
+            description: visual.description || '由 AI 问答生成的交互式可视化模块',
+            category: visual.category || 'ai',
+            renderer: 'echarts',
+            spec: { option: visual.option },
+            thumbnail: thumbnail || '',
+            defaultW: 12,
+            defaultH: 10,
+          })
+          if (res && res.ok && res.item) {
+            savedId = res.item.id
+            visual.savedWidgetId = savedId
+            await loadCustomWidgets()
+          }
+        } catch (e) { /* ignore */ }
+        appendWidgetToScope('dashboard', {
+          type: 'custom_echarts',
+          title: visual.title || 'AI 图表',
+          defaultW: 12,
+          defaultH: 10,
+          minW: 4,
+          minH: 5,
+          config: { customWidgetId: savedId, description: visual.description || '', option: visual.option },
+        })
+      } else if (visual.mode === 'cite_widget') {
+        const gm = GALLERY_MAP[visual.widget_type] || {}
+        appendWidgetToScope('dashboard', {
+          type: visual.widget_type,
+          title: visual.title || gm.title || visual.widget_type,
+          defaultW: gm.defaultW || 12,
+          defaultH: gm.defaultH || 10,
+          config: visual.config || {},
+        })
+      }
+      message.success('已钉选到当前看板工作区')
+    }
+
+    async function onCreateTopicBoard(visual) {
+      if (!visual || !Array.isArray(visual.board_widgets)) return
+      try {
+        const res = await api.post('/api/widgets/topic_board', {
+          workspace_name: visual.workspace_name || visual.title || 'AI 专题看板',
+          board_widgets: visual.board_widgets,
+        })
+        if (res && res.ok && res.layout) {
+          dashboardLayout.value = normalizeFreeGridLayout(res.layout, FALLBACK_DASHBOARD_LAYOUT, DASHBOARD_WIDGET_REGISTRY)
+          await loadCustomWidgets()
+          ensureMarketBoot()
+          tab.value = 'dashboard'
+          message.success(`已创建专题工作区「${visual.workspace_name || visual.title}」`)
+        }
+      } catch (e) {
+        message.error(String(e))
+      }
+    }
+
+    function onAskAiFromWidget(promptText) {
+      question.value = promptText || ''
+      tab.value = 'ask'
     }
     function jumpToConnectorSettings(cid) {
       tab.value = 'settings'
@@ -10991,10 +11834,74 @@ const App = {
     const opmlInput = ref(null)
 
     const newsEntities = ref([])
-    const entityGraph = ref({ nodes: [], edges: [] })
+    const entityGraph = ref({ nodes: [], edges: [], countries: [], events: [], assets: [] })
+    const entityPulseHours = ref(168)
+    const entityHoverId = ref(null)
+    const entityGraphRefreshTick = ref(0)
     const entityDrawerOpen = ref(false)
     const entityProfile = ref(null)
     const entityLoading = ref(false)
+
+    const panelRefreshing = reactive({})
+    const panelJustRefreshed = reactive({})
+    const panelRefreshedAt = reactive({})
+    const panelRefreshTimers = {}
+
+    function fmtClockTime(d) {
+      const dt = d instanceof Date ? d : new Date()
+      const hh = String(dt.getHours()).padStart(2, '0')
+      const mm = String(dt.getMinutes()).padStart(2, '0')
+      const ss = String(dt.getSeconds()).padStart(2, '0')
+      return `${hh}:${mm}:${ss}`
+    }
+
+    async function refreshPanel(key, taskFn, opts = {}) {
+      if (panelRefreshing[key]) return
+      panelRefreshing[key] = true
+      panelJustRefreshed[key] = false
+      const startedAt = Date.now()
+      try {
+        const result = await taskFn()
+        const elapsed = Date.now() - startedAt
+        if (elapsed < 420) await new Promise((r) => setTimeout(r, 420 - elapsed))
+        panelRefreshedAt[key] = fmtClockTime(new Date())
+        panelJustRefreshed[key] = true
+        if (panelRefreshTimers[key]) clearTimeout(panelRefreshTimers[key])
+        panelRefreshTimers[key] = setTimeout(() => {
+          panelJustRefreshed[key] = false
+        }, 1800)
+        if (!opts.silent) {
+          const msg = typeof opts.successText === 'function' ? opts.successText(result) : opts.successText
+          if (msg) message.success({ content: msg, key: 'panel-ref-' + key, duration: 2 })
+        }
+      } catch (e) {
+        message.error({
+          content: (opts.errorPrefix || '刷新失败：') + ((e && e.message) || String(e)),
+          key: 'panel-ref-' + key,
+          duration: 3,
+        })
+      } finally {
+        panelRefreshing[key] = false
+      }
+    }
+
+    const entityMaxMentions = computed(() => {
+      let mx = 1
+      for (const e of newsEntities.value || []) {
+        const m = Number(e.mentions) || 0
+        if (m > mx) mx = m
+      }
+      return mx
+    })
+
+    function entityTypeMeta(t) {
+      const k = String(t || 'ORG').toUpperCase()
+      if (k === 'LOC' || k === 'GPE' || k === 'GEO') return { cls: 'loc', label: '地区', title: `地区/国家 (${k})` }
+      if (k === 'ORG') return { cls: 'org', label: '机构', title: '组织/机构 (ORG)' }
+      if (k === 'PER' || k === 'PERSON') return { cls: 'per', label: '人物', title: '关键人物 (PER)' }
+      if (k === 'ASSET' || k === 'COMMODITY' || k === 'TICKER' || k === 'EQUITY') return { cls: 'asset', label: '资产', title: `资产/大宗 (${k})` }
+      return { cls: '', label: k.slice(0, 4), title: k }
+    }
 
     const newsBriefText = ref('')
     const newsBriefLoading = ref(false)
@@ -11026,10 +11933,10 @@ const App = {
       const score = Math.max(0, Math.min(100, Math.round(50 + tone * 50)))
       const arc = 282.74
       const fill = ((score / 100) * arc).toFixed(1)
-      let label = 'NEUTRAL'
+      let label = '中性'
       let color = '#f59e0b'
-      if (score >= 60) { label = 'RISK-ON'; color = '#10b981' }
-      else if (score <= 40) { label = 'RISK-OFF'; color = '#ef4444' }
+      if (score >= 60) { label = '偏多'; color = '#10b981' }
+      else if (score <= 40) { label = '偏空'; color = '#ef4444' }
       return { score, label, color, dash: `${fill} 300` }
     })
     const sentimentSignals = computed(() => {
@@ -11062,15 +11969,15 @@ const App = {
       const top = nodesRaw.slice(0, 14)
       if (!top.length) return { nodes: [], edges: [] }
       const cx = 160
-      const cy = 72
+      const cy = 66
       const posMap = new Map()
       const nodes = top.map((n, idx) => {
         const angle = (idx / top.length) * Math.PI * 2 - Math.PI / 2
-        const rx = idx === 0 ? 0 : (idx % 2 === 0 ? 115 : 74)
-        const ry = idx === 0 ? 0 : (idx % 2 === 0 ? 48 : 34)
+        const rx = idx === 0 ? 0 : (idx % 2 === 0 ? 102 : 66)
+        const ry = idx === 0 ? 0 : (idx % 2 === 0 ? 40 : 28)
         const x = Math.round(cx + Math.cos(angle) * rx)
         const y = Math.round(cy + Math.sin(angle) * ry)
-        const r = Math.max(5, Math.min(13, 5 + Math.sqrt(Number(n.mentions) || 1) * 1.8))
+        const r = Math.max(5, Math.min(11, 5 + Math.sqrt(Number(n.mentions) || 1) * 1.6))
         const ns = Number(n.net_sentiment) || 0
         const color = ns > 0.1 ? '#10b981' : (ns < -0.1 ? '#ef4444' : '#3b82f6')
         const out = { ...n, x, y, r, color }
@@ -11137,24 +12044,75 @@ const App = {
         }
       } catch (e) { /* ignore */ }
     }
-    async function loadNewsEntities() {
+    async function loadNewsEntities(hours, throwOnError) {
+      const h = hours != null ? hours : entityPulseHours.value
       try {
-        const res = await api.get('/api/news/entities?hours=168&limit=30')
-        if (res && res.ok) newsEntities.value = res.entities || []
-      } catch (e) { /* ignore */ }
+        const res = await api.get(`/api/news/entities?hours=${encodeURIComponent(h)}&limit=36`)
+        if (res && res.ok) {
+          newsEntities.value = res.entities || []
+          panelRefreshedAt.entity_pulse = fmtClockTime(new Date())
+        } else if (throwOnError) {
+          throw new Error((res && res.error) || '加载实体列表失败')
+        }
+      } catch (e) {
+        if (throwOnError) throw e
+      }
     }
-    async function loadEntityGraph() {
+    async function loadEntityGraph(hours, throwOnError) {
+      const h = hours != null ? hours : entityPulseHours.value
       try {
-        const res = await api.get('/api/news/graph?hours=168&limit=18')
-        if (res && res.ok) entityGraph.value = { nodes: res.nodes || [], edges: res.edges || [] }
-      } catch (e) { /* ignore */ }
+        const res = await api.get(`/api/news/graph?hours=${encodeURIComponent(h)}&limit=36`)
+        if (res && res.ok) {
+          entityGraph.value = {
+            nodes: res.nodes || [],
+            edges: res.edges || [],
+            countries: res.countries || [],
+            events: res.events || [],
+            assets: res.assets || [],
+          }
+          panelRefreshedAt.entity_pulse = fmtClockTime(new Date())
+        } else if (throwOnError) {
+          throw new Error((res && res.error) || '加载全球态势图谱失败')
+        }
+      } catch (e) {
+        if (throwOnError) throw e
+      }
+    }
+    async function refreshEntityPulse(silent) {
+      await refreshPanel('entity_pulse', async () => {
+        await Promise.all([
+          loadNewsEntities(entityPulseHours.value, true),
+          loadEntityGraph(entityPulseHours.value, true),
+        ])
+        entityGraphRefreshTick.value += 1
+        return {
+          total: (newsEntities.value || []).length,
+          nodes: ((entityGraph.value && entityGraph.value.nodes) || []).length,
+          edges: ((entityGraph.value && entityGraph.value.edges) || []).length,
+        }
+      }, {
+        silent: !!silent,
+        successText: (r) => (r && r.total)
+          ? `实体网络已刷新：${r.total} 个实体 · ${r.edges} 条共现`
+          : '实体网络已刷新（当前时间窗暂无实体）',
+        errorPrefix: '实体网络刷新失败：',
+      })
+    }
+    function setEntityPulseHours(h) {
+      const next = Number(h) || 168
+      if (entityPulseHours.value === next) {
+        refreshEntityPulse(false)
+        return
+      }
+      entityPulseHours.value = next
+      refreshEntityPulse(true)
     }
     async function openEntityDossier(name) {
       if (!name) return
       entityDrawerOpen.value = true
       entityLoading.value = true
       try {
-        const res = await api.get('/api/news/entity?name=' + encodeURIComponent(name) + '&hours=168')
+        const res = await api.get('/api/news/entity?name=' + encodeURIComponent(name) + '&hours=' + encodeURIComponent(entityPulseHours.value || 168))
         if (res && res.ok) entityProfile.value = res.profile
         else message.warning((res && res.error) || '暂无该实体详情')
       } catch (e) {
@@ -11678,6 +12636,19 @@ const App = {
       return out.slice(0, 6)
     })
 
+    const macroSpreadSummary = computed(() => {
+      const rates = (macroData.treasury && macroData.treasury.rates) || []
+      if (!rates.length) return null
+      const findRate = (re) => {
+        const hit = rates.find((r) => re.test(String(r.label || '') + ' ' + String(r.tenor || '')))
+        return hit && hit.rate != null ? Number(hit.rate) : null
+      }
+      const r10 = findRate(/10[\s-]?Year|10Y/i)
+      const r2 = findRate(/2[\s-]?Year|2Y/i)
+      if (r10 == null || r2 == null) return null
+      return { r10, r2, s10_2: Math.round((r10 - r2) * 100) }
+    })
+
     const mktTechSummary = computed(() => {
       const kd = mktKlineData.value
       if (!kd || !kd.indicators) return null
@@ -11793,6 +12764,172 @@ const App = {
         loadGeoData(true),
       ])
     }
+    const widgetKlineMap = reactive({})
+    const widgetKlineReqMap = {}
+
+    async function loadWidgetKlineById(wid, secid, interval, name, force) {
+      if (!wid || !secid) return
+      const reqKey = `${secid}|${interval || '1d'}`
+      if (!force && widgetKlineReqMap[wid] === reqKey) return
+      widgetKlineReqMap[wid] = reqKey
+      try {
+        const qs = new URLSearchParams({
+          secid,
+          interval: interval || '1d',
+          limit: '140',
+          name: name || '',
+        })
+        if (force) qs.set('force', '1')
+        const res = await api.get('/api/market/kline?' + qs.toString())
+        if (res && res.ok && widgetKlineReqMap[wid] === reqKey) {
+          widgetKlineMap[wid] = res
+        } else if (widgetKlineReqMap[wid] === reqKey) {
+          delete widgetKlineReqMap[wid]
+        }
+      } catch (e) {
+        if (widgetKlineReqMap[wid] === reqKey) delete widgetKlineReqMap[wid]
+      }
+    }
+
+    function getDashWlSelected(w) {
+      const cid = w && w.config && w.config.secid
+      if (cid) {
+        const hit = (marketOverview.watchlist || []).find((x) => x.secid === cid)
+        if (hit) return hit
+        return { secid: cid, symbol: (w.config && w.config.symbol) || cid, name: (w.config && w.config.secidName) || cid }
+      }
+      return dashWlSelected.value
+    }
+    function getDashWlInterval(w) {
+      return (w && w.config && w.config.interval) || dashWlInterval.value || '1d'
+    }
+    function getDashKlineData(w) {
+      if (w && w.config && (w.config.secid || w.config.interval)) {
+        const sel = getDashWlSelected(w)
+        const iv = getDashWlInterval(w)
+        if (sel && sel.secid) loadWidgetKlineById(w.id, sel.secid, iv, sel.name, false)
+        return widgetKlineMap[w.id] || dashKlineData.value
+      }
+      return dashKlineData.value
+    }
+    function loadDashKlineFor(w, force) {
+      if (w && w.config && (w.config.secid || w.config.interval)) {
+        const sel = getDashWlSelected(w)
+        if (sel && sel.secid) loadWidgetKlineById(w.id, sel.secid, getDashWlInterval(w), sel.name, !!force)
+        return
+      }
+      loadDashKline(force)
+    }
+    function selectDashWatchItemFor(w, it) {
+      if (!it || !it.secid) return
+      if (w && w.id) {
+        onUpdateWidgetConfig('dashboard', w.id, { secid: it.secid, symbol: it.symbol || it.secid, secidName: it.name || it.symbol || it.secid })
+        loadWidgetKlineById(w.id, it.secid, getDashWlInterval(w), it.name, false)
+      }
+      dashWlSelected.value = it
+      loadDashKline(false)
+    }
+    function setDashWlInterval(w, iv) {
+      if (w && w.id) {
+        onUpdateWidgetConfig('dashboard', w.id, { interval: iv })
+        const sel = getDashWlSelected(w)
+        if (sel && sel.secid) loadWidgetKlineById(w.id, sel.secid, iv, sel.name, true)
+      } else {
+        dashWlInterval.value = iv
+        loadDashKline(true)
+      }
+    }
+
+    function getMktWidgetInterval(w) {
+      return (w && w.config && w.config.interval) || mktInterval.value || '1d'
+    }
+    function getMktKlineData(w) {
+      if (w && w.config && (w.config.secid || w.config.interval)) {
+        const sid = w.config.secid || mktSelectedSecid.value
+        const nm = w.config.secidName || mktSelectedName.value
+        const iv = getMktWidgetInterval(w)
+        if (sid) loadWidgetKlineById(w.id, sid, iv, nm, false)
+        return widgetKlineMap[w.id] || mktKlineData.value
+      }
+      return mktKlineData.value
+    }
+    function setMktWidgetSymbol(w, it) {
+      if (!w || !it || !it.secid) return
+      onUpdateWidgetConfig('markets', w.id, { secid: it.secid, symbol: it.symbol || it.secid, secidName: it.name || it.symbol || it.secid })
+      loadWidgetKlineById(w.id, it.secid, getMktWidgetInterval(w), it.name, true)
+    }
+    function clearMktWidgetSymbol(w) {
+      if (!w) return
+      onUpdateWidgetConfig('markets', w.id, { secid: '', symbol: '', secidName: '' })
+      delete widgetKlineMap[w.id]
+      delete widgetKlineReqMap[w.id]
+    }
+    function setMktWidgetInterval(w, iv) {
+      if (w && w.id) {
+        onUpdateWidgetConfig('markets', w.id, { interval: iv })
+        const sid = (w.config && w.config.secid) || mktSelectedSecid.value
+        const nm = (w.config && w.config.secidName) || mktSelectedName.value
+        if (sid) loadWidgetKlineById(w.id, sid, iv, nm, true)
+      } else {
+        mktInterval.value = iv
+        loadMarketKline(mktSelectedSecid.value, true)
+      }
+    }
+
+    function liveWireLang(w) {
+      return (w && w.config && w.config.lang) || 'all'
+    }
+    function setLiveWireLang(scope, w, langId) {
+      if (!w || !w.id) return
+      onUpdateWidgetConfig(scope, w.id, { lang: langId })
+      if (!newsItems.value.length) loadNewsItems(true)
+    }
+    function liveWireItemsFor(w) {
+      const lang = liveWireLang(w)
+      const sent = (w && w.config && w.config.sentiment) || 'all'
+      const limit = (w && w.config && Number(w.config.limit)) || 24
+      const all = newsItems.value || []
+      const filtered = all.filter((x) => {
+        if (lang !== 'all' && x.lang !== lang) return false
+        if (sent !== 'all' && x.sentiment !== sent) return false
+        return true
+      })
+      return filtered.slice(0, limit)
+    }
+
+    async function pinWatchlistSymbol(it) {
+      if (!it || !it.secid) return
+      try {
+        const res = await api.post('/api/market/watchlist', { action: 'pin', secid: it.secid })
+        if (res && res.ok) {
+          await loadMarketOverview(true)
+          message.success(`已置顶「${it.name || it.symbol}」`)
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    async function addSymbolToWatchlistAndPick(it, w) {
+      if (!it || !it.secid) return
+      if (!isInWatchlist(it.secid)) {
+        await toggleWatchlistSymbol(it)
+      }
+      if (w && w.type === 'watchlist_slot') {
+        selectDashWatchItemFor(w, it)
+      } else {
+        selectMarketSymbol(it)
+      }
+    }
+    function onDashboardQuickPickSymbol(it) {
+      if (!it || !it.secid) return
+      const wlWidget = activeDashboardWidgets.value.find((x) => x.type === 'watchlist_slot')
+      if (wlWidget) {
+        selectDashWatchItemFor(wlWidget, it)
+        message.info(`已在 K 线切换到「${it.name || it.symbol}」`)
+      } else {
+        openMarketDetail(it)
+      }
+    }
+
     function selectDashWatchItem(it) {
       if (!it || !it.secid) return
       dashWlSelected.value = it
@@ -11974,16 +13111,25 @@ const App = {
       toggleTheme, terminalClock, marketHours,
       dashboardLayout, dashCustomizeOpen, dashCompact, dashPulseOpen, dashTickerMode, dashMaximizedId, dashPulseWidth, dashWatchlistWidth,
       editingWsKey, editingWsName, startWsRename, commitWsRename, cancelWsRename, deleteDashboardWorkspaceById, deleteMarketWorkspaceById,
+      removeDashboardWidget, removeMarketWidget,
       activeWorkspaceObj, activeDashboardWidgets, missingDashboardWidgets, readyConnectorCount,
       widgetMeta, addDashboardWidget, loadDashboardLayout, saveDashboardLayout, saveDashboardLayoutDebounced,
       switchDashboardWorkspace, toggleDashboardLock, createDashboardWorkspace, duplicateDashboardWorkspace, deleteDashboardWorkspace,
-      compactWorkspaceWidgets, moveDashboardWidget, resetDashboardLayout, jumpToConnectorSettings,
+      compactWorkspaceWidgets, resolveWidgetOverlap, moveDashboardWidget, resetDashboardLayout, jumpToConnectorSettings,
       marketLayout, mktCustomizeOpen, mktCompact, mktMaximizedId, mktDetailWidth, mktDetailChartHeight,
       activeMarketWorkspaceObj, activeMarketWidgets, missingMarketWidgets,
       mktWidgetMeta, marketPanelItems, marketMoverItems, addMarketWidget, loadMarketLayout, saveMarketLayout, saveMarketLayoutDebounced,
       switchMarketWorkspace, toggleMarketLock, createMarketWorkspace, duplicateMarketWorkspace, deleteMarketWorkspace, resetMarketLayout,
-      marketOverview, marketLoading, marketSectors, marketMovers, macroData, geoData, macroFxGrid,
+      customWidgets, widgetGalleryOpen, widgetGalleryScope, isQuantWidgetType,
+      loadCustomWidgets, openWidgetGallery, onAddBuiltinFromGallery, onAddCustomFromGallery, onUpdateWidgetConfig,
+      widgetCfgOpen, widgetCfgScope, widgetCfgTarget, openWidgetConfig, onPatchWidgetFromDrawer, onSaveWidgetAsCustom, pinWatchlistSymbol,
+      onSaveCustomFromStudio, onDeleteCustomWidget, onUpdateCustomThumb,
+      onSaveVisualToLibrary, onPinVisualToDashboard, onCreateTopicBoard, onAskAiFromWidget,
+      marketOverview, marketLoading, marketSectors, marketMovers, macroData, geoData, macroFxGrid, macroSpreadSummary,
       chartOpts, dashWlSelected, dashWlInterval, dashKlineData,
+      getDashWlSelected, getDashWlInterval, getDashKlineData, loadDashKlineFor, selectDashWatchItemFor, setDashWlInterval,
+      getMktWidgetInterval, getMktKlineData, setMktWidgetSymbol, clearMktWidgetSymbol, setMktWidgetInterval,
+      liveWireLang, setLiveWireLang, liveWireItemsFor, addSymbolToWatchlistAndPick, onDashboardQuickPickSymbol,
       mktView, mktInterval, mktDetailOpen, mktSelectedSecid, mktSelectedSymbol, mktSelectedName, mktKlineData, mktTechSummary,
       mktSearchQuery, mktSearchHits, mktSearchOpen, mktProxyTesting, testMarketProxy,
       fmtPrice, fmtPct, fmtCompact,
@@ -11995,7 +13141,9 @@ const App = {
       newsListEl, newsVirtStart, newsVirtRows, onNewsListScroll, loadMoreNews,
       newsSelectedItem, newsDetailLoading, newsViewMode, newsSearchMode, newsLastSearchMode, showBreakingBanner,
       breakingIdx, currentBreaking, nextBreaking, newsReindexing, reindexNewsAll, newsFilters, newsCategories,
-      newsEntities, entityGraph, entityGraphLayout, entityDrawerOpen, entityProfile, entityLoading,
+      newsEntities, entityGraph, entityGraphLayout, entityPulseHours, entityHoverId, entityGraphRefreshTick, entityMaxMentions, entityTypeMeta,
+      entityDrawerOpen, entityProfile, entityLoading,
+      panelRefreshing, panelJustRefreshed, panelRefreshedAt, refreshPanel, refreshEntityPulse, setEntityPulseHours,
       sentimentGauge, sentimentSignals, toneRatio,
       newsBriefText, newsBriefLoading, briefModalOpen,
       newFeedForm, newGlossaryForm, opmlInput, newsModelSelectVal, onNewsModelPick,
@@ -12141,8 +13289,10 @@ const KlineChart = {
     data: { type: Object, default: null },
     theme: { type: String, default: 'light' },
     showMa: { type: Boolean, default: true },
+    showBoll: { type: Boolean, default: false },
     showVol: { type: Boolean, default: true },
     showMarkers: { type: Boolean, default: true },
+    redlines: { type: Array, default: () => [] },
   },
   emits: ['pick-marker'],
   setup(props, { emit }) {
@@ -12152,6 +13302,9 @@ const KlineChart = {
     let volSeries = null
     let ma5Series = null
     let ma20Series = null
+    let bollUpSeries = null
+    let bollDnSeries = null
+    let activePriceLines = []
     let ro = null
     let markersByTime = {}
 
@@ -12205,6 +13358,8 @@ const KlineChart = {
         volSeries.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
         ma5Series = chart.addLineSeries({ color: '#3b82f6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false })
         ma20Series = chart.addLineSeries({ color: '#f59e0b', lineWidth: 1, priceLineVisible: false, lastValueVisible: false })
+        bollUpSeries = chart.addLineSeries({ color: '#38bdf8', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false })
+        bollDnSeries = chart.addLineSeries({ color: '#38bdf8', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false })
         chart.subscribeClick((param) => {
           if (!param || !param.time) return
           const mk = markersByTime[String(param.time)]
@@ -12233,6 +13388,30 @@ const KlineChart = {
       const ind = (d && d.indicators) || {}
       if (ma5Series) ma5Series.setData(props.showMa ? dedupSort(ind.ma5 || []) : [])
       if (ma20Series) ma20Series.setData(props.showMa ? dedupSort(ind.ma20 || []) : [])
+      const bollArr = props.showBoll ? dedupSort(ind.boll || []) : []
+      if (bollUpSeries) bollUpSeries.setData(bollArr.map((x) => ({ time: x.time, value: x.upper })).filter((x) => Number.isFinite(x.value)))
+      if (bollDnSeries) bollDnSeries.setData(bollArr.map((x) => ({ time: x.time, value: x.lower })).filter((x) => Number.isFinite(x.value)))
+
+      // 更新多条自定义预警线
+      for (const pl of activePriceLines) {
+        try { candleSeries.removePriceLine(pl) } catch (e) { /* ignore */ }
+      }
+      activePriceLines = []
+      for (const rl of (props.redlines || [])) {
+        const pr = Number(rl && rl.price)
+        if (!Number.isFinite(pr)) continue
+        try {
+          activePriceLines.push(candleSeries.createPriceLine({
+            price: pr,
+            color: (rl && rl.color) || '#f43f5e',
+            lineWidth: 1,
+            lineStyle: 2,
+            axisLabelVisible: true,
+            title: (rl && rl.label) || '预警线',
+          }))
+        } catch (e) { /* ignore */ }
+      }
+
       markersByTime = {}
       const rawMarkers = props.showMarkers ? ((d && d.markers) || []) : []
       for (const m of rawMarkers) {
@@ -12267,7 +13446,7 @@ const KlineChart = {
         if (rafId) cancelAnimationFrame(rafId)
       })
     })
-    watch(() => [props.data, props.showMa, props.showVol, props.showMarkers], () => nextTick(ensureChart), { deep: false })
+    watch(() => [props.data, props.showMa, props.showBoll, props.showVol, props.showMarkers, props.redlines], () => nextTick(ensureChart), { deep: true })
     watch(() => props.theme, () => nextTick(ensureChart))
     onBeforeUnmount(() => {
       if (ro) ro.disconnect()
@@ -12343,7 +13522,7 @@ const SectorTreemap = {
           label: {
             show: true,
             color: '#fff',
-            fontSize: 11,
+            fontSize: el.clientWidth < 320 || el.clientHeight < 180 ? 9.5 : 11,
             formatter(p) {
               const pct = Number((p.data && p.data.pct) || 0)
               return `${p.name}\n${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`
@@ -12406,12 +13585,12 @@ const YieldChart = {
       const ys = (props.rates || []).map((r) => Number(r.rate) || 0)
       inst.setOption({
         animationDurationUpdate: 150,
-        grid: { left: 34, right: 10, top: 14, bottom: 22 },
-        tooltip: { trigger: 'axis' },
+        grid: { left: 10, right: 12, top: 14, bottom: 18, containLabel: true },
+        tooltip: { trigger: 'axis', confine: true },
         xAxis: {
           type: 'category',
           data: xs,
-          axisLabel: { fontSize: 9, color: dark ? '#94a3b8' : '#64748b' },
+          axisLabel: { fontSize: 9, color: dark ? '#94a3b8' : '#64748b', hideOverlap: true },
           axisLine: { lineStyle: { color: dark ? '#1e293b' : '#cbd5e1' } },
         },
         yAxis: {
@@ -12460,6 +13639,415 @@ const YieldChart = {
     return { elRef }
   },
   template: `<div ref="elRef" :style="{ width: '100%', height: height, minHeight: 0, flex: height === '100%' ? '1 1 auto' : undefined }"></div>`,
+}
+
+const EntityNetworkGraph = {
+  props: {
+    nodes: { type: Array, default: () => [] },
+    edges: { type: Array, default: () => [] },
+    theme: { type: String, default: 'light' },
+    highlightId: { type: [Number, String], default: null },
+    refreshTick: { type: Number, default: 0 },
+    isMaximized: { type: Boolean, default: false },
+  },
+  emits: ['pick', 'hover'],
+  setup(props, { emit }) {
+    const elRef = ref(null)
+    const isRoamed = ref(false)
+    let inst = null
+    let ro = null
+    let rafId = 0
+    let lastW = 0
+    let lastH = 0
+    let renderedIds = []
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+    }
+
+    function sentimentColor(ns) {
+      const v = Number(ns) || 0
+      if (v > 0.08) return '#10b981'
+      if (v < -0.08) return '#ef4444'
+      return '#3b82f6'
+    }
+
+    function computeLayout(nodesRaw, edgesRaw, width, height) {
+      const compact = !props.isMaximized && width < 420
+      const maxCount = props.isMaximized ? 22 : (width < 320 ? 10 : (width < 460 ? 12 : 16))
+      const top = (nodesRaw || []).slice(0, maxCount)
+      if (!top.length) return { nodes: [], edges: [] }
+
+      const w = Math.max(220, width)
+      const h = Math.max(124, height)
+      const cx = w / 2
+      const cy = h / 2 - 4
+      const maxMentions = Math.max(1, ...top.map((n) => Number(n.mentions) || 1))
+      const minR = compact ? 7 : 9
+      const maxR = compact ? 15 : 22
+
+      const idSet = new Set(top.map((n) => String(n.id)))
+      const degMap = new Map()
+      for (const e of edgesRaw || []) {
+        const s = String(e.source)
+        const t = String(e.target)
+        if (!idSet.has(s) || !idSet.has(t)) continue
+        degMap.set(s, (degMap.get(s) || 0) + (Number(e.weight) || 1))
+        degMap.set(t, (degMap.get(t) || 0) + (Number(e.weight) || 1))
+      }
+
+      // 初始放置：最高热度节点居中，其余按黄金角均匀展开避免对称堆叠
+      const items = top.map((n, idx) => {
+        const ratio = Math.sqrt((Number(n.mentions) || 1) / maxMentions)
+        const r = minR + ratio * (maxR - minR)
+        const shortName = String(n.canonical_name || '').slice(0, compact ? 6 : 8)
+        const labelLen = shortName.length
+        const hw = Math.max(r + 6, labelLen * (compact ? 4.8 : 5.4))
+        const hh = r + (compact ? 11 : 13)
+        let x = cx
+        let y = cy
+        if (idx > 0) {
+          const frac = idx / Math.max(1, top.length - 1)
+          const angle = idx * 2.399963229728653 - Math.PI / 2
+          const rx = (w * 0.36) * (0.42 + 0.58 * Math.sqrt(frac))
+          const ry = (h * 0.36) * (0.42 + 0.58 * Math.sqrt(frac))
+          x = cx + Math.cos(angle) * rx
+          y = cy + Math.sin(angle) * ry
+        }
+        return {
+          raw: n,
+          id: String(n.id),
+          name: String(n.canonical_name || ''),
+          shortName,
+          r,
+          hw,
+          hh,
+          x,
+          y,
+          vx: 0,
+          vy: 0,
+          idx,
+          deg: degMap.get(String(n.id)) || 0,
+        }
+      })
+
+      const idxById = new Map(items.map((it, i) => [it.id, i]))
+      const validEdges = []
+      for (const e of edgesRaw || []) {
+        const si = idxById.get(String(e.source))
+        const ti = idxById.get(String(e.target))
+        if (si == null || ti == null || si === ti) continue
+        validEdges.push({
+          si,
+          ti,
+          source: items[si].id,
+          target: items[ti].id,
+          srcName: items[si].name,
+          dstName: items[ti].name,
+          weight: Math.max(1, Number(e.weight) || 1),
+        })
+      }
+
+      const idealEdge = Math.max(54, Math.min(w, h) * 0.36)
+      const iters = 130
+      for (let step = 0; step < iters; step++) {
+        const cooling = 1 - step / iters
+        // 节点+标签包围盒互斥（杜绝圆圈和文字互相重叠）
+        for (let i = 0; i < items.length; i++) {
+          for (let j = i + 1; j < items.length; j++) {
+            const a = items[i]
+            const b = items[j]
+            let dx = b.x - a.x
+            let dy = b.y - a.y
+            if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) {
+              dx = (i % 2 === 0 ? 1 : -1) * 0.6
+              dy = (j % 2 === 0 ? 1 : -1) * 0.6
+            }
+            const dist = Math.hypot(dx, dy) || 0.01
+            const nx = dx / dist
+            const ny = dy / dist
+
+            // 常规库仑斥力
+            const rep = (compact ? 680 : 1250) / (dist * dist + 140)
+            a.vx -= nx * rep
+            a.vy -= ny * rep
+            b.vx += nx * rep
+            b.vy += ny * rep
+
+            // 矩形标签盒硬防重叠分离
+            const reqX = a.hw + b.hw + 6
+            const reqY = a.hh + b.hh + 4
+            const ovX = reqX - Math.abs(dx)
+            const ovY = reqY - Math.abs(dy)
+            if (ovX > 0 && ovY > 0) {
+              if (ovX / reqX < ovY / reqY) {
+                const push = ovX * 0.42 * (dx >= 0 ? 1 : -1)
+                a.vx -= push
+                b.vx += push
+              } else {
+                const push = ovY * 0.42 * (dy >= 0 ? 1 : -1)
+                a.vy -= push
+                b.vy += push
+              }
+            }
+          }
+        }
+
+        // 共现边引力
+        for (const ed of validEdges) {
+          const a = items[ed.si]
+          const b = items[ed.ti]
+          const dx = b.x - a.x
+          const dy = b.y - a.y
+          const dist = Math.hypot(dx, dy) || 0.01
+          const pull = (dist - idealEdge) * 0.018 * Math.min(2.2, 0.7 + Math.log1p(ed.weight) * 0.45)
+          const fx = (dx / dist) * pull
+          const fy = (dy / dist) * pull
+          a.vx += fx
+          a.vy += fy
+          b.vx -= fx
+          b.vy -= fy
+        }
+
+        // 中心向心力 + 边界约束（留足底部文字空间）
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i]
+          const grav = i === 0 ? 0.065 : 0.022
+          it.vx += (cx - it.x) * grav
+          it.vy += (cy - it.y) * grav
+
+          const damping = 0.56 * (0.4 + 0.6 * cooling)
+          const maxStep = 14 * (0.25 + 0.75 * cooling)
+          const stepX = Math.max(-maxStep, Math.min(maxStep, it.vx * damping))
+          const stepY = Math.max(-maxStep, Math.min(maxStep, it.vy * damping))
+          it.x += stepX
+          it.y += stepY
+          it.vx *= 0.25
+          it.vy *= 0.25
+
+          const padX = Math.min(w * 0.42, Math.max(26, it.hw + 4))
+          const padTop = Math.min(h * 0.4, it.r + 10)
+          const padBot = Math.min(h * 0.42, it.r + 22)
+          it.x = Math.max(padX, Math.min(w - padX, it.x))
+          it.y = Math.max(padTop, Math.min(h - padBot, it.y))
+        }
+      }
+
+      return { nodes: items, edges: validEdges, compact }
+    }
+
+    function draw(resetZoom = false) {
+      const el = elRef.value
+      if (!el || !el.clientWidth || !el.clientHeight) return
+      const w = el.clientWidth
+      const h = el.clientHeight
+      lastW = w
+      lastH = h
+
+      if (!inst) {
+        inst = echarts.init(el)
+        inst.on('click', (p) => {
+          if (p && p.dataType === 'node' && p.data && p.data.raw) {
+            emit('pick', p.data.raw.canonical_name)
+          }
+        })
+        inst.on('mouseover', (p) => {
+          if (p && p.dataType === 'node' && p.data && p.data.raw) {
+            emit('hover', p.data.raw.id)
+          }
+        })
+        inst.on('mouseout', (p) => {
+          if (p && p.dataType === 'node') {
+            emit('hover', null)
+          }
+        })
+        inst.on('graphroam', () => {
+          isRoamed.value = true
+        })
+      }
+
+      const dark = props.theme === 'dark'
+      const { nodes, edges, compact } = computeLayout(props.nodes, props.edges, w, h)
+      renderedIds = nodes.map((n) => n.id)
+
+      const maxW = Math.max(1, ...edges.map((e) => e.weight))
+      const bgHalo = dark ? '#0b0f17' : '#fafafa'
+      const txtColor = dark ? '#e2e8f0' : '#0f172a'
+      const edgeColor = dark ? 'rgba(148, 163, 184, 0.26)' : 'rgba(100, 116, 139, 0.28)'
+
+      const graphNodes = nodes.map((nd) => {
+        const col = sentimentColor(nd.raw.net_sentiment)
+        const fillAlpha = dark ? '3d' : '2b'
+        return {
+          id: nd.id,
+          name: nd.name,
+          x: Math.round(nd.x * 10) / 10,
+          y: Math.round(nd.y * 10) / 10,
+          symbolSize: Math.round(nd.r * 2),
+          value: nd.raw.mentions,
+          raw: nd.raw,
+          itemStyle: {
+            color: col + fillAlpha,
+            borderColor: col,
+            borderWidth: nd.idx < 3 ? 2 : 1.5,
+            shadowBlur: nd.idx < 3 ? 8 : 0,
+            shadowColor: nd.idx < 3 ? (col + '55') : 'transparent',
+          },
+          label: {
+            show: true,
+            position: 'bottom',
+            distance: 3,
+            formatter: nd.shortName,
+            color: txtColor,
+            fontSize: compact ? 10 : 11,
+            fontWeight: nd.idx < 3 ? 600 : 400,
+            textBorderColor: bgHalo,
+            textBorderWidth: 2.5,
+          },
+        }
+      })
+
+      const graphLinks = edges.map((ed) => ({
+        source: ed.source,
+        target: ed.target,
+        value: ed.weight,
+        srcName: ed.srcName,
+        dstName: ed.dstName,
+        lineStyle: {
+          color: edgeColor,
+          width: Math.max(1, Math.min(3.2, 0.9 + (ed.weight / maxW) * 2.2)),
+          curveness: 0.16,
+          opacity: 0.85,
+        },
+      }))
+
+      const option = {
+        animationDuration: 360,
+        animationDurationUpdate: 420,
+        animationEasingUpdate: 'cubicOut',
+        tooltip: {
+          confine: true,
+          backgroundColor: dark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.96)',
+          borderColor: dark ? '#334155' : '#cbd5e1',
+          borderWidth: 1,
+          textStyle: { color: txtColor, fontSize: 11.5 },
+          formatter(p) {
+            if (p.dataType === 'edge' && p.data) {
+              return `<div style="font-weight:600;margin-bottom:2px">${esc(p.data.srcName)} ↔ ${esc(p.data.dstName)}</div>`
+                + `<div style="color:${dark ? '#94a3b8' : '#64748b'}">共现关联：<b>${p.data.value}</b> 篇情报</div>`
+            }
+            const r = p.data && p.data.raw
+            if (!r) return ''
+            const ns = Number(r.net_sentiment) || 0
+            const nsTxt = (ns > 0 ? '+' : '') + ns.toFixed(2)
+            const nsCol = sentimentColor(ns)
+            return `<div style="font-weight:700;margin-bottom:3px">${esc(r.canonical_name)} <span style="font-weight:500;font-size:10px;opacity:.75">[${esc(r.entity_type || 'ORG')}]</span></div>`
+              + `<div>提及次数：<b>${r.mentions || 0}</b>（多 ${r.bullish || 0} / 中 ${r.neutral || 0} / 空 ${r.bearish || 0}）</div>`
+              + `<div>净情绪：<b style="color:${nsCol}">${nsTxt}</b></div>`
+              + `<div style="margin-top:3px;font-size:10px;opacity:.7">点击查看实体详情档案</div>`
+          },
+        },
+        series: [{
+          type: 'graph',
+          layout: 'none',
+          roam: true,
+          scaleLimit: { min: 0.65, max: 3.2 },
+          zoom: resetZoom ? 1 : undefined,
+          center: resetZoom ? null : undefined,
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          data: graphNodes,
+          links: graphLinks,
+          labelLayout: { hideOverlap: true },
+          emphasis: {
+            focus: 'adjacency',
+            scale: 1.18,
+            lineStyle: {
+              width: 2.6,
+              color: '#3b82f6',
+              opacity: 0.95,
+            },
+          },
+          blur: {
+            itemStyle: { opacity: 0.22 },
+            lineStyle: { opacity: 0.08 },
+            label: { opacity: 0.28 },
+          },
+        }],
+      }
+
+      if (resetZoom) isRoamed.value = false
+      inst.setOption(option, true)
+    }
+
+    function resetView() {
+      draw(true)
+    }
+
+    onMounted(() => {
+      nextTick(() => {
+        draw(true)
+        if (elRef.value && typeof ResizeObserver !== 'undefined') {
+          ro = new ResizeObserver((entries) => {
+            const cr = entries[0] && entries[0].contentRect
+            if (!cr || cr.width <= 0 || cr.height <= 0) return
+            if (rafId) cancelAnimationFrame(rafId)
+            rafId = requestAnimationFrame(() => {
+              rafId = 0
+              if (!elRef.value) return
+              if (!inst || Math.abs(cr.width - lastW) > 18 || Math.abs(cr.height - lastH) > 18) {
+                if (inst) inst.resize()
+                draw(true)
+              } else {
+                inst.resize()
+              }
+            })
+          })
+          ro.observe(elRef.value)
+        }
+      })
+    })
+
+    watch(() => [props.nodes, props.edges, props.theme, props.refreshTick, props.isMaximized], () => {
+      nextTick(() => draw(true))
+    })
+
+    watch(() => props.highlightId, (val) => {
+      if (!inst) return
+      try {
+        inst.dispatchAction({ type: 'downplay', seriesIndex: 0 })
+        if (val != null) {
+          const idx = renderedIds.indexOf(String(val))
+          if (idx >= 0) {
+            inst.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: idx })
+          }
+        }
+      } catch (e) { /* ignore */ }
+    })
+
+    onBeforeUnmount(() => {
+      if (rafId) cancelAnimationFrame(rafId)
+      if (ro) ro.disconnect()
+      if (inst) { inst.dispose(); inst = null }
+    })
+
+    return { elRef, isRoamed, resetView }
+  },
+  template: `
+    <div style="position:relative;width:100%;height:100%">
+      <div ref="elRef" style="width:100%;height:100%"></div>
+      <div v-if="isRoamed" class="ep-graph-tools">
+        <button type="button" class="ep-mini-btn" @click.stop="resetView" title="重置缩放与位置">重置视角</button>
+      </div>
+      <div class="ep-graph-hint">滚轮缩放 · 悬停高亮关联 · 点击看档案</div>
+    </div>
+  `,
 }
 
 const SplitResizer = {
@@ -12847,6 +14435,15 @@ app.component('spark-line', SparkLine)
 app.component('kline-chart', KlineChart)
 app.component('sector-treemap', SectorTreemap)
 app.component('yield-chart', YieldChart)
+app.component('entity-network-graph', EntityNetworkGraph)
+app.component('entity-geo-atlas', EntityGeoAtlas)
+app.component('backtest-lab', BacktestLab)
 app.component('split-resizer', SplitResizer)
 app.component('free-grid', FreeGrid)
+app.component('symbol-picker', SymbolPicker)
+app.component('o2-echarts', O2Echarts)
+app.component('quant-widget', QuantWidget)
+app.component('widget-config-drawer', WidgetConfigDrawer)
+app.component('lazy-chat-visual', LazyChatVisual)
+app.component('widget-gallery-modal', WidgetGalleryModal)
 app.mount('#app')

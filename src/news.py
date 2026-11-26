@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 import numpy as np
 
 import embed as embed_mod
+import geo_intel as geo_mod
 import news_engine as eng_mod
 import providers as prov_mod
 
@@ -251,37 +252,35 @@ DEFAULT_DASHBOARD_LAYOUT: dict = {
             "id": "intel_overview",
             "name": "终端总览",
             "widgets": [
-                {"id": "w_watchlist_slot", "type": "watchlist_slot", "title": "WATCHLIST & K-LINE", "x": 0, "y": 0, "w": 16, "h": 12, "minW": 8, "minH": 8, "colSpan": 8, "enabled": True, "config": {}},
-                {"id": "w_sentiment_gauge", "type": "sentiment_gauge", "title": "RISK PULSE", "x": 16, "y": 0, "w": 8, "h": 12, "minW": 5, "minH": 7, "colSpan": 4, "enabled": True, "config": {}},
-                {"id": "w_sector_heatmap", "type": "sector_heatmap", "title": "SECTOR HEATMAP", "x": 0, "y": 12, "w": 12, "h": 10, "minW": 6, "minH": 7, "colSpan": 6, "enabled": True, "config": {}},
-                {"id": "w_macro_curve", "type": "macro_curve", "title": "MACRO YIELDS & FX", "x": 12, "y": 12, "w": 12, "h": 10, "minW": 6, "minH": 7, "colSpan": 6, "enabled": True, "config": {}},
-                {"id": "w_live_wire", "type": "live_wire", "title": "LIVE WIRE", "x": 0, "y": 22, "w": 16, "h": 11, "minW": 7, "minH": 6, "colSpan": 8, "enabled": True, "config": {"limit": 24}},
-                {"id": "w_desk_note", "type": "desk_note", "title": "DESK NOTE", "x": 16, "y": 22, "w": 8, "h": 11, "minW": 5, "minH": 6, "colSpan": 4, "enabled": True, "config": {}},
-                {"id": "w_entity_pulse", "type": "entity_pulse", "title": "ENTITY GRAPH", "x": 0, "y": 33, "w": 8, "h": 10, "minW": 5, "minH": 7, "colSpan": 4, "enabled": True, "config": {}},
-                {"id": "w_geo_odds", "type": "geo_odds", "title": "GEO & PORTWATCH", "x": 8, "y": 33, "w": 8, "h": 10, "minW": 5, "minH": 6, "colSpan": 4, "enabled": True, "config": {}},
-                {"id": "w_connector_hub", "type": "connector_hub", "title": "DATA BUS", "x": 16, "y": 33, "w": 8, "h": 10, "minW": 5, "minH": 6, "colSpan": 4, "enabled": True, "config": {}},
-                {"id": "w_backtest_slot", "type": "backtest_slot", "title": "QUANT LAB [M4]", "x": 0, "y": 43, "w": 24, "h": 6, "minW": 6, "minH": 5, "colSpan": 12, "enabled": True, "config": {}},
+                {"id": "w_watchlist_slot", "type": "watchlist_slot", "title": "自选与 K 线", "x": 0, "y": 0, "w": 16, "h": 12, "minW": 8, "minH": 8, "colSpan": 8, "enabled": True, "config": {}},
+                {"id": "w_divergence_radar", "type": "divergence_radar", "title": "跨市场背离雷达", "x": 16, "y": 0, "w": 8, "h": 12, "minW": 5, "minH": 6, "colSpan": 4, "enabled": True, "config": {}},
+                {"id": "w_sector_heatmap", "type": "sector_heatmap", "title": "板块热力图", "x": 0, "y": 12, "w": 12, "h": 10, "minW": 6, "minH": 7, "colSpan": 6, "enabled": True, "config": {}},
+                {"id": "w_macro_curve", "type": "macro_curve", "title": "宏观利率与汇率", "x": 12, "y": 12, "w": 12, "h": 10, "minW": 6, "minH": 7, "colSpan": 6, "enabled": True, "config": {}},
+                {"id": "w_live_wire", "type": "live_wire", "title": "实时快讯", "x": 0, "y": 22, "w": 16, "h": 11, "minW": 7, "minH": 6, "colSpan": 8, "enabled": True, "config": {"limit": 24}},
+                {"id": "w_desk_note", "type": "desk_note", "title": "情报简报", "x": 16, "y": 22, "w": 8, "h": 11, "minW": 5, "minH": 6, "colSpan": 4, "enabled": True, "config": {}},
+                {"id": "w_entity_pulse", "type": "entity_pulse", "title": "实体关系网络", "x": 0, "y": 33, "w": 8, "h": 10, "minW": 5, "minH": 7, "colSpan": 4, "enabled": True, "config": {}},
+                {"id": "w_geo_odds", "type": "geo_odds", "title": "地缘事件概率", "x": 8, "y": 33, "w": 8, "h": 10, "minW": 5, "minH": 6, "colSpan": 4, "enabled": True, "config": {}},
+                {"id": "w_connector_hub", "type": "connector_hub", "title": "数据源状态", "x": 16, "y": 33, "w": 8, "h": 10, "minW": 5, "minH": 6, "colSpan": 4, "enabled": True, "config": {}},
             ],
         },
         {
             "id": "multi_lang_wire",
             "name": "快讯监控",
             "widgets": [
-                {"id": "w_wire_all", "type": "live_wire", "title": "LIVE WIRE", "x": 0, "y": 0, "w": 16, "h": 14, "minW": 7, "minH": 6, "colSpan": 8, "enabled": True, "config": {"limit": 40}},
-                {"id": "w_entity_pulse_2", "type": "entity_pulse", "title": "ENTITY GRAPH", "x": 16, "y": 0, "w": 8, "h": 14, "minW": 5, "minH": 7, "colSpan": 4, "enabled": True, "config": {}},
-                {"id": "w_sentiment_gauge_2", "type": "sentiment_gauge", "title": "RISK PULSE", "x": 0, "y": 14, "w": 10, "h": 10, "minW": 5, "minH": 7, "colSpan": 6, "enabled": True, "config": {}},
-                {"id": "w_desk_note_2", "type": "desk_note", "title": "DESK NOTE", "x": 10, "y": 14, "w": 14, "h": 10, "minW": 5, "minH": 6, "colSpan": 6, "enabled": True, "config": {}},
+                {"id": "w_wire_all", "type": "live_wire", "title": "实时快讯", "x": 0, "y": 0, "w": 16, "h": 14, "minW": 7, "minH": 6, "colSpan": 8, "enabled": True, "config": {"limit": 40}},
+                {"id": "w_entity_pulse_2", "type": "entity_pulse", "title": "实体关系网络", "x": 16, "y": 0, "w": 8, "h": 14, "minW": 5, "minH": 7, "colSpan": 4, "enabled": True, "config": {}},
+                {"id": "w_sentiment_gauge_2", "type": "sentiment_gauge", "title": "情绪温度计", "x": 0, "y": 14, "w": 10, "h": 10, "minW": 5, "minH": 7, "colSpan": 6, "enabled": True, "config": {}},
+                {"id": "w_desk_note_2", "type": "desk_note", "title": "情报简报", "x": 10, "y": 14, "w": 14, "h": 10, "minW": 5, "minH": 6, "colSpan": 6, "enabled": True, "config": {}},
             ],
         },
         {
             "id": "quant_research",
             "name": "投研与宏观",
             "widgets": [
-                {"id": "w_watchlist_2", "type": "watchlist_slot", "title": "WATCHLIST & K-LINE", "x": 0, "y": 0, "w": 16, "h": 13, "minW": 8, "minH": 8, "colSpan": 8, "enabled": True, "config": {}},
-                {"id": "w_macro_2", "type": "macro_curve", "title": "MACRO YIELDS & FX", "x": 16, "y": 0, "w": 8, "h": 13, "minW": 6, "minH": 7, "colSpan": 4, "enabled": True, "config": {}},
-                {"id": "w_sector_2", "type": "sector_heatmap", "title": "SECTOR HEATMAP", "x": 0, "y": 13, "w": 12, "h": 10, "minW": 6, "minH": 7, "colSpan": 6, "enabled": True, "config": {}},
-                {"id": "w_geo_2", "type": "geo_odds", "title": "GEO & PORTWATCH", "x": 12, "y": 13, "w": 12, "h": 10, "minW": 5, "minH": 6, "colSpan": 6, "enabled": True, "config": {}},
-                {"id": "w_backtest_2", "type": "backtest_slot", "title": "QUANT LAB [M4]", "x": 0, "y": 23, "w": 24, "h": 6, "minW": 6, "minH": 5, "colSpan": 12, "enabled": True, "config": {}},
+                {"id": "w_watchlist_2", "type": "watchlist_slot", "title": "自选与 K 线", "x": 0, "y": 0, "w": 16, "h": 13, "minW": 8, "minH": 8, "colSpan": 8, "enabled": True, "config": {}},
+                {"id": "w_macro_2", "type": "macro_curve", "title": "宏观利率与汇率", "x": 16, "y": 0, "w": 8, "h": 13, "minW": 6, "minH": 7, "colSpan": 4, "enabled": True, "config": {}},
+                {"id": "w_sector_2", "type": "sector_heatmap", "title": "板块热力图", "x": 0, "y": 13, "w": 12, "h": 10, "minW": 6, "minH": 7, "colSpan": 6, "enabled": True, "config": {}},
+                {"id": "w_geo_2", "type": "geo_odds", "title": "地缘事件概率", "x": 12, "y": 13, "w": 12, "h": 10, "minW": 5, "minH": 6, "colSpan": 6, "enabled": True, "config": {}},
             ],
         },
     ],
@@ -289,6 +288,7 @@ DEFAULT_DASHBOARD_LAYOUT: dict = {
 
 _DASH_WIDGET_DEFAULTS: dict[str, tuple[int, int, int, int]] = {
     "watchlist_slot": (16, 12, 8, 8),
+    "divergence_radar": (8, 10, 5, 6),
     "sector_heatmap": (12, 10, 6, 7),
     "macro_curve": (12, 10, 6, 7),
     "geo_odds": (8, 10, 5, 6),
@@ -297,7 +297,6 @@ _DASH_WIDGET_DEFAULTS: dict[str, tuple[int, int, int, int]] = {
     "sentiment_gauge": (8, 10, 5, 7),
     "live_wire": (16, 11, 7, 6),
     "desk_note": (8, 11, 5, 6),
-    "backtest_slot": (24, 6, 6, 5),
 }
 
 
@@ -341,7 +340,11 @@ def migrate_dashboard_layout(saved: dict | None) -> tuple[dict, bool]:
                     changed = True
 
     for ws in layout.get("workspaces", []):
-        widgets = ws.get("widgets") or []
+        raw_widgets = ws.get("widgets") or []
+        widgets = [w for w in raw_widgets if isinstance(w, dict) and w.get("type") != "backtest_slot"]
+        if len(widgets) != len(raw_widgets):
+            ws["widgets"] = widgets
+            changed = True
         need_pack = any("x" not in w or "y" not in w or "w" not in w or "h" not in w for w in widgets)
         cur_x, cur_y, row_h = 0, 0, 0
         for w in widgets:
@@ -704,6 +707,8 @@ class NewsStore:
                 c.execute("ALTER TABLE news_items ADD COLUMN quality_score REAL DEFAULT 0")
             if "dedup_reason" not in item_cols:
                 c.execute("ALTER TABLE news_items ADD COLUMN dedup_reason TEXT DEFAULT ''")
+            if "conflict_level" not in item_cols:
+                c.execute("ALTER TABLE news_items ADD COLUMN conflict_level INTEGER DEFAULT -1")
             c.execute("CREATE INDEX IF NOT EXISTS idx_news_canon_pub ON news_items(is_canonical, published_at DESC)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_news_canon_l1 ON news_items(is_canonical, l1_status, published_at DESC)")
             c.execute("CREATE INDEX IF NOT EXISTS idx_news_entities_lower ON news_entities(LOWER(canonical_name))")
@@ -1246,12 +1251,16 @@ class NewsStore:
             self._ensure_entity_cache(c)
             c.execute("DELETE FROM news_item_entities WHERE item_id=?", (item_id,))
             for raw in entities[:6]:
+                ent_sent = sent
                 if isinstance(raw, str):
                     raw_name, etype, raw_alias = raw.strip(), "ORG", ""
                 elif isinstance(raw, dict):
                     raw_name = str(raw.get("name") or raw.get("canonical_name") or "").strip()
                     etype = str(raw.get("type") or raw.get("entity_type") or "ORG").strip().upper()
                     raw_alias = str(raw.get("alias") or "").strip()
+                    raw_st = str(raw.get("stance") or raw.get("sentiment") or "").strip().lower()
+                    if raw_st in ("bullish", "bearish", "neutral"):
+                        ent_sent = raw_st
                 else:
                     continue
                 if not raw_name or len(raw_name) > 80:
@@ -1326,9 +1335,9 @@ class NewsStore:
 
                 c.execute(
                     "INSERT OR REPLACE INTO news_item_entities (item_id, entity_id, sentiment) VALUES (?, ?, ?)",
-                    (item_id, eid, sent),
+                    (item_id, eid, ent_sent),
                 )
-                normalized.append({"id": eid, "name": canon, "type": etype})
+                normalized.append({"id": eid, "name": canon, "type": etype, "stance": ent_sent})
 
             c.execute(
                 "UPDATE news_items SET entities_json=? WHERE id=?",
@@ -1473,29 +1482,41 @@ class NewsStore:
             "items": [dict(r) for r in news_rows],
         }
 
-    def entity_graph(self, hours: int = 168, max_nodes: int = 24) -> dict:
-        nodes = self.list_entities(hours=hours, limit=max_nodes)
+    def entity_graph(self, hours: int = 168, max_nodes: int = 36) -> dict:
+        lim = max(12, min(60, int(max_nodes or 36)))
+        nodes = self.list_entities(hours=hours, limit=lim)
         if not nodes:
-            return {"nodes": [], "edges": []}
-        ids = [n["id"] for n in nodes]
-        ph = ",".join("?" for _ in ids)
+            return {"nodes": [], "edges": [], "countries": [], "events": [], "assets": []}
+        assets_raw = self.list_entities(hours=hours, entity_type="ASSET", limit=28)
         cutoff = int(time.time()) - hours * 3600 if hours > 0 else 0
         with self.con() as c:
-            rows = c.execute(
-                f"""SELECT a.entity_id AS src, b.entity_id AS dst, COUNT(*) AS weight
-                    FROM news_item_entities a
-                    JOIN news_item_entities b ON a.item_id = b.item_id AND a.entity_id < b.entity_id
-                    JOIN news_items ni ON ni.id = a.item_id
-                    WHERE a.entity_id IN ({ph}) AND b.entity_id IN ({ph}) AND ni.is_canonical=1 AND ni.published_at >= ?
-                    GROUP BY a.entity_id, b.entity_id
-                    ORDER BY weight DESC
-                    LIMIT 60""",
-                [*ids, *ids, cutoff],
+            item_rows = c.execute(
+                """SELECT id, feed_name, category, title_zh, title_orig, summary_zh, summary_orig,
+                          sentiment, impact, conflict_level, published_at
+                   FROM news_items
+                   WHERE is_canonical = 1 AND published_at >= ?
+                   ORDER BY published_at DESC
+                   LIMIT 1200""",
+                (cutoff,),
             ).fetchall()
-        return {
-            "nodes": nodes,
-            "edges": [{"source": int(r["src"]), "target": int(r["dst"]), "weight": int(r["weight"])} for r in rows],
-        }
+            if not item_rows:
+                return {"nodes": nodes, "edges": [], "countries": [], "events": [], "assets": []}
+            item_ids = [int(r["id"]) for r in item_rows]
+            ph = ",".join("?" for _ in item_ids)
+            link_rows = c.execute(
+                f"""SELECT nie.item_id, nie.entity_id, nie.sentiment,
+                           ne.canonical_name, ne.entity_type
+                    FROM news_item_entities nie
+                    JOIN news_entities ne ON ne.id = nie.entity_id
+                    WHERE nie.item_id IN ({ph})""",
+                item_ids,
+            ).fetchall()
+        return geo_mod.aggregate_geo_intelligence(
+            nodes=nodes,
+            item_rows=[dict(r) for r in item_rows],
+            item_entity_links=[dict(r) for r in link_rows],
+            all_assets_raw=assets_raw,
+        )
 
     def get_pending_l1(self, limit: int = 24) -> list[dict]:
         with self.con() as c:
@@ -1514,13 +1535,14 @@ class NewsStore:
             for u in updates:
                 c.execute(
                     """UPDATE news_items
-                       SET title_zh=?, summary_zh=?, sentiment=?, impact=?, tags_json=?, l1_status=?
+                       SET title_zh=?, summary_zh=?, sentiment=?, impact=?, conflict_level=?, tags_json=?, l1_status=?
                        WHERE id=?""",
                     (
                         u.get("title_zh") or "",
                         u.get("summary_zh") or "",
                         u.get("sentiment") or "neutral",
                         int(u.get("impact") or 0),
+                        int(u.get("conflict_level")) if u.get("conflict_level") is not None else -1,
                         json.dumps(u.get("tags") or [], ensure_ascii=False),
                         u.get("l1_status") or "done",
                         int(u["id"]),
@@ -1911,6 +1933,7 @@ class NewsManager:
         while True:
             self._wake.clear()
             cfg_data = self.config.data
+            more_work = False
             if cfg_data.get("news_enabled"):
                 mins = int(cfg_data.get("news_refresh_minutes") or 0)
                 now = time.time()
@@ -1919,17 +1942,37 @@ class NewsManager:
                         feeds = self.store.list_feeds()
                         if any(f.get("enabled") for f in feeds):
                             self.fetch_all()
-                            if self.config.data.get("news_auto_translate", True):
-                                self.translate_pending(limit=24)
                     except Exception as e:
                         self.last_error = str(e)
+
+                # Always auto-drain pending vectorization (local BGE-M3 / cloud fallback)
+                try:
+                    emb_res = self.embed_pending(limit=128)
+                    if int(emb_res.get("embedded") or 0) >= 128:
+                        more_work = True
+                except Exception:
+                    pass
+
+                # Always auto-drain pending L1 translation & entity extraction in batches
+                if cfg_data.get("news_auto_translate", True) and resolve_news_llm(cfg_data):
+                    try:
+                        if self.store.get_pending_l1(limit=1):
+                            tr_res = self.translate_pending(limit=24)
+                            if int(tr_res.get("translated") or 0) > 0 and self.store.get_pending_l1(limit=1):
+                                more_work = True
+                    except Exception as e:
+                        self.last_error = str(e)
+
                 if now - self.last_prune_at > 24 * 3600:
                     try:
                         self.prune_old_data()
                         self.last_prune_at = now
                     except Exception:
                         pass
-                wait_sec = max(30, mins * 60) if mins > 0 else 120
+                if more_work:
+                    wait_sec = 3
+                else:
+                    wait_sec = max(30, mins * 60) if mins > 0 else 90
             else:
                 wait_sec = 60
             self._wake.wait(wait_sec)
@@ -2627,13 +2670,14 @@ class NewsManager:
 
             sys_prompt = (
                 "你是资深中/英/俄/日多语种金融与地缘情报翻译官。"
-                "请将输入的每条新闻翻译为准确、专业、简洁的简体中文，并同步抽取实体、情绪与冲击烈度。"
+                "请将输入的每条新闻翻译为准确、专业、简洁的简体中文，并同步抽取实体、情绪、冲突烈度与各实体独立利多/利空方向。"
                 "严格只返回 JSON 数组，不要输出任何额外解释。"
                 "\n每项格式：{\"id\": 数字, \"title_zh\": \"中文标题\", \"summary_zh\": \"1-2句中文核心导语\", "
-                "\"sentiment\": \"bullish|bearish|neutral\", \"impact\": 1到5整数, "
+                "\"sentiment\": \"bullish|bearish|neutral\", \"impact\": 1到5整数, \"conflict_level\": 0到5整数, "
                 "\"tags\": [\"标签1\", \"标签2\"], "
-                "\"entities\": [{\"name\": \"规范中文实体名\", \"type\": \"ORG|PER|LOC|ASSET|EVENT\", \"alias\": \"原文实体名\"}]}"
-                "\n注意：entities 每条最多抽取 4 个最核心的机构(ORG)/人物(PER)/国家港口地区(LOC)/金融资产大宗商品(ASSET)/关键事件(EVENT)。"
+                "\"entities\": [{\"name\": \"规范中文实体名\", \"type\": \"ORG|PER|LOC|ASSET|EVENT\", \"alias\": \"原文实体名\", \"stance\": \"bullish|bearish|neutral\"}]}"
+                "\n注意：conflict_level 0=常态财经, 1=轻度关注, 2=风险扰动, 3=关税/制裁摩擦, 4=烈度升级/袭击, 5=重大军事冲突/封锁；"
+                "entities 每条最多抽取 4 个最核心实体，并为每个实体(尤其是金融资产/大宗商品)标注独立的 stance(利多bullish/利空bearish/中性neutral)。"
                 + self._glossary_prompt()
             )
             for i in range(0, len(todo), 8):
@@ -2666,6 +2710,12 @@ class NewsManager:
                             imp = max(1, min(5, int(res.get("impact") or 2)))
                         except (TypeError, ValueError):
                             imp = 2
+                        cl_val = -1
+                        if res.get("conflict_level") is not None:
+                            try:
+                                cl_val = max(0, min(5, int(res.get("conflict_level"))))
+                            except (TypeError, ValueError):
+                                cl_val = -1
                         tags = [str(t).strip() for t in (res.get("tags") or []) if str(t).strip()][:5]
                         updates.append({
                             "id": src["id"],
@@ -2673,6 +2723,7 @@ class NewsManager:
                             "summary_zh": str(res.get("summary_zh") or src["summary_orig"]).strip(),
                             "sentiment": sent,
                             "impact": imp,
+                            "conflict_level": cl_val,
                             "tags": tags,
                             "l1_status": "done",
                         })

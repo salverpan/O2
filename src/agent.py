@@ -14,6 +14,7 @@ import news_tool as news_tool_mod
 import providers as prov_mod
 import search as search_mod
 import shell_tool as shell_mod
+import widget_tool as widget_mod
 
 
 class ChatCancelled(RuntimeError):
@@ -785,7 +786,7 @@ def _prepare_read(con, args: dict, used: set[int], cfg=None) -> tuple[str, list[
 def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         prior_sources: list[dict] | None = None, model: str | None = None,
         effort: str | None = None, provider_id: str | None = None,
-        news_mgr=None, market_mgr=None) -> None:
+        news_mgr=None, market_mgr=None, quant_mgr=None, widget_store=None) -> None:
     import catalog as cat_mod
 
     ch = prov_mod.resolve(cfg.data, provider_id, model)
@@ -827,6 +828,7 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         tools.extend(news_tool_mod.TOOLS)
     if market_mgr is not None and market_tool_mod.enabled(cfg):
         tools.extend(market_tool_mod.TOOLS)
+    tools.extend(widget_mod.TOOLS)
 
     route_q = ""
     for m in reversed(messages[-4:]):
@@ -845,6 +847,7 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
             s += news_tool_mod.PROMPT
         if market_mgr is not None and market_tool_mod.enabled(cfg):
             s += market_tool_mod.PROMPT
+        s += widget_mod.PROMPT
         return s
 
     system = _build_system()
@@ -1145,11 +1148,14 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                     })
                     continue
 
-                if name in ("market_query", "macro_query"):
+                if name in ("market_query", "macro_query", "quant_backtest", "quant_factor_eval"):
                     label = market_tool_mod.action_label(name, args)
                     emit({"type": "tool", "name": name, "args": {"query": label}})
                     try:
-                        text, ok_m, note, cnt_m = market_tool_mod.run_market_tool(name, args, market_mgr)
+                        if name in ("quant_backtest", "quant_factor_eval"):
+                            text, ok_m, note, cnt_m = market_tool_mod.run_quant_tool(name, args, quant_mgr)
+                        else:
+                            text, ok_m, note, cnt_m = market_tool_mod.run_market_tool(name, args, market_mgr)
                     except Exception as e:
                         text, ok_m, note, cnt_m = f"Error: {e}", False, "失败", 0
                     convo.append({"role": "tool", "tool_call_id": call_id, "content": text})
@@ -1159,6 +1165,25 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                         "count": cnt_m,
                         "exit": 0 if ok_m else 1,
                         "note": note,
+                    })
+                    continue
+
+                if name == "render_visual":
+                    label = widget_mod.action_label(args)
+                    emit({"type": "tool", "name": name, "args": {"query": label}})
+                    try:
+                        text, ok_v, note_v, visual_obj = widget_mod.run_render_visual(args, cfg, widget_store)
+                    except Exception as e:
+                        text, ok_v, note_v, visual_obj = f"Error: {e}", False, "失败", None
+                    convo.append({"role": "tool", "tool_call_id": call_id, "content": text})
+                    if ok_v and visual_obj:
+                        emit({"type": "visual", "visual": visual_obj})
+                    emit({
+                        "type": "tool_result",
+                        "query": label,
+                        "count": 1 if ok_v else 0,
+                        "exit": 0 if ok_v else 1,
+                        "note": note_v,
                     })
                     continue
 

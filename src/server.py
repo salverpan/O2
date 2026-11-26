@@ -29,8 +29,10 @@ import ingest as ingest_mod
 import market_data as market_mod
 import news as news_mod
 import providers as prov_mod
+import quant_engine as quant_mod
 import search as search_mod
 import embed as embed_mod
+import widget_tool as widget_mod
 
 APP_TITLE = "O2"
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -205,6 +207,13 @@ class State:
             self.config,
             news_mgr=self.news,
         )
+        self.quant = quant_mod.QuantManager(
+            self.base,
+            os.path.join(self.base, "data", "quant.sqlite"),
+            self.config,
+            market_mgr=self.market,
+        )
+        self.widgets = widget_mod.WidgetStore(os.path.join(self.base, "data", "widgets.json"))
         catalog_mod.init(os.path.join(self.base, "build"))
         threading.Thread(target=catalog_mod.refresh, daemon=True).start()
         try:
@@ -217,7 +226,8 @@ class State:
             threading.Thread(
                 target=_auto_gc_temp_files, args=(self.base,), daemon=True
             ).start()
-        if self.config.data.get("embed_running"):
+        if (self.config.data.get("embed_use") or self.config.data.get("embed_running")) and embed_mod.resolve(self.config.data):
+            self.config.data["embed_running"] = True
             threading.Thread(
                 target=embed_mod.start_job, args=(self.config, self.db_path), daemon=True
             ).start()
@@ -426,6 +436,22 @@ class Handler(BaseHTTPRequestHandler):
             return self._market_search(qs)
         if path == "/api/market/watchlist":
             return self._market_watchlist_get()
+        if path == "/api/market/quant":
+            return self._market_quant(qs)
+        if path == "/api/quant/status":
+            return self._quant_status(qs)
+        if path == "/api/quant/factors":
+            return self._quant_factors()
+        if path == "/api/quant/leaderboard":
+            return self._quant_leaderboard(qs)
+        if path == "/api/quant/symbols":
+            return self._quant_symbols()
+        if path == "/api/quant/jobs":
+            return self._quant_jobs(qs)
+        if path.startswith("/api/quant/job/"):
+            return self._quant_job_detail(path.rsplit("/", 1)[1])
+        if path == "/api/widgets":
+            return self._widgets_list()
         if path.startswith("/api/doc/"):
             try:
                 did = int(path.rsplit("/", 1)[1])
@@ -526,6 +552,26 @@ class Handler(BaseHTTPRequestHandler):
             return self._market_watchlist_post()
         if u.path == "/api/market/test_proxy":
             return self._market_test_proxy()
+        if u.path == "/api/quant/sync":
+            return self._quant_sync()
+        if u.path == "/api/quant/factor_eval":
+            return self._quant_factor_eval()
+        if u.path == "/api/quant/backtest":
+            return self._quant_backtest()
+        if u.path == "/api/quant/sweep":
+            return self._quant_sweep()
+        if u.path == "/api/quant/factor_batch":
+            return self._quant_factor_batch()
+        if u.path == "/api/quant/factor_corr":
+            return self._quant_factor_corr()
+        if u.path == "/api/quant/job/delete":
+            return self._quant_job_delete()
+        if u.path == "/api/widgets/save":
+            return self._widgets_save()
+        if u.path == "/api/widgets/delete":
+            return self._widgets_delete()
+        if u.path == "/api/widgets/topic_board":
+            return self._widgets_topic_board()
         return self._err("not found", 404)
 
     def _serve_static(self, rel: str, ctype: str) -> None:
@@ -753,6 +799,8 @@ class Handler(BaseHTTPRequestHandler):
                     provider_id=provider_id or None,
                     news_mgr=STATE.news,
                     market_mgr=STATE.market,
+                    quant_mgr=STATE.quant,
+                    widget_store=STATE.widgets,
                 )
             finally:
                 con.close()
@@ -1038,8 +1086,16 @@ class Handler(BaseHTTPRequestHandler):
             STATE.config.data["news_glossary"] = cleaned_g
         if "dashboard_layout" in body and (body["dashboard_layout"] is None or isinstance(body["dashboard_layout"], dict)):
             STATE.config.data["dashboard_layout"] = body["dashboard_layout"]
-        if not prev_news_enabled and STATE.config.data.get("news_enabled"):
+        if (not prev_news_enabled and STATE.config.data.get("news_enabled")) or (
+            STATE.config.data.get("news_enabled") and (body.get("news_auto_translate") or body.get("news_local_embed"))
+        ):
             STATE.news.wake()
+        if "embed_use" in body or "embed_providers" in body or "embed_model" in body:
+            if STATE.config.data.get("embed_use") and embed_mod.resolve(STATE.config.data):
+                STATE.config.data["embed_running"] = True
+                embed_mod.start_job(STATE.config, STATE.db_path)
+            elif "embed_use" in body and not STATE.config.data.get("embed_use"):
+                embed_mod.stop(STATE.config)
         if "batch_concurrency" in body and body["batch_concurrency"] not in (None, ""):
             try:
                 STATE.config.data["batch_concurrency"] = max(1, min(6, int(body["batch_concurrency"])))
@@ -1742,15 +1798,10 @@ class Handler(BaseHTTPRequestHandler):
     def _news_fetch(self) -> None:
         body = self._body()
         fid = str(body.get("feed_id") or "").strip()
-        auto_tr = bool(body.get("translate", STATE.config.data.get("news_auto_translate", True)))
         res = STATE.news.fetch_all(feed_id=fid)
-        tr_res = {"translated": 0}
-        if auto_tr and res.get("ok") and not res.get("busy"):
-            try:
-                tr_res = STATE.news.translate_pending(limit=24)
-            except Exception as e:
-                tr_res = {"error": str(e), "translated": 0}
-        return self._json({"ok": True, **res, "translated": tr_res.get("translated", 0)})
+        if res.get("ok") and not res.get("busy"):
+            STATE.news.wake()
+        return self._json({"ok": True, **res})
 
     def _news_translate_pending(self) -> None:
         body = self._body()
@@ -1830,9 +1881,9 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             hours = 168
         try:
-            limit = int((qs.get("limit") or ["24"])[0] or 24)
+            limit = int((qs.get("limit") or ["36"])[0] or 36)
         except ValueError:
-            limit = 24
+            limit = 36
         return self._json({"ok": True, **STATE.news.store.entity_graph(hours=hours, max_nodes=limit)})
 
     def _news_embed(self) -> None:
@@ -1983,6 +2034,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if act == "remove":
                 items = STATE.market.store.remove_watchlist(secid)
+            elif act == "pin":
+                items = STATE.market.store.pin_watchlist(secid)
             else:
                 items = STATE.market.store.add_watchlist(
                     secid,
@@ -1999,6 +2052,170 @@ class Handler(BaseHTTPRequestHandler):
         proxy_override = body.get("proxy")
         try:
             return self._json(STATE.market.test_proxy(proxy_override))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _market_quant(self, qs: dict) -> None:
+        act = (qs.get("action") or ["barcode"])[0]
+        try:
+            return self._json(STATE.market.quant_analytics(act, qs))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_status(self, qs: dict) -> None:
+        force = (qs.get("force") or ["0"])[0] in ("1", "true", "yes")
+        try:
+            return self._json(STATE.quant.status(force=force))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_factors(self) -> None:
+        try:
+            return self._json(STATE.quant.factor_catalog())
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_jobs(self, qs: dict) -> None:
+        jtype = (qs.get("type") or [""])[0].strip()
+        try:
+            lim = int((qs.get("limit") or ["40"])[0] or 40)
+        except ValueError:
+            lim = 40
+        try:
+            return self._json({"ok": True, "items": STATE.quant.list_jobs(job_type=jtype, limit=lim)})
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_job_detail(self, job_id: str) -> None:
+        try:
+            job = STATE.quant.get_job(job_id.strip())
+            if not job:
+                return self._err("未找到该回测/因子任务", 404)
+            return self._json({"ok": True, "job": job})
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_sync(self) -> None:
+        body = self._body()
+        scopes = body.get("scopes")
+        if isinstance(scopes, list) and scopes:
+            sc_lbl = "+".join(str(x) for x in scopes[:4]) + ("…" if len(scopes) > 4 else "")
+        else:
+            sc_lbl = str(body.get("scope") or "standard").strip()
+        rng_lbl = (
+            f"{body.get('start_date')}~{body.get('end_date') or '今'}"
+            if body.get("start_date")
+            else f"{body.get('years') or 3}年"
+        )
+        title = str(body.get("title") or f"同步数据仓 · {sc_lbl} ({rng_lbl})")
+        try:
+            return self._json(STATE.quant.submit_job("sync_data", title, "DuckDB+Parquet+SQLite+Qlib", body))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_factor_eval(self) -> None:
+        body = self._body()
+        fid = str(body.get("factor_id") or "wq_alpha006").strip()
+        cexpr = str(body.get("custom_expr") or "").strip()
+        uni = str(body.get("universe") or "hs300").strip()
+        title = str(body.get("title") or f"因子体检 · {cexpr[:28] if cexpr else fid} ({uni})")
+        try:
+            return self._json(STATE.quant.submit_job("factor_eval", title, "Alphalens", body))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_backtest(self) -> None:
+        body = self._body()
+        engine = str(body.get("engine") or "vectorbt").strip().lower()
+        strat = str(body.get("strategy") or "dual_ma").strip()
+        target = str(body.get("symbol") or body.get("universe") or "hs300").strip()
+        title = str(body.get("title") or f"{'Qlib多因子' if engine == 'qlib' else 'VectorBT'} · {strat} ({target})")
+        try:
+            return self._json(STATE.quant.submit_job("backtest", title, engine, body))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_job_delete(self) -> None:
+        body = self._body()
+        jid = str(body.get("id") or "").strip()
+        if not jid:
+            return self._err("缺少任务 id")
+        try:
+            ok = STATE.quant.delete_job(jid)
+            return self._json({"ok": True, "deleted": ok})
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_leaderboard(self, qs: dict) -> None:
+        uni = (qs.get("universe") or ["hs300"])[0].strip()
+        try:
+            return self._json(STATE.quant.get_leaderboard(uni))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_symbols(self) -> None:
+        try:
+            return self._json(STATE.quant.store_symbols())
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_sweep(self) -> None:
+        body = self._body()
+        strat = str(body.get("strategy") or "dual_ma").strip()
+        tgt = str(body.get("symbol") or body.get("universe") or "").strip()
+        title = f"参数热力扫描 · {strat} ({tgt})"
+        try:
+            return self._json(STATE.quant.submit_job("param_sweep", title, "VectorBT Sweep", body))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_factor_batch(self) -> None:
+        body = self._body()
+        fam = str(body.get("family") or "Alpha158").strip()
+        uni = str(body.get("universe") or "hs300").strip()
+        title = f"批量因子体检 · {fam} ({uni})"
+        try:
+            return self._json(STATE.quant.submit_job("factor_batch", title, "Batch Screen", body))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_factor_corr(self) -> None:
+        body = self._body()
+        try:
+            return self._json(STATE.quant.factor_corr(body))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _widgets_list(self) -> None:
+        return self._json({"ok": True, "items": STATE.widgets.list_items()})
+
+    def _widgets_save(self) -> None:
+        body = self._body()
+        if not isinstance(body, dict):
+            return self._err("无效的模块参数")
+        try:
+            item = STATE.widgets.save_item(body)
+            return self._json({"ok": True, "item": item})
+        except Exception as e:
+            return self._err(str(e))
+
+    def _widgets_delete(self) -> None:
+        body = self._body()
+        wid = str(body.get("id") or "").strip()
+        if not wid:
+            return self._err("缺少模块 id")
+        removed = STATE.widgets.delete_item(wid)
+        return self._json({"ok": True, "removed": removed})
+
+    def _widgets_topic_board(self) -> None:
+        body = self._body()
+        ws_name = str(body.get("workspace_name") or body.get("title") or "AI 专题看板").strip()
+        b_widgets = body.get("board_widgets") or []
+        if not isinstance(b_widgets, list) or not b_widgets:
+            return self._err("缺少模块列表")
+        try:
+            res = widget_mod.materialize_topic_board(STATE.config, ws_name, b_widgets, STATE.widgets)
+            return self._json({"ok": True, **res})
         except Exception as e:
             return self._err(str(e))
 
