@@ -32,6 +32,8 @@ import providers as prov_mod
 import quant_engine as quant_mod
 import search as search_mod
 import embed as embed_mod
+import unified_db as udb_mod
+import web_search_tool as web_search_mod
 import widget_tool as widget_mod
 
 APP_TITLE = "O2"
@@ -184,32 +186,22 @@ if getattr(sys, "frozen", False) or sys.stdout is None or sys.stderr is None:
 class State:
     def __init__(self) -> None:
         self.base = app_dir()
-        self.db_path = os.path.join(self.base, "data", "zdl.sqlite")
         bundled = os.path.join(res_dir(), "data", "zdl.sqlite")
-        if getattr(sys, "frozen", False):
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-            if not os.path.exists(self.db_path) and os.path.exists(bundled):
-                try:
-                    import shutil
-                    shutil.copy2(bundled, self.db_path)
-                except OSError:
-                    self.db_path = bundled
-        elif not os.path.exists(self.db_path) and os.path.exists(bundled):
-            self.db_path = bundled
+        self.db_path = udb_mod.init_unified_db(self.base, bundled_zdl_path=bundled)
         self.config = cfg_mod.Config(os.path.join(self.base, "config.json"))
         self.lock = threading.Lock()
         self.rebuilding = False
         self.src_root = self._guess_src()
-        self.news = news_mod.NewsManager(os.path.join(self.base, "data", "news.sqlite"), self.config)
+        self.news = news_mod.NewsManager(self.db_path, self.config)
         self.news.start_background()
         self.market = market_mod.MarketManager(
-            os.path.join(self.base, "data", "market.sqlite"),
+            self.db_path,
             self.config,
             news_mgr=self.news,
         )
         self.quant = quant_mod.QuantManager(
             self.base,
-            os.path.join(self.base, "data", "quant.sqlite"),
+            self.db_path,
             self.config,
             market_mgr=self.market,
         )
@@ -247,9 +239,7 @@ class State:
         return cand
 
     def con(self) -> sqlite3.Connection:
-        con = sqlite3.connect(self.db_path, check_same_thread=False)
-        con.row_factory = sqlite3.Row
-        return con
+        return udb_mod.connect(self.db_path, readonly=False)
 
     def doc_path(self, rel_path: str, abs_path: str) -> str:
         rel = (rel_path or "").replace("/", os.sep).replace("\\", os.sep).lstrip("\\/")
@@ -440,6 +430,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._market_quant(qs)
         if path == "/api/quant/status":
             return self._quant_status(qs)
+        if path == "/api/quant/sync/active":
+            return self._quant_sync_active()
         if path == "/api/quant/factors":
             return self._quant_factors()
         if path == "/api/quant/leaderboard":
@@ -514,6 +506,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._connector_test()
         if u.path == "/api/connectors/discover":
             return self._connector_discover()
+        if u.path == "/api/web_search/test":
+            return self._web_search_test()
         if u.path == "/api/cache/clear":
             return self._cache_clear()
         if u.path == "/api/cache/open":
@@ -554,6 +548,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._market_test_proxy()
         if u.path == "/api/quant/sync":
             return self._quant_sync()
+        if u.path == "/api/quant/sync/stop":
+            return self._quant_sync_stop()
         if u.path == "/api/quant/factor_eval":
             return self._quant_factor_eval()
         if u.path == "/api/quant/backtest":
@@ -752,6 +748,8 @@ class Handler(BaseHTTPRequestHandler):
         model = (body.get("model") or "").strip()
         effort = (body.get("effort") or "").strip()
         provider_id = (body.get("provider_id") or "").strip()
+        raw_ws = body.get("web_search")
+        web_search = None if raw_ws is None else bool(raw_ws)
         if not isinstance(messages, list) or not messages:
             return self._err("消息为空")
         if not isinstance(prior_sources, list):
@@ -797,6 +795,7 @@ class Handler(BaseHTTPRequestHandler):
                     model=model or None,
                     effort=effort or None,
                     provider_id=provider_id or None,
+                    web_search=web_search,
                     news_mgr=STATE.news,
                     market_mgr=STATE.market,
                     quant_mgr=STATE.quant,
@@ -844,8 +843,11 @@ class Handler(BaseHTTPRequestHandler):
         ]
         d["api_key_set"] = prov_mod.any_key(STATE.config.data)
         d["paddle_token_set"] = bool(d.get("paddle_token"))
+        d["web_search_api_key_set"] = bool(d.get("web_search_api_key"))
+        d["web_search_deepseek_ready"] = web_search_mod.deepseek_ready(STATE.config.data)
         d["api_key"] = ""
         d["paddle_token"] = ""
+        d["web_search_api_key"] = ""
         d["embed_providers"] = [embed_mod.public_channel(p) for p in (d.get("embed_providers") or [])]
         d["embed_protocols"] = embed_mod.PROTOCOLS
         d["embed_presets"] = [
@@ -1030,27 +1032,39 @@ class Handler(BaseHTTPRequestHandler):
             STATE.config.data["paddle_token"] = body["paddle_token"]
         if body.get("clear_paddle"):
             STATE.config.data["paddle_token"] = ""
+        if body.get("web_search_api_key"):
+            STATE.config.data["web_search_api_key"] = str(body["web_search_api_key"]).strip()
+        if body.get("clear_web_search_key"):
+            STATE.config.data["web_search_api_key"] = ""
         if body.get("src_root"):
             STATE.config.data["src_root"] = body["src_root"]
             STATE.src_root = body["src_root"]
         prev_news_enabled = bool(STATE.config.data.get("news_enabled"))
         for bool_k in (
-            "shell", "browser", "api_call", "batch_fast_meta", "auto_clean_temp",
+            "shell", "browser", "api_call", "web_search", "web_search_read_url",
+            "batch_fast_meta", "auto_clean_temp",
             "news_enabled", "news_auto_translate", "news_local_embed", "news_local_rerank",
         ):
             if bool_k in body and body[bool_k] is not None:
                 STATE.config.data[bool_k] = bool(body[bool_k])
+        if "web_search_mode" in body and body["web_search_mode"] not in (None, ""):
+            STATE.config.data["web_search_mode"] = web_search_mod.normalize_mode(body["web_search_mode"])
+        if "web_search_count" in body and body["web_search_count"] not in (None, ""):
+            try:
+                STATE.config.data["web_search_count"] = max(1, min(20, int(body["web_search_count"])))
+            except (TypeError, ValueError):
+                pass
         prev_mkt_proxy = str(STATE.config.data.get("market_proxy") or "")
         prev_mkt_mode = str(STATE.config.data.get("market_source_mode") or "auto")
         for str_k in (
             "pdf_ocr_mode", "browser_download_mode", "ui_density", "ui_theme",
-            "default_tab", "followup_mode",
+            "default_tab", "followup_mode", "web_search_base_url",
             "news_llm_provider_id", "news_llm_model", "news_rsshub_base",
             "market_proxy", "market_source_mode",
         ):
             if str_k in body and body[str_k] is not None:
                 val = str(body[str_k]).strip()
-                if val or str_k in ("news_llm_provider_id", "news_llm_model", "market_proxy"):
+                if val or str_k in ("news_llm_provider_id", "news_llm_model", "market_proxy", "web_search_base_url"):
                     STATE.config.data[str_k] = val
         if (
             str(STATE.config.data.get("market_proxy") or "") != prev_mkt_proxy
@@ -1114,7 +1128,14 @@ class Handler(BaseHTTPRequestHandler):
             "ok": True,
             "llm": STATE.config.enabled,
             "paddle": bool(STATE.config.data.get("paddle_token")),
+            "web_search_deepseek_ready": web_search_mod.deepseek_ready(STATE.config.data),
         })
+
+    def _web_search_test(self) -> None:
+        body = self._body()
+        query = str(body.get("query") or "DeepSeek").strip()
+        res = web_search_mod.test_connection(STATE.config.data, query=query)
+        return self._json(res)
 
     def _open_file(self) -> None:
         body = self._body()
@@ -2107,9 +2128,27 @@ class Handler(BaseHTTPRequestHandler):
             if body.get("start_date")
             else f"{body.get('years') or 3}年"
         )
-        title = str(body.get("title") or f"同步数据仓 · {sc_lbl} ({rng_lbl})")
+        title = str(body.get("title") or f"数据同步 · {sc_lbl} ({rng_lbl})")
         try:
-            return self._json(STATE.quant.submit_job("sync_data", title, "DuckDB+Parquet+SQLite+Qlib", body))
+            return self._json(STATE.quant.submit_job("sync_data", title, "O2 Unified DB", body))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_sync_stop(self) -> None:
+        body = self._body()
+        jid = str(body.get("job_id") or "").strip()
+        try:
+            return self._json(STATE.quant.stop_sync(jid))
+        except Exception as e:
+            return self._err(str(e))
+
+    def _quant_sync_active(self) -> None:
+        try:
+            return self._json({
+                "ok": True,
+                "job": STATE.quant.get_active_sync(),
+                "resumable": STATE.quant._get_resumable_sync(),
+            })
         except Exception as e:
             return self._err(str(e))
 

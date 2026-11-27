@@ -131,6 +131,11 @@ export const EntityGeoAtlas = {
     const hoveredFlowNodeId = ref(null)
 
     const tooltip = ref(null) // { x, y, kind, data }
+    const lastTooltip = ref(null)
+    watch(tooltip, (val) => {
+      if (val) lastTooltip.value = val
+    })
+    const displayTip = computed(() => tooltip.value || lastTooltip.value)
     const dockVersion = ref(0)
 
     let ro = null
@@ -817,14 +822,23 @@ export const EntityGeoAtlas = {
       emit('hover', null)
     }
 
+    const tooltipOrigin = computed(() => {
+      const tip = displayTip.value
+      if (!tip) return 'top left'
+      const tipW = 248
+      const pad = 10
+      return tip.x + 14 + tipW > width.value - pad ? 'top right' : 'top left'
+    })
+
     const tooltipStyle = computed(() => {
-      if (!tooltip.value) return { display: 'none' }
+      const tip = displayTip.value
+      if (!tip) return {}
       const tipW = 248
       const tipH = 148
       const pad = 10
-      let lx = tooltip.value.x + 14
-      let ty = tooltip.value.y - 12
-      if (lx + tipW > width.value - pad) lx = Math.max(pad, tooltip.value.x - tipW - 14)
+      let lx = tip.x + 14
+      let ty = tip.y - 12
+      if (lx + tipW > width.value - pad) lx = Math.max(pad, tip.x - tipW - 14)
       if (ty + tipH > height.value - (hasDock.value ? 46 : 10)) ty = Math.max(pad, height.value - (hasDock.value ? 50 : 12) - tipH)
       if (ty < pad) ty = pad
       return {
@@ -943,7 +957,7 @@ export const EntityGeoAtlas = {
       mapGroupTransform, invScale,
       geoEntities, geoEvents, geoArcs, transmissionLines,
       flowLayout, hoveredFlowNodeId,
-      hoveredArcKey, tooltip, tooltipStyle, mapSummary,
+      hoveredArcKey, tooltip, displayTip, tooltipOrigin, tooltipStyle, mapSummary,
       countryFill, countryOpacity, arcOpacity, entityOpacity,
       assetChipHighlighted, assetChipDimmed,
       onWheel, onPointerDown, onPointerMove, onPointerUp,
@@ -965,10 +979,15 @@ export const EntityGeoAtlas = {
 
       <!-- Top-left editorial control bar: View Mode + Layer Toggles -->
       <div class="ga-ctrl-bar ga-ctrl-left">
-        <div class="ga-seg">
-          <button type="button" :class="['ga-seg-btn', viewMode === 'map' ? 'on' : '']" @click.stop="viewMode = 'map'">全球态势</button>
-          <button type="button" :class="['ga-seg-btn', viewMode === 'flow' ? 'on' : '']" @click.stop="viewMode = 'flow'">因果传导</button>
-        </div>
+        <aui-highlight class="aui-hl-seg-surface" mode="parent" container-class-name="ga-seg"
+                       :model-value="viewMode" :controlled-items="true" :click="false">
+          <aui-highlight-item value="map" as-child>
+            <button type="button" :class="['ga-seg-btn', viewMode === 'map' ? 'on' : '']" @click.stop="viewMode = 'map'">全球态势</button>
+          </aui-highlight-item>
+          <aui-highlight-item value="flow" as-child>
+            <button type="button" :class="['ga-seg-btn', viewMode === 'flow' ? 'on' : '']" @click.stop="viewMode = 'flow'">因果传导</button>
+          </aui-highlight-item>
+        </aui-highlight>
         <template v-if="viewMode === 'map'">
           <button type="button" :class="['ga-layer-chip', showEvents ? 'on' : '']" @click.stop="showEvents = !showEvents" title="显示/隐藏高危冲突事件脉冲">
             <span class="ga-chip-dot" style="background:#dc2626"></span>事件
@@ -1190,95 +1209,97 @@ export const EntityGeoAtlas = {
       </div>
 
       <!-- Editorial Floating Hover Dossier Card -->
-      <div v-if="tooltip" class="ga-tooltip" :style="tooltipStyle">
+      <aui-popover :open="!!tooltip" :origin="tooltipOrigin" kind="popover" pop-class="ga-tooltip" :pop-style="tooltipStyle">
+        <template v-if="displayTip">
         <!-- Country Tooltip -->
-        <template v-if="tooltip.kind === 'country'">
+        <template v-if="displayTip.kind === 'country'">
           <div class="ga-tip-head">
-            <span class="ga-tip-title">{{ tooltip.data.name_zh }}</span>
-            <span class="ga-tip-badge" :style="{ background: conflictColor(tooltip.data.conflict_level, isDark) + '22', color: conflictColor(tooltip.data.conflict_level, isDark) }">
-              Lv.{{ tooltip.data.conflict_level }} {{ tooltip.data.conflict_tier }}
+            <span class="ga-tip-title">{{ displayTip.data.name_zh }}</span>
+            <span class="ga-tip-badge" :style="{ background: conflictColor(displayTip.data.conflict_level, isDark) + '22', color: conflictColor(displayTip.data.conflict_level, isDark) }">
+              Lv.{{ displayTip.data.conflict_level }} {{ displayTip.data.conflict_tier }}
             </span>
           </div>
           <div class="ga-tip-meta">
-            <span>情报 <b>{{ tooltip.data.mentions }}</b> 条</span>
-            <span>净情绪 <b :style="{ color: tooltip.data.net_sentiment > 0.08 ? '#10b981' : (tooltip.data.net_sentiment < -0.08 ? '#ef4444' : '#3b82f6') }">{{ tooltip.data.net_sentiment > 0 ? '+' : '' }}{{ Number(tooltip.data.net_sentiment || 0).toFixed(2) }}</b></span>
+            <span>情报 <b>{{ displayTip.data.mentions }}</b> 条</span>
+            <span>净情绪 <b :style="{ color: displayTip.data.net_sentiment > 0.08 ? '#10b981' : (displayTip.data.net_sentiment < -0.08 ? '#ef4444' : '#3b82f6') }">{{ displayTip.data.net_sentiment > 0 ? '+' : '' }}{{ Number(displayTip.data.net_sentiment || 0).toFixed(2) }}</b></span>
           </div>
-          <div v-if="tooltip.data.linked_assets && tooltip.data.linked_assets.length" class="ga-tip-assets">
-            <span v-for="la in tooltip.data.linked_assets.slice(0, 3)" :key="la.id" :class="['ga-tip-ac', la.stance]">
+          <div v-if="displayTip.data.linked_assets && displayTip.data.linked_assets.length" class="ga-tip-assets">
+            <span v-for="la in displayTip.data.linked_assets.slice(0, 3)" :key="la.id" :class="['ga-tip-ac', la.stance]">
               {{ la.stance === 'bullish' ? '▲' : (la.stance === 'bearish' ? '▼' : '●') }} {{ la.name }}
             </span>
           </div>
-          <div v-if="tooltip.data.headlines && tooltip.data.headlines.length" class="ga-tip-news">
-            <div v-for="hl in tooltip.data.headlines.slice(0, 2)" :key="hl.id" class="ga-tip-hl">· {{ hl.title }}</div>
+          <div v-if="displayTip.data.headlines && displayTip.data.headlines.length" class="ga-tip-news">
+            <div v-for="hl in displayTip.data.headlines.slice(0, 2)" :key="hl.id" class="ga-tip-hl">· {{ hl.title }}</div>
           </div>
         </template>
 
         <!-- Entity Tooltip -->
-        <template v-else-if="tooltip.kind === 'entity'">
+        <template v-else-if="displayTip.kind === 'entity'">
           <div class="ga-tip-head">
-            <span class="ga-tip-title">{{ tooltip.data.canonical_name }}</span>
-            <span class="ga-tip-badge">{{ tooltip.data.entity_type }}</span>
+            <span class="ga-tip-title">{{ displayTip.data.canonical_name }}</span>
+            <span class="ga-tip-badge">{{ displayTip.data.entity_type }}</span>
           </div>
           <div class="ga-tip-meta">
-            <span v-if="tooltip.data.geo_label">{{ tooltip.data.geo_label }}</span>
-            <span>提及 <b>{{ tooltip.data.mentions }}</b></span>
-            <span v-if="tooltip.data.conflict_level">冲突 <b>Lv.{{ tooltip.data.conflict_level }}</b></span>
+            <span v-if="displayTip.data.geo_label">{{ displayTip.data.geo_label }}</span>
+            <span>提及 <b>{{ displayTip.data.mentions }}</b></span>
+            <span v-if="displayTip.data.conflict_level">冲突 <b>Lv.{{ displayTip.data.conflict_level }}</b></span>
           </div>
           <div class="ga-tip-meta">
-            <span>多 {{ tooltip.data.bullish || 0 }} / 中 {{ tooltip.data.neutral || 0 }} / 空 {{ tooltip.data.bearish || 0 }}</span>
-            <b :style="{ color: tooltip.data.net_sentiment > 0.08 ? '#10b981' : (tooltip.data.net_sentiment < -0.08 ? '#ef4444' : '#3b82f6') }">
-              {{ tooltip.data.net_sentiment > 0 ? '+' : '' }}{{ Number(tooltip.data.net_sentiment || 0).toFixed(2) }}
+            <span>多 {{ displayTip.data.bullish || 0 }} / 中 {{ displayTip.data.neutral || 0 }} / 空 {{ displayTip.data.bearish || 0 }}</span>
+            <b :style="{ color: displayTip.data.net_sentiment > 0.08 ? '#10b981' : (displayTip.data.net_sentiment < -0.08 ? '#ef4444' : '#3b82f6') }">
+              {{ displayTip.data.net_sentiment > 0 ? '+' : '' }}{{ Number(displayTip.data.net_sentiment || 0).toFixed(2) }}
             </b>
           </div>
           <div class="ga-tip-foot">点击查看实体完整情报档案</div>
         </template>
 
         <!-- Event Beacon Tooltip -->
-        <template v-else-if="tooltip.kind === 'event'">
+        <template v-else-if="displayTip.kind === 'event'">
           <div class="ga-tip-head">
-            <span class="ga-tip-title">{{ tooltip.data.region }}</span>
-            <span class="ga-tip-badge" :style="{ background: conflictColor(tooltip.data.conflict_level, isDark) + '22', color: conflictColor(tooltip.data.conflict_level, isDark) }">
-              Lv.{{ tooltip.data.conflict_level }} {{ tooltip.data.conflict_tier }}
+            <span class="ga-tip-title">{{ displayTip.data.region }}</span>
+            <span class="ga-tip-badge" :style="{ background: conflictColor(displayTip.data.conflict_level, isDark) + '22', color: conflictColor(displayTip.data.conflict_level, isDark) }">
+              Lv.{{ displayTip.data.conflict_level }} {{ displayTip.data.conflict_tier }}
             </span>
           </div>
-          <div class="ga-tip-hl" style="margin-top:4px;font-weight:600">{{ tooltip.data.title }}</div>
+          <div class="ga-tip-hl" style="margin-top:4px;font-weight:600">{{ displayTip.data.title }}</div>
           <div class="ga-tip-meta" style="margin-top:4px">
-            <span>{{ tooltip.data.feed_name }}</span>
-            <span>{{ fmtRelTime(tooltip.data.published_at) }}</span>
+            <span>{{ displayTip.data.feed_name }}</span>
+            <span>{{ fmtRelTime(displayTip.data.published_at) }}</span>
           </div>
         </template>
 
         <!-- Arc Tooltip -->
-        <template v-else-if="tooltip.kind === 'arc'">
+        <template v-else-if="displayTip.kind === 'arc'">
           <div class="ga-tip-head">
-            <span class="ga-tip-title">{{ tooltip.data.sourceName }} ↔ {{ tooltip.data.targetName }}</span>
-            <span class="ga-tip-badge" :style="{ background: tooltip.data.stroke + '22', color: tooltip.data.stroke }">
-              {{ relTypeLabel(tooltip.data.rel_type) }}
+            <span class="ga-tip-title">{{ displayTip.data.sourceName }} ↔ {{ displayTip.data.targetName }}</span>
+            <span class="ga-tip-badge" :style="{ background: displayTip.data.stroke + '22', color: displayTip.data.stroke }">
+              {{ relTypeLabel(displayTip.data.rel_type) }}
             </span>
           </div>
           <div class="ga-tip-meta">
-            <span>共现 <b>{{ tooltip.data.weight }}</b> 篇</span>
-            <span>冲突均级 <b>Lv.{{ tooltip.data.conflict_level }}</b></span>
+            <span>共现 <b>{{ displayTip.data.weight }}</b> 篇</span>
+            <span>冲突均级 <b>Lv.{{ displayTip.data.conflict_level }}</b></span>
           </div>
-          <div v-if="tooltip.data.sample_title" class="ga-tip-hl" style="margin-top:3px">· {{ tooltip.data.sample_title }}</div>
+          <div v-if="displayTip.data.sample_title" class="ga-tip-hl" style="margin-top:3px">· {{ displayTip.data.sample_title }}</div>
         </template>
 
         <!-- Asset Dock Tooltip -->
-        <template v-else-if="tooltip.kind === 'asset'">
+        <template v-else-if="displayTip.kind === 'asset'">
           <div class="ga-tip-head">
-            <span class="ga-tip-title">{{ tooltip.data.canonical_name }}</span>
-            <span :class="['ga-tip-ac', tooltip.data.stance]">
-              {{ tooltip.data.stance === 'bullish' ? '▲ 偏利多' : (tooltip.data.stance === 'bearish' ? '▼ 偏利空' : '● 中性') }}
+            <span class="ga-tip-title">{{ displayTip.data.canonical_name }}</span>
+            <span :class="['ga-tip-ac', displayTip.data.stance]">
+              {{ displayTip.data.stance === 'bullish' ? '▲ 偏利多' : (displayTip.data.stance === 'bearish' ? '▼ 偏利空' : '● 中性') }}
             </span>
           </div>
           <div class="ga-tip-meta">
-            <span>提及 <b>{{ tooltip.data.mentions }}</b></span>
-            <span>多 {{ tooltip.data.bullish }} / 中 {{ tooltip.data.neutral }} / 空 {{ tooltip.data.bearish }}</span>
+            <span>提及 <b>{{ displayTip.data.mentions }}</b></span>
+            <span>多 {{ displayTip.data.bullish }} / 中 {{ displayTip.data.neutral }} / 空 {{ displayTip.data.bearish }}</span>
           </div>
-          <div v-if="tooltip.data.sample_title" class="ga-tip-hl" style="margin-top:3px">· {{ tooltip.data.sample_title }}</div>
+          <div v-if="displayTip.data.sample_title" class="ga-tip-hl" style="margin-top:3px">· {{ displayTip.data.sample_title }}</div>
           <div class="ga-tip-foot">虚线指向当前地图主要驱动地区 · 点击看档案</div>
         </template>
-      </div>
+        </template>
+      </aui-popover>
     </div>
   `,
 }

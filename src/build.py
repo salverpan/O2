@@ -117,6 +117,14 @@ CREATE TABLE meta(k TEXT PRIMARY KEY, v TEXT);
 _SCHEMA_CHECKED: set[str] = set()
 
 
+def _open_con(db_path: str) -> sqlite3.Connection:
+    con = sqlite3.connect(db_path, timeout=30.0)
+    con.execute("PRAGMA journal_mode=WAL")
+    con.execute("PRAGMA synchronous=NORMAL")
+    con.execute("PRAGMA busy_timeout=15000")
+    return con
+
+
 def ensure_schema(con: sqlite3.Connection) -> None:
     cur = con.cursor()
     db_file = ""
@@ -340,7 +348,7 @@ def build(src_root: str, db_path: str, work_dir: str) -> dict:
 
     warm_userdict([d.title for d in docs], [d.doc_no for d in docs])
 
-    con = sqlite3.connect(db_path)
+    con = _open_con(db_path)
     _SCHEMA_CHECKED.discard(os.path.normcase(os.path.abspath(db_path)))
     con.executescript(SCHEMA)
     cur = con.cursor()
@@ -504,7 +512,7 @@ def purge_doc_content(con: sqlite3.Connection, doc_id: int) -> None:
 
 def upsert_document(db_path: str, d, doc_id: int | None = None) -> int:
     warm_userdict([d.title], [d.doc_no])
-    con = sqlite3.connect(db_path)
+    con = _open_con(db_path)
     ensure_schema(con)
     cur = con.cursor()
     _register_folder_tree(cur, d.project, d.folder)
@@ -608,7 +616,7 @@ def _try_move_disk_file(src_root: str, old_rel: str, old_abs: str, old_project: 
 
 
 def update_doc_metadata(db_path: str, doc_id: int, updates: dict, src_root: str = "") -> dict:
-    con = sqlite3.connect(db_path)
+    con = _open_con(db_path)
     con.row_factory = sqlite3.Row
     ensure_schema(con)
     cur = con.cursor()
@@ -750,7 +758,7 @@ def move_or_rename_folder(
     if src_project == dst_project and src_path and dst_path.startswith(src_path + "/"):
         raise ValueError("不能将文件夹移动到其自身的子文件夹下")
 
-    con = sqlite3.connect(db_path)
+    con = _open_con(db_path)
     ensure_schema(con)
     cur = con.cursor()
 
@@ -817,7 +825,7 @@ def move_or_rename_folder(
 def delete_documents(db_path: str, doc_ids: list[int]) -> int:
     if not doc_ids:
         return 0
-    con = sqlite3.connect(db_path)
+    con = _open_con(db_path)
     ensure_schema(con)
     removed = 0
     for did in doc_ids:
@@ -837,7 +845,7 @@ def create_folder(db_path: str, src_root: str, project: str, path: str = "") -> 
     if not project:
         raise ValueError("项目名称不能为空")
     path = (path or "").replace("\\", "/").strip("/")
-    con = sqlite3.connect(db_path)
+    con = _open_con(db_path)
     ensure_schema(con)
     cur = con.cursor()
     _register_folder_tree(cur, project, path)
@@ -855,7 +863,7 @@ def create_folder(db_path: str, src_root: str, project: str, path: str = "") -> 
 def delete_folder(db_path: str, project: str, path: str = "", force: bool = False) -> dict:
     project = (project or "").strip()
     path = (path or "").replace("\\", "/").strip("/")
-    con = sqlite3.connect(db_path)
+    con = _open_con(db_path)
     ensure_schema(con)
     cur = con.cursor()
     if not path:
@@ -891,7 +899,7 @@ def delete_folder(db_path: str, project: str, path: str = "", force: bool = Fals
 
 
 def set_doc_status(db_path: str, doc_id: int, status: str) -> None:
-    con = sqlite3.connect(db_path)
+    con = _open_con(db_path)
     ensure_schema(con)
     cur = con.execute("UPDATE docs SET status=? WHERE id=?", (status, doc_id))
     if cur.rowcount == 0:

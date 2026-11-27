@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import datetime
+import hashlib
 import json
 import math
 import os
@@ -233,7 +234,7 @@ def _round_list(arr, ndigits: int = 4) -> list:
 # ---------------------------------------------------------------------------
 
 def _http_json(url: str, *, post_json: dict | None = None, proxy_url: str = "", timeout: float = 12.0):
-    hdrs = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+    hdrs = {"User-Agent": USER_AGENT, "Accept": "application/json", "Connection": "close"}
     data = None
     if post_json is not None:
         data = json.dumps(post_json, ensure_ascii=False).encode("utf-8")
@@ -254,7 +255,8 @@ def _http_json(url: str, *, post_json: dict | None = None, proxy_url: str = "", 
 def _ts_call(base: str, token: str, api_name: str, params: dict, fields: str = "", timeout: float = 15.0) -> list[dict]:
     if not base or not token:
         return []
-    for attempt in range(2):
+    delays = (0.5, 1.3, 2.5)
+    for attempt in range(len(delays) + 1):
         try:
             res = _http_json(
                 base,
@@ -273,8 +275,9 @@ def _ts_call(base: str, token: str, api_name: str, params: dict, fields: str = "
                 items = d.get("items") or []
                 return [{flds[i]: row[i] for i in range(min(len(flds), len(row)))} for row in items]
         except Exception:
-            if attempt == 0:
-                time.sleep(0.35)
+            pass
+        if attempt < len(delays):
+            time.sleep(delays[attempt])
     return []
 
 
@@ -322,11 +325,154 @@ def _iso_date(td: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Local Parquet + DuckDB + Qlib Binary Warehouse
+# Unified O2 SQLite Warehouse (Single Database: data/o2.sqlite)
 # ---------------------------------------------------------------------------
 
+_ACTIVE_DB_PATH = ""
+
+
+def _resolve_db_path(store_dir: str, db_path: str = "") -> str:
+    if db_path:
+        return db_path
+    if _ACTIVE_DB_PATH:
+        return _ACTIVE_DB_PATH
+    return os.path.join(os.path.dirname(os.path.abspath(store_dir)), "o2.sqlite")
+
+
+def _db_con(db_path: str, readonly: bool = False) -> sqlite3.Connection:
+    if readonly:
+        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=30.0)
+        con.row_factory = sqlite3.Row
+        con.execute("PRAGMA busy_timeout=15000")
+        return con
+    os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
+    con = sqlite3.connect(db_path, timeout=30.0)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA journal_mode=WAL")
+    con.execute("PRAGMA synchronous=NORMAL")
+    con.execute("PRAGMA busy_timeout=15000")
+    con.execute("PRAGMA temp_store=MEMORY")
+    return con
+
+
+def _ensure_worker_schema(db_path: str) -> None:
+    con = _db_con(db_path, readonly=False)
+    try:
+        con.executescript("""
+            CREATE TABLE IF NOT EXISTS o2_migrations (
+                name TEXT PRIMARY KEY,
+                applied_at INTEGER NOT NULL,
+                note TEXT NOT NULL DEFAULT ''
+            );
+            CREATE TABLE IF NOT EXISTS instruments (
+                symbol TEXT PRIMARY KEY,
+                secid TEXT NOT NULL DEFAULT '',
+                ts_code TEXT NOT NULL DEFAULT '',
+                yf_symbol TEXT NOT NULL DEFAULT '',
+                name TEXT NOT NULL DEFAULT '',
+                market TEXT NOT NULL DEFAULT '',
+                asset_class TEXT NOT NULL DEFAULT '',
+                industry TEXT NOT NULL DEFAULT '',
+                exchange TEXT NOT NULL DEFAULT '',
+                currency TEXT NOT NULL DEFAULT '',
+                list_date TEXT NOT NULL DEFAULT '',
+                is_active INTEGER NOT NULL DEFAULT 1,
+                meta_json TEXT NOT NULL DEFAULT '{}',
+                updated_at INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_instruments_secid ON instruments(secid);
+            CREATE INDEX IF NOT EXISTS idx_instruments_market ON instruments(market);
+            CREATE TABLE IF NOT EXISTS market_bars (
+                symbol TEXT NOT NULL,
+                secid TEXT NOT NULL DEFAULT '',
+                interval TEXT NOT NULL DEFAULT '1d',
+                trade_date TEXT NOT NULL,
+                name TEXT NOT NULL DEFAULT '',
+                market TEXT NOT NULL DEFAULT '',
+                industry TEXT NOT NULL DEFAULT '',
+                open REAL,
+                high REAL,
+                low REAL,
+                close REAL,
+                volume REAL DEFAULT 0,
+                amount REAL DEFAULT 0,
+                adj_factor REAL DEFAULT 1.0,
+                pct_chg REAL DEFAULT 0,
+                source TEXT NOT NULL DEFAULT '',
+                updated_at INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (symbol, interval, trade_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_mb_secid_iv_date ON market_bars(secid, interval, trade_date);
+            CREATE INDEX IF NOT EXISTS idx_mb_mkt_iv_date ON market_bars(market, interval, trade_date);
+            CREATE INDEX IF NOT EXISTS idx_mb_iv_date ON market_bars(interval, trade_date);
+            CREATE TABLE IF NOT EXISTS market_daily_basic (
+                symbol TEXT NOT NULL,
+                trade_date TEXT NOT NULL,
+                pe_ttm REAL,
+                pb REAL,
+                ps_ttm REAL,
+                dv_ttm REAL,
+                total_mv REAL,
+                circ_mv REAL,
+                turnover_rate_f REAL,
+                volume_ratio REAL,
+                updated_at INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (symbol, trade_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_mdb_date ON market_daily_basic(trade_date);
+            CREATE TABLE IF NOT EXISTS market_stk_limit (
+                symbol TEXT NOT NULL,
+                trade_date TEXT NOT NULL,
+                up_limit REAL,
+                down_limit REAL,
+                updated_at INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (symbol, trade_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_msl_date ON market_stk_limit(trade_date);
+            CREATE TABLE IF NOT EXISTS quant_universes (
+                universe_id TEXT PRIMARY KEY,
+                label TEXT NOT NULL,
+                symbols_json TEXT NOT NULL DEFAULT '[]',
+                updated_at INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS sync_tasks (
+                task_key TEXT PRIMARY KEY,
+                scopes_json TEXT NOT NULL DEFAULT '[]',
+                start_date TEXT NOT NULL DEFAULT '',
+                end_date TEXT NOT NULL DEFAULT '',
+                params_json TEXT NOT NULL DEFAULT '{}',
+                total_symbols INTEGER NOT NULL DEFAULT 0,
+                done_symbols INTEGER NOT NULL DEFAULT 0,
+                failed_symbols INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'running',
+                last_job_id TEXT NOT NULL DEFAULT '',
+                created_at INTEGER NOT NULL DEFAULT 0,
+                updated_at INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS sync_checkpoints (
+                task_key TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                secid TEXT NOT NULL DEFAULT '',
+                name TEXT NOT NULL DEFAULT '',
+                market TEXT NOT NULL DEFAULT '',
+                industry TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'pending',
+                rows_written INTEGER NOT NULL DEFAULT 0,
+                last_trade_date TEXT NOT NULL DEFAULT '',
+                attempts INTEGER NOT NULL DEFAULT 0,
+                error TEXT NOT NULL DEFAULT '',
+                updated_at INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (task_key, symbol)
+            );
+            CREATE INDEX IF NOT EXISTS idx_sync_cp_status ON sync_checkpoints(task_key, status);
+        """)
+        con.commit()
+    finally:
+        con.close()
+
+
 def _store_paths(store_dir: str) -> dict[str, str]:
-    os.makedirs(store_dir, exist_ok=True)
     return {
         "dir": store_dir,
         "bars": os.path.join(store_dir, "bars.parquet"),
@@ -337,100 +483,162 @@ def _store_paths(store_dir: str) -> dict[str, str]:
     }
 
 
-def _atomic_write_parquet(df: pd.DataFrame, path: str) -> None:
-    tmp = path + ".tmp"
-    df.to_parquet(tmp, index=False, compression="snappy")
-    os.replace(tmp, path)
+def _nan_to_none(v):
+    if v is None:
+        return None
+    try:
+        fv = float(v)
+        return None if (math.isnan(fv) or math.isinf(fv)) else fv
+    except Exception:
+        return None
 
 
-def _merge_parquet(path: str, new_df: pd.DataFrame, key_cols: list[str]) -> pd.DataFrame:
-    if new_df is None or new_df.empty:
-        if os.path.isfile(path):
-            return pd.read_parquet(path)
-        return pd.DataFrame()
-    if os.path.isfile(path):
-        try:
-            old_df = pd.read_parquet(path)
-            combined = pd.concat([old_df, new_df], ignore_index=True)
-        except Exception:
-            combined = new_df.copy()
-    else:
-        combined = new_df.copy()
-    combined = combined.drop_duplicates(subset=key_cols, keep="last")
-    combined = combined.sort_values(key_cols).reset_index(drop=True)
-    _atomic_write_parquet(combined, path)
-    return combined
+def _migrate_legacy_parquet_once(db_path: str, store_dir: str) -> None:
+    """Losslessly import legacy bars/daily_basic/stk_limit parquet files into unified o2.sqlite once."""
+    con = _db_con(db_path, readonly=False)
+    try:
+        done = con.execute("SELECT 1 FROM o2_migrations WHERE name='migrate_quant_parquet_v1'").fetchone()
+        if done:
+            return
+        paths = _store_paths(store_dir)
+        now = int(time.time())
+        notes = []
+
+        if os.path.isfile(paths["bars"]):
+            try:
+                bdf = pd.read_parquet(paths["bars"])
+                if not bdf.empty:
+                    existing_cnt = con.execute("SELECT COUNT(*) FROM market_bars WHERE interval='1d'").fetchone()[0]
+                    if existing_cnt < len(bdf):
+                        rows = []
+                        for r in bdf.itertuples(index=False):
+                            rows.append((
+                                str(getattr(r, "symbol", "")),
+                                str(getattr(r, "secid", "") or ""),
+                                "1d",
+                                str(getattr(r, "trade_date", ""))[:10],
+                                str(getattr(r, "name", "") or ""),
+                                str(getattr(r, "market", "") or ""),
+                                str(getattr(r, "industry", "") or ""),
+                                _nan_to_none(getattr(r, "open", None)),
+                                _nan_to_none(getattr(r, "high", None)),
+                                _nan_to_none(getattr(r, "low", None)),
+                                _nan_to_none(getattr(r, "close", None)),
+                                _safe_float(getattr(r, "volume", 0.0)),
+                                _safe_float(getattr(r, "amount", 0.0)),
+                                _safe_float(getattr(r, "adj_factor", 1.0), 1.0),
+                                _safe_float(getattr(r, "pct_chg", 0.0)),
+                                "migrated_parquet",
+                                now,
+                            ))
+                        con.executemany(
+                            """INSERT OR REPLACE INTO market_bars
+                               (symbol, secid, interval, trade_date, name, market, industry,
+                                open, high, low, close, volume, amount, adj_factor, pct_chg, source, updated_at)
+                               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                            rows,
+                        )
+                        notes.append(f"bars={len(rows)}")
+                    # Ensure industry metadata is populated on instruments + market_bars
+                    meta_df = bdf.groupby("symbol", as_index=False).last()
+                    ins_rows = []
+                    ind_updates = []
+                    for r in meta_df.itertuples(index=False):
+                        sym = str(getattr(r, "symbol", ""))
+                        ind = str(getattr(r, "industry", "") or "")
+                        mkt = str(getattr(r, "market", "") or "")
+                        nm = str(getattr(r, "name", "") or sym)
+                        sid = str(getattr(r, "secid", "") or sym)
+                        ins_rows.append((sym, sid, nm, mkt, ind, now))
+                        if ind:
+                            ind_updates.append((ind, sym))
+                    con.executemany(
+                        """INSERT INTO instruments(symbol, secid, name, market, industry, updated_at)
+                           VALUES (?,?,?,?,?,?)
+                           ON CONFLICT(symbol) DO UPDATE SET
+                             secid=CASE WHEN excluded.secid!='' THEN excluded.secid ELSE instruments.secid END,
+                             name=CASE WHEN excluded.name!='' THEN excluded.name ELSE instruments.name END,
+                             market=CASE WHEN excluded.market!='' THEN excluded.market ELSE instruments.market END,
+                             industry=CASE WHEN excluded.industry!='' THEN excluded.industry ELSE instruments.industry END,
+                             updated_at=excluded.updated_at""",
+                        ins_rows,
+                    )
+                    if ind_updates:
+                        con.executemany(
+                            "UPDATE market_bars SET industry=? WHERE symbol=? AND (industry='' OR industry IS NULL)",
+                            ind_updates,
+                        )
+                    con.commit()
+            except Exception as e:
+                notes.append(f"bars_err={str(e)[:80]}")
+
+        if os.path.isfile(paths["basic"]):
+            try:
+                df_b = pd.read_parquet(paths["basic"])
+                if not df_b.empty:
+                    rows_b = [
+                        (
+                            str(getattr(r, "symbol", "")),
+                            str(getattr(r, "trade_date", ""))[:10],
+                            _nan_to_none(getattr(r, "pe_ttm", None)),
+                            _nan_to_none(getattr(r, "pb", None)),
+                            _nan_to_none(getattr(r, "ps_ttm", None)),
+                            _nan_to_none(getattr(r, "dv_ttm", None)),
+                            _nan_to_none(getattr(r, "total_mv", None)),
+                            _nan_to_none(getattr(r, "circ_mv", None)),
+                            _nan_to_none(getattr(r, "turnover_rate_f", None)),
+                            _nan_to_none(getattr(r, "volume_ratio", None)),
+                            now,
+                        )
+                        for r in df_b.itertuples(index=False)
+                    ]
+                    con.executemany(
+                        """INSERT OR REPLACE INTO market_daily_basic
+                           (symbol, trade_date, pe_ttm, pb, ps_ttm, dv_ttm, total_mv, circ_mv, turnover_rate_f, volume_ratio, updated_at)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                        rows_b,
+                    )
+                    con.commit()
+                    notes.append(f"basic={len(rows_b)}")
+            except Exception as e:
+                notes.append(f"basic_err={str(e)[:80]}")
+
+        if os.path.isfile(paths["limit"]):
+            try:
+                df_l = pd.read_parquet(paths["limit"])
+                if not df_l.empty:
+                    rows_l = [
+                        (
+                            str(getattr(r, "symbol", "")),
+                            str(getattr(r, "trade_date", ""))[:10],
+                            _nan_to_none(getattr(r, "up_limit", None)),
+                            _nan_to_none(getattr(r, "down_limit", None)),
+                            now,
+                        )
+                        for r in df_l.itertuples(index=False)
+                    ]
+                    con.executemany(
+                        """INSERT OR REPLACE INTO market_stk_limit
+                           (symbol, trade_date, up_limit, down_limit, updated_at)
+                           VALUES (?,?,?,?,?)""",
+                        rows_l,
+                    )
+                    con.commit()
+                    notes.append(f"limit={len(rows_l)}")
+            except Exception as e:
+                notes.append(f"limit_err={str(e)[:80]}")
+
+        con.execute(
+            "INSERT OR REPLACE INTO o2_migrations(name, applied_at, note) VALUES ('migrate_quant_parquet_v1', ?, ?)",
+            (now, ";".join(notes)[:500]),
+        )
+        con.commit()
+    finally:
+        con.close()
 
 
-def _dump_qlib_bin(bars_df: pd.DataFrame, qlib_dir: str, hs300_syms: list[str]) -> dict:
-    """Export local bars_df into native Microsoft Qlib binary directory structure."""
-    if bars_df is None or bars_df.empty:
-        return {"ok": False, "symbols": 0, "days": 0}
-    cal_dir = os.path.join(qlib_dir, "calendars")
-    ins_dir = os.path.join(qlib_dir, "instruments")
-    feat_dir = os.path.join(qlib_dir, "features")
-    os.makedirs(cal_dir, exist_ok=True)
-    os.makedirs(ins_dir, exist_ok=True)
-    os.makedirs(feat_dir, exist_ok=True)
-
-    df = bars_df.copy()
-    df["trade_date"] = df["trade_date"].astype(str).str[:10]
-    dates = sorted(df["trade_date"].unique().tolist())
-    date_to_idx = {d: i for i, d in enumerate(dates)}
-
-    with open(os.path.join(cal_dir, "day.txt"), "w", encoding="utf-8") as f:
-        f.write("\n".join(dates) + "\n")
-
-    all_ins_lines = []
-    hs300_ins_lines = []
-    hs300_set = set(hs300_syms)
-    sym_count = 0
-
-    for sym, grp in df.groupby("symbol"):
-        grp = grp.sort_values("trade_date")
-        if len(grp) < 10:
-            continue
-        first_d = grp["trade_date"].iloc[0]
-        last_d = grp["trade_date"].iloc[-1]
-        q_sym = str(sym).upper()
-        all_ins_lines.append(f"{q_sym}\t{first_d}\t{last_d}")
-        if sym in hs300_set:
-            hs300_ins_lines.append(f"{q_sym}\t{first_d}\t{last_d}")
-
-        start_idx = date_to_idx[first_d]
-        end_idx = date_to_idx[last_d]
-        span_len = end_idx - start_idx + 1
-        sub_dir = os.path.join(feat_dir, q_sym.lower())
-        os.makedirs(sub_dir, exist_ok=True)
-
-        idx_arr = np.array([date_to_idx[d] - start_idx for d in grp["trade_date"]], dtype=int)
-        for field, col in (
-            ("open", "open"),
-            ("high", "high"),
-            ("low", "low"),
-            ("close", "close"),
-            ("volume", "volume"),
-            ("amount", "amount"),
-            ("factor", "adj_factor"),
-        ):
-            arr = np.full(span_len, np.nan, dtype=np.float32)
-            vals = pd.to_numeric(grp[col], errors="coerce").to_numpy(dtype=np.float32)
-            arr[idx_arr] = vals
-            bin_path = os.path.join(sub_dir, f"{field}.day.bin")
-            with open(bin_path, "wb") as bf:
-                bf.write(struct.pack("<f", float(start_idx)))
-                arr.tofile(bf)
-        sym_count += 1
-
-    with open(os.path.join(ins_dir, "all.txt"), "w", encoding="utf-8") as f:
-        f.write("\n".join(sorted(all_ins_lines)) + "\n")
-    with open(os.path.join(ins_dir, "hs300.txt"), "w", encoding="utf-8") as f:
-        f.write("\n".join(sorted(hs300_ins_lines or all_ins_lines)) + "\n")
-
-    return {"ok": True, "symbols": sym_count, "days": len(dates), "path": qlib_dir}
-
-
-def cmd_env_check(store_dir: str) -> dict:
+def cmd_env_check(store_dir: str, db_path: str = "") -> dict:
+    dbp = _resolve_db_path(store_dir, db_path)
     pkgs = {}
     for mod_name, label in [
         ("vectorbt", "VectorBT"),
@@ -452,71 +660,53 @@ def cmd_env_check(store_dir: str) -> dict:
         except Exception:
             pkgs[mod_name] = {"label": label, "installed": False, "version": ""}
 
-    paths = _store_paths(store_dir)
     store_info = {
-        "exists": os.path.isfile(paths["bars"]),
+        "exists": False,
         "total_rows": 0,
         "symbols": 0,
         "min_date": "",
         "max_date": "",
         "basic_rows": 0,
         "limit_rows": 0,
-        "qlib_bin_ready": os.path.isfile(os.path.join(paths["qlib_bin"], "calendars", "day.txt")),
-        "disk_mb": 0.0,
+        "qlib_bin_ready": False,
+        "disk_mb": round(os.path.getsize(dbp) / (1024 * 1024), 2) if os.path.isfile(dbp) else 0.0,
         "universes": {},
         "last_sync_at": 0,
+        "db_path": dbp,
     }
-    total_bytes = 0
-    for root, _dirs, files in os.walk(store_dir):
-        for fn in files:
-            try:
-                total_bytes += os.path.getsize(os.path.join(root, fn))
-            except OSError:
-                pass
-    store_info["disk_mb"] = round(total_bytes / (1024 * 1024), 2)
 
-    if os.path.isfile(paths["bars"]):
+    if os.path.isfile(dbp):
+        con = _db_con(dbp, readonly=True)
         try:
-            if duckdb is not None:
-                p_esc = paths["bars"].replace("\\", "/").replace("'", "''")
-                row = duckdb.sql(
-                    f"SELECT COUNT(*), COUNT(DISTINCT symbol), MIN(trade_date), MAX(trade_date) FROM read_parquet('{p_esc}')"
-                ).fetchone()
-                store_info["total_rows"] = int(row[0] or 0)
-                store_info["symbols"] = int(row[1] or 0)
-                store_info["min_date"] = str(row[2] or "")[:10]
-                store_info["max_date"] = str(row[3] or "")[:10]
-            else:
-                df = pd.read_parquet(paths["bars"], columns=["trade_date", "symbol"])
-                store_info["total_rows"] = int(len(df))
-                store_info["symbols"] = int(df["symbol"].nunique())
-                store_info["min_date"] = str(df["trade_date"].min())[:10]
-                store_info["max_date"] = str(df["trade_date"].max())[:10]
-        except Exception:
-            pass
-    if os.path.isfile(paths["basic"]) and duckdb is not None:
-        try:
-            p_esc = paths["basic"].replace("\\", "/").replace("'", "''")
-            store_info["basic_rows"] = int(duckdb.sql(f"SELECT COUNT(*) FROM read_parquet('{p_esc}')").fetchone()[0] or 0)
-        except Exception:
-            pass
-    if os.path.isfile(paths["limit"]) and duckdb is not None:
-        try:
-            p_esc = paths["limit"].replace("\\", "/").replace("'", "''")
-            store_info["limit_rows"] = int(duckdb.sql(f"SELECT COUNT(*) FROM read_parquet('{p_esc}')").fetchone()[0] or 0)
-        except Exception:
-            pass
-    if os.path.isfile(paths["universe"]):
-        try:
-            with open(paths["universe"], "r", encoding="utf-8") as f:
-                u = json.load(f)
-            store_info["universes"] = {
-                k: {"label": v.get("label", k), "count": len(v.get("symbols") or [])}
-                for k, v in (u.get("universes") or {}).items()
-            }
-            store_info["last_sync_at"] = int(u.get("updated_at") or 0)
-        except Exception:
-            pass
+            r = con.execute(
+                "SELECT COUNT(*), COUNT(DISTINCT symbol), MIN(trade_date), MAX(trade_date) FROM market_bars WHERE interval='1d'"
+            ).fetchone()
+            if r and r[0]:
+                store_info["exists"] = True
+                store_info["total_rows"] = int(r[0] or 0)
+                store_info["symbols"] = int(r[1] or 0)
+                store_info["min_date"] = str(r[2] or "")[:10]
+                store_info["max_date"] = str(r[3] or "")[:10]
+            try:
+                store_info["basic_rows"] = int(con.execute("SELECT COUNT(*) FROM market_daily_basic").fetchone()[0] or 0)
+            except Exception:
+                pass
+            try:
+                store_info["limit_rows"] = int(con.execute("SELECT COUNT(*) FROM market_stk_limit").fetchone()[0] or 0)
+            except Exception:
+                pass
+            try:
+                urows = con.execute("SELECT universe_id, label, symbols_json, updated_at FROM quant_universes").fetchall()
+                max_u = 0
+                for ur in urows:
+                    syms = json.loads(ur["symbols_json"] or "[]")
+                    store_info["universes"][ur["universe_id"]] = {"label": ur["label"], "count": len(syms)}
+                    max_u = max(max_u, int(ur["updated_at"] or 0))
+                store_info["last_sync_at"] = max_u
+            except Exception:
+                pass
+        finally:
+            con.close()
 
     return {
         "ok": True,
@@ -531,11 +721,15 @@ def _fetch_yf_daily(yf_sym: str, start_date: datetime.date, end_date: datetime.d
     p1 = int(datetime.datetime(start_date.year, start_date.month, start_date.day, tzinfo=datetime.timezone.utc).timestamp())
     p2 = int(datetime.datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=datetime.timezone.utc).timestamp())
     qs = urllib.parse.urlencode({"period1": str(p1), "period2": str(p2), "interval": "1d"})
-    for host in ("query1.finance.yahoo.com", "query2.finance.yahoo.com"):
+    hosts = ("query1.finance.yahoo.com", "query2.finance.yahoo.com")
+    for attempt in range(3):
+        host = hosts[attempt % len(hosts)]
         try:
             d = _http_json(f"https://{host}/v8/finance/chart/{urllib.parse.quote(yf_sym)}?{qs}", proxy_url=proxy_url, timeout=12.0)
             res = ((d or {}).get("chart") or {}).get("result") or []
             if not res:
+                if attempt < 2:
+                    time.sleep(0.5 * (attempt + 1))
                 continue
             r0 = res[0]
             ts_list = r0.get("timestamp") or []
@@ -574,82 +768,95 @@ def _fetch_yf_daily(yf_sym: str, start_date: datetime.date, end_date: datetime.d
                     out[i]["pct_chg"] = round((out[i]["close"] / p - 1.0) * 100.0, 4)
             return out
         except Exception:
+            if attempt < 2:
+                time.sleep(0.6 * (attempt + 1))
             continue
     return []
 
 
-def _export_shared_sqlite_bars(bars_df: pd.DataFrame, store_dir: str) -> str:
-    """Mirror Parquet daily bars into data/quant_bars.sqlite so main O2 (.venv stdlib sqlite3) pages reuse them instantaneously."""
-    if bars_df is None or bars_df.empty:
-        return ""
-    db_path = os.path.join(os.path.dirname(store_dir), "quant_bars.sqlite")
-    tmp_path = db_path + ".tmp"
-    if os.path.exists(tmp_path):
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
-    con = sqlite3.connect(tmp_path)
-    try:
-        con.executescript("""
-            PRAGMA journal_mode=OFF;
-            PRAGMA synchronous=OFF;
-            CREATE TABLE hist_bars (
-                symbol TEXT NOT NULL,
-                secid TEXT NOT NULL,
-                name TEXT NOT NULL,
-                market TEXT NOT NULL,
-                trade_date TEXT NOT NULL,
-                open REAL,
-                high REAL,
-                low REAL,
-                close REAL,
-                volume REAL,
-                amount REAL,
-                pct_chg REAL,
-                PRIMARY KEY (symbol, trade_date)
-            );
-        """)
-        rows = []
-        for r in bars_df[["symbol", "secid", "name", "market", "trade_date", "open", "high", "low", "close", "volume", "amount", "pct_chg"]].itertuples(index=False):
-            rows.append((
-                str(r.symbol), str(r.secid), str(r.name), str(r.market), str(r.trade_date)[:10],
-                _safe_float(r.open), _safe_float(r.high), _safe_float(r.low), _safe_float(r.close),
-                _safe_float(r.volume), _safe_float(r.amount), _safe_float(r.pct_chg),
-            ))
+def _upsert_bars_batch(
+    con: sqlite3.Connection,
+    bar_rows: list[dict],
+    basic_rows: list[dict],
+    limit_rows: list[dict],
+    now: int,
+) -> None:
+    """Persist a completed batch directly into unified data/o2.sqlite tables."""
+    if bar_rows:
         con.executemany(
-            "INSERT OR REPLACE INTO hist_bars VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-            rows,
-        )
-        con.execute("CREATE INDEX idx_hb_secid_date ON hist_bars(secid, trade_date)")
-        con.execute("CREATE INDEX idx_hb_sym_date ON hist_bars(symbol, trade_date)")
-        con.commit()
-    finally:
-        con.close()
-    try:
-        os.replace(tmp_path, db_path)
-    except OSError:
-        # Fallback in-place update if main server has read handle open on Windows
-        con2 = sqlite3.connect(db_path, timeout=20.0)
-        try:
-            con2.execute("""
-                CREATE TABLE IF NOT EXISTS hist_bars (
-                    symbol TEXT NOT NULL, secid TEXT NOT NULL, name TEXT NOT NULL, market TEXT NOT NULL,
-                    trade_date TEXT NOT NULL, open REAL, high REAL, low REAL, close REAL,
-                    volume REAL, amount REAL, pct_chg REAL, PRIMARY KEY (symbol, trade_date)
+            """INSERT OR REPLACE INTO market_bars
+               (symbol, secid, interval, trade_date, name, market, industry,
+                open, high, low, close, volume, amount, adj_factor, pct_chg, source, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            [
+                (
+                    str(r["symbol"]), str(r.get("secid") or r["symbol"]), "1d",
+                    str(r["trade_date"])[:10], str(r.get("name") or r["symbol"]),
+                    str(r.get("market") or ""), str(r.get("industry") or ""),
+                    _nan_to_none(r.get("open")), _nan_to_none(r.get("high")),
+                    _nan_to_none(r.get("low")), _nan_to_none(r.get("close")),
+                    _safe_float(r.get("volume"), 0.0), _safe_float(r.get("amount"), 0.0),
+                    _safe_float(r.get("adj_factor"), 1.0), _safe_float(r.get("pct_chg"), 0.0),
+                    str(r.get("source") or "sync"), now,
                 )
-            """)
-            con2.execute("CREATE INDEX IF NOT EXISTS idx_hb_secid_date ON hist_bars(secid, trade_date)")
-            con2.execute("CREATE INDEX IF NOT EXISTS idx_hb_sym_date ON hist_bars(symbol, trade_date)")
-            con2.executemany("INSERT OR REPLACE INTO hist_bars VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", rows)
-            con2.commit()
-        finally:
-            con2.close()
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
-    return db_path
+                for r in bar_rows
+            ],
+        )
+        # Keep master instruments registry fresh
+        ins_seen: dict[str, tuple] = {}
+        for r in bar_rows:
+            sym = str(r["symbol"])
+            ins_seen[sym] = (
+                sym, str(r.get("secid") or sym),
+                sym if sym.endswith((".SH", ".SZ")) else "",
+                "" if sym.endswith((".SH", ".SZ")) else sym,
+                str(r.get("name") or sym), str(r.get("market") or ""),
+                str(r.get("industry") or ""), now,
+            )
+        con.executemany(
+            """INSERT INTO instruments(symbol, secid, ts_code, yf_symbol, name, market, industry, updated_at)
+               VALUES (?,?,?,?,?,?,?,?)
+               ON CONFLICT(symbol) DO UPDATE SET
+                 secid=CASE WHEN excluded.secid!='' THEN excluded.secid ELSE instruments.secid END,
+                 ts_code=CASE WHEN excluded.ts_code!='' THEN excluded.ts_code ELSE instruments.ts_code END,
+                 yf_symbol=CASE WHEN excluded.yf_symbol!='' THEN excluded.yf_symbol ELSE instruments.yf_symbol END,
+                 name=CASE WHEN excluded.name!='' THEN excluded.name ELSE instruments.name END,
+                 market=CASE WHEN excluded.market!='' THEN excluded.market ELSE instruments.market END,
+                 industry=CASE WHEN excluded.industry!='' THEN excluded.industry ELSE instruments.industry END,
+                 updated_at=excluded.updated_at""",
+            list(ins_seen.values()),
+        )
+    if basic_rows:
+        con.executemany(
+            """INSERT OR REPLACE INTO market_daily_basic
+               (symbol, trade_date, pe_ttm, pb, ps_ttm, dv_ttm, total_mv, circ_mv, turnover_rate_f, volume_ratio, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            [
+                (
+                    str(r["symbol"]), str(r["trade_date"])[:10],
+                    _nan_to_none(r.get("pe_ttm")), _nan_to_none(r.get("pb")),
+                    _nan_to_none(r.get("ps_ttm")), _nan_to_none(r.get("dv_ttm")),
+                    _nan_to_none(r.get("total_mv")), _nan_to_none(r.get("circ_mv")),
+                    _nan_to_none(r.get("turnover_rate_f")), _nan_to_none(r.get("volume_ratio")),
+                    now,
+                )
+                for r in basic_rows
+            ],
+        )
+    if limit_rows:
+        con.executemany(
+            """INSERT OR REPLACE INTO market_stk_limit
+               (symbol, trade_date, up_limit, down_limit, updated_at)
+               VALUES (?,?,?,?,?)""",
+            [
+                (
+                    str(r["symbol"]), str(r["trade_date"])[:10],
+                    _nan_to_none(r.get("up_limit")), _nan_to_none(r.get("down_limit")),
+                    now,
+                )
+                for r in limit_rows
+            ],
+        )
 
 
 def _parse_custom_symbol(raw: str) -> tuple[str, str, str, str]:
@@ -696,11 +903,14 @@ def _parse_custom_symbol(raw: str) -> tuple[str, str, str, str]:
     return "", "", "", ""
 
 
-def cmd_sync_data(params: dict, store_dir: str) -> dict:
-    paths = _store_paths(store_dir)
+def cmd_sync_data(params: dict, store_dir: str, db_path: str = "") -> dict:
+    dbp = _resolve_db_path(store_dir, db_path)
     ts_base = str(params.get("tushare_base") or "").strip()
     ts_token = str(params.get("tushare_token") or "").strip()
     proxy_url = str(params.get("proxy_url") or "").strip()
+    cancel_file = str(params.get("cancel_file") or "").strip()
+    force_full = bool(params.get("force"))
+    job_id = str(params.get("job_id") or "")
 
     # Flexible multi-scope support + legacy single scope compatibility
     scopes_raw = params.get("scopes")
@@ -750,7 +960,25 @@ def cmd_sync_data(params: dict, store_dir: str) -> dict:
     else:
         custom_symbols = [str(x).strip() for x in raw_custom if str(x).strip()]
 
-    emit_progress(5, f"准备同步 {start_dt.isoformat()} ~ {end_dt.isoformat()} 区间，正在获取成分股名录...")
+    # Deterministic task key for breakpoint resume (断点续传)
+    explicit_key = str(params.get("resume_task_key") or "").strip()
+    if explicit_key:
+        task_key = explicit_key
+    else:
+        sig_obj = {
+            "scopes": sorted(scopes),
+            "start": start_dt.isoformat(),
+            "end": end_dt.isoformat(),
+            "hs300_limit": hs300_limit if ("hs300" in scopes or "hs300_full" in scopes) else 0,
+            "zz500_limit": zz500_limit if "zz500" in scopes else 0,
+            "custom": sorted(custom_symbols),
+        }
+        task_key = "sync_" + hashlib.sha1(json.dumps(sig_obj, sort_keys=True).encode("utf-8")).hexdigest()[:12]
+
+    def _is_cancelled() -> bool:
+        return bool(cancel_file and os.path.isfile(cancel_file))
+
+    emit_progress(5, f"准备同步 {start_dt.isoformat()} ~ {end_dt.isoformat()}，检查本地断点...")
     stock_names: dict[str, tuple[str, str]] = {}
     if ts_base and ts_token:
         sb_rows = _ts_call(ts_base, ts_token, "stock_basic", {"list_status": "L"}, "ts_code,name,industry")
@@ -819,7 +1047,6 @@ def cmd_sync_data(params: dict, store_dir: str) -> dict:
             if ys not in seen_yf:
                 seen_yf.add(ys)
                 yf_tasks.append((secid, ys, nm, "US_STOCK", ind))
-        # Always include US benchmarks when syncing US stocks
         for secid, ys, nm in [("100.SPX", "^GSPC", "标普500指数"), ("100.NDX", "^NDX", "纳斯达克100指数")]:
             if ys not in seen_yf:
                 seen_yf.add(ys)
@@ -846,7 +1073,6 @@ def cmd_sync_data(params: dict, store_dir: str) -> dict:
                 seen_yf.add(ys)
                 yf_tasks.append((secid, ys, nm, "GLOBAL", "GlobalAsset"))
 
-    # Classify custom symbols into Tushare or Yahoo Finance
     us_name_lookup = {ys: (nm, ind) for _, ys, nm, ind in US_STOCKS_DEFAULTS + US_ETF_DEFAULTS}
     hk_name_lookup = {ys: (nm, ind) for _, ys, nm, ind in HK_STOCKS_DEFAULTS}
     for raw_c in custom_symbols:
@@ -861,16 +1087,162 @@ def cmd_sync_data(params: dict, store_dir: str) -> dict:
             nm, ind = us_name_lookup.get(code) or hk_name_lookup.get(code) or (code, mkt)
             yf_tasks.append((secid, code, nm, mkt, ind))
 
-    all_bar_rows: list[dict] = []
-    all_basic_rows: list[dict] = []
-    all_limit_rows: list[dict] = []
+    # Register task & check existing checkpoints + local DB coverage (断点续传 / 增量跳过)
+    total_all = len(ts_tasks) + len(yf_tasks)
+    now_ts = int(time.time())
+    safe_task_params = {
+        "scopes": sorted(scopes),
+        "start_date": start_dt.isoformat(),
+        "end_date": end_dt.isoformat(),
+        "hs300_limit": hs300_limit,
+        "zz500_limit": zz500_limit,
+        "custom_symbols": custom_symbols,
+    }
+
+    already_done_syms: set[str] = set()
+    cov_map: dict[str, tuple[str, str, int]] = {}
+    con_init = _db_con(dbp, readonly=False)
+    try:
+        con_init.execute(
+            """INSERT INTO sync_tasks
+               (task_key, scopes_json, start_date, end_date, params_json,
+                total_symbols, done_symbols, failed_symbols, status, last_job_id, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,0,0,'running',?,?,?)
+               ON CONFLICT(task_key) DO UPDATE SET
+                 total_symbols=excluded.total_symbols,
+                 status='running',
+                 last_job_id=excluded.last_job_id,
+                 updated_at=excluded.updated_at""",
+            (
+                task_key, json.dumps(sorted(scopes), ensure_ascii=False),
+                start_dt.isoformat(), end_dt.isoformat(),
+                json.dumps(safe_task_params, ensure_ascii=False),
+                total_all, job_id, now_ts, now_ts,
+            ),
+        )
+        cp_seed = []
+        for tc, nm, mkt, api in ts_tasks:
+            ind = (stock_names.get(tc) or (nm, mkt))[1]
+            cp_seed.append((task_key, tc, _secid_from_ts(tc), nm, mkt, ind, f"tushare:{api}", now_ts))
+        for secid, ys, nm, mkt, ind in yf_tasks:
+            cp_seed.append((task_key, ys, secid, nm, mkt, ind, "yf", now_ts))
+        con_init.executemany(
+            """INSERT OR IGNORE INTO sync_checkpoints
+               (task_key, symbol, secid, name, market, industry, source, status, updated_at)
+               VALUES (?,?,?,?,?,?,?,'pending',?)""",
+            cp_seed,
+        )
+        if not force_full:
+            for r in con_init.execute(
+                "SELECT symbol FROM sync_checkpoints WHERE task_key=? AND status='done'",
+                (task_key,),
+            ).fetchall():
+                already_done_syms.add(str(r[0]))
+            for r in con_init.execute(
+                "SELECT symbol, MIN(trade_date), MAX(trade_date), COUNT(*) FROM market_bars WHERE interval='1d' GROUP BY symbol"
+            ).fetchall():
+                cov_map[str(r[0])] = (str(r[1] or "")[:10], str(r[2] or "")[:10], int(r[3] or 0))
+        con_init.commit()
+    finally:
+        con_init.close()
+
+    # Check which symbols already have complete local coverage in market_bars
+    start_tol = (start_dt + datetime.timedelta(days=12)).isoformat()
+    end_tol = (end_dt - datetime.timedelta(days=4)).isoformat()
+
+    def _already_covered(sym: str) -> bool:
+        if force_full:
+            return False
+        if sym in already_done_syms:
+            return True
+        cov = cov_map.get(sym)
+        if cov and cov[2] >= 20 and cov[0] <= start_tol and cov[1] >= end_tol:
+            return True
+        return False
+
+    skipped_syms: list[str] = []
+    pending_ts: list[tuple[str, str, str, str]] = []
+    for t in ts_tasks:
+        if _already_covered(t[0]):
+            skipped_syms.append(t[0])
+        else:
+            pending_ts.append(t)
+    pending_yf: list[tuple[str, str, str, str, str]] = []
+    for t in yf_tasks:
+        if _already_covered(t[1]):
+            skipped_syms.append(t[1])
+        else:
+            pending_yf.append(t)
+
+    if skipped_syms:
+        con_sk = _db_con(dbp, readonly=False)
+        try:
+            con_sk.executemany(
+                "UPDATE sync_checkpoints SET status='done', error='', updated_at=? WHERE task_key=? AND symbol=?",
+                [(now_ts, task_key, s) for s in skipped_syms],
+            )
+            con_sk.execute(
+                "UPDATE sync_tasks SET done_symbols=?, updated_at=? WHERE task_key=?",
+                (len(skipped_syms), now_ts, task_key),
+            )
+            con_sk.commit()
+        finally:
+            con_sk.close()
+
+    synced_bars_total = 0
+    synced_basic_total = 0
+    synced_limit_total = 0
+    failed_count = 0
+    done_all = len(skipped_syms)
+    paused = False
+
+    if skipped_syms:
+        emit_progress(
+            10 + int(done_all / max(1, total_all) * 82),
+            f"断点续传：跳过已完整覆盖的 {len(skipped_syms)}/{total_all} 只标的，继续同步剩余 {total_all - done_all} 只...",
+        )
+
+    def _flush_batch(
+        b_bars: list[dict],
+        b_basic: list[dict],
+        b_limit: list[dict],
+        cp_updates: list[tuple],
+    ) -> None:
+        if not b_bars and not b_basic and not b_limit and not cp_updates:
+            return
+        ts_now = int(time.time())
+        con_w = _db_con(dbp, readonly=False)
+        try:
+            _upsert_bars_batch(con_w, b_bars, b_basic, b_limit, ts_now)
+            if cp_updates:
+                con_w.executemany(
+                    """UPDATE sync_checkpoints
+                       SET status=?, rows_written=?, last_trade_date=?, attempts=attempts+1, error=?, updated_at=?
+                       WHERE task_key=? AND symbol=?""",
+                    cp_updates,
+                )
+            d_cnt = con_w.execute(
+                "SELECT COUNT(*) FROM sync_checkpoints WHERE task_key=? AND status='done'",
+                (task_key,),
+            ).fetchone()[0]
+            f_cnt = con_w.execute(
+                "SELECT COUNT(*) FROM sync_checkpoints WHERE task_key=? AND status='failed'",
+                (task_key,),
+            ).fetchone()[0]
+            con_w.execute(
+                "UPDATE sync_tasks SET done_symbols=?, failed_symbols=?, updated_at=? WHERE task_key=?",
+                (int(d_cnt or 0), int(f_cnt or 0), ts_now, task_key),
+            )
+            con_w.commit()
+        finally:
+            con_w.close()
 
     def _pull_ts_one(task: tuple[str, str, str, str]):
         tc, nm, mkt, api = task
         secid = _secid_from_ts(tc)
         rows = _ts_call(ts_base, ts_token, api, {"ts_code": tc, "start_date": start_d, "end_date": end_d})
         if not rows:
-            return [], [], []
+            return tc, [], [], [], "接口未返回行情数据"
         adj_map: dict[str, float] = {}
         basic_out = []
         limit_out = []
@@ -940,80 +1312,113 @@ def cmd_sync_data(params: dict, store_dir: str) -> dict:
                 "volume": round(_safe_float(r.get("vol"), 0.0), 2),
                 "amount": round(_safe_float(r.get("amount"), 0.0) * 1000.0, 2),
                 "adj_factor": round(af, 6), "pct_chg": round(_safe_float(r.get("pct_chg"), 0.0), 4),
+                "source": "tushare",
             })
-        return bars_out, basic_out, limit_out
+        return tc, bars_out, basic_out, limit_out, ""
 
-    total_all = len(ts_tasks) + len(yf_tasks)
-    done_all = 0
-
-    if ts_tasks:
-        emit_progress(10, f"正在并行拉取 {len(ts_tasks)} 只 A股/ETF/指数 ({start_dt}~{end_dt})...")
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
-            futs = [ex.submit(_pull_ts_one, t) for t in ts_tasks]
-            for fut in concurrent.futures.as_completed(futs):
+    if pending_ts and not _is_cancelled():
+        emit_progress(10 + int(done_all / max(1, total_all) * 82), f"正在同步 A股/ETF {len(pending_ts)} 只...")
+        buf_bars: list[dict] = []
+        buf_basic: list[dict] = []
+        buf_limit: list[dict] = []
+        buf_cp: list[tuple] = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+            fut_map = {ex.submit(_pull_ts_one, t): t[0] for t in pending_ts}
+            for fut in concurrent.futures.as_completed(fut_map):
+                sym_k = fut_map[fut]
                 done_all += 1
+                ts_now = int(time.time())
                 try:
-                    bo, bso, lo = fut.result()
-                    all_bar_rows.extend(bo)
-                    all_basic_rows.extend(bso)
-                    all_limit_rows.extend(lo)
-                except Exception:
-                    pass
-                if done_all % 6 == 0 or done_all == len(ts_tasks):
-                    pct = 10 + int(done_all / max(1, total_all) * 70)
-                    emit_progress(pct, f"已同步 A股/ETF {done_all}/{len(ts_tasks)} 只（累计 {len(all_bar_rows):,} 条日线）")
+                    tc, bo, bso, lo, err = fut.result()
+                    if bo:
+                        buf_bars.extend(bo)
+                        buf_basic.extend(bso)
+                        buf_limit.extend(lo)
+                        synced_bars_total += len(bo)
+                        synced_basic_total += len(bso)
+                        synced_limit_total += len(lo)
+                        buf_cp.append(("done", len(bo), bo[-1]["trade_date"], "", ts_now, task_key, tc))
+                    else:
+                        failed_count += 1
+                        buf_cp.append(("failed", 0, "", err or "空数据", ts_now, task_key, tc))
+                except Exception as e:
+                    failed_count += 1
+                    buf_cp.append(("failed", 0, "", str(e)[:180], ts_now, task_key, sym_k))
 
-    if yf_tasks:
-        emit_progress(10 + int(done_all / max(1, total_all) * 70), f"正在同步 {len(yf_tasks)} 只美股/港股/全球跨资产 ({start_dt}~{end_dt})...")
+                if len(buf_cp) >= 5 or done_all == total_all or _is_cancelled():
+                    _flush_batch(buf_bars, buf_basic, buf_limit, buf_cp)
+                    buf_bars, buf_basic, buf_limit, buf_cp = [], [], [], []
+                    pct = 10 + int(done_all / max(1, total_all) * 82)
+                    emit_progress(pct, f"已同步 {done_all}/{total_all} 只（已落盘 {synced_bars_total:,} 条日线）")
+
+                if _is_cancelled():
+                    paused = True
+                    for f in fut_map:
+                        f.cancel()
+                    break
+        if buf_cp:
+            _flush_batch(buf_bars, buf_basic, buf_limit, buf_cp)
+
+    if pending_yf and not paused and not _is_cancelled():
+        emit_progress(10 + int(done_all / max(1, total_all) * 82), f"正在同步美/港/全球 {len(pending_yf)} 只...")
         def _pull_yf(item):
             secid, ys, nm, mkt, ind = item
             rows = _fetch_yf_daily(ys, start_dt, end_dt, proxy_url)
-            return ys, [{**r, "symbol": ys, "secid": secid, "name": nm, "market": mkt, "industry": ind} for r in rows]
+            return ys, [{**r, "symbol": ys, "secid": secid, "name": nm, "market": mkt, "industry": ind, "source": "yfinance"} for r in rows]
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
-            futs_yf = [ex.submit(_pull_yf, t) for t in yf_tasks]
-            yf_done = 0
-            for fut in concurrent.futures.as_completed(futs_yf):
-                yf_done += 1
+        buf_bars = []
+        buf_cp = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
+            fut_map = {ex.submit(_pull_yf, t): t[1] for t in pending_yf}
+            for fut in concurrent.futures.as_completed(fut_map):
+                sym_k = fut_map[fut]
                 done_all += 1
+                ts_now = int(time.time())
                 try:
-                    _ys, rows_g = fut.result()
+                    ys, rows_g = fut.result()
                     if rows_g:
-                        all_bar_rows.extend(rows_g)
-                except Exception:
-                    pass
-                if yf_done % 5 == 0 or yf_done == len(yf_tasks):
-                    pct = 10 + int(done_all / max(1, total_all) * 70)
-                    emit_progress(pct, f"已同步 美/港/全球 {yf_done}/{len(yf_tasks)} 只（累计 {len(all_bar_rows):,} 条日线）")
+                        buf_bars.extend(rows_g)
+                        synced_bars_total += len(rows_g)
+                        buf_cp.append(("done", len(rows_g), rows_g[-1]["trade_date"], "", ts_now, task_key, ys))
+                    else:
+                        failed_count += 1
+                        buf_cp.append(("failed", 0, "", "Yahoo接口无返回", ts_now, task_key, ys))
+                except Exception as e:
+                    failed_count += 1
+                    buf_cp.append(("failed", 0, "", str(e)[:180], ts_now, task_key, sym_k))
 
-    emit_progress(83, "正在合并写入本地 Parquet 列式数据仓...")
-    new_bars_df = pd.DataFrame(all_bar_rows)
-    bars_df = _merge_parquet(paths["bars"], new_bars_df, ["trade_date", "symbol"])
+                if len(buf_cp) >= 5 or done_all == total_all or _is_cancelled():
+                    _flush_batch(buf_bars, [], [], buf_cp)
+                    buf_bars, buf_cp = [], []
+                    pct = 10 + int(done_all / max(1, total_all) * 82)
+                    emit_progress(pct, f"已同步 {done_all}/{total_all} 只（已落盘 {synced_bars_total:,} 条日线）")
 
-    if all_basic_rows:
-        _merge_parquet(paths["basic"], pd.DataFrame(all_basic_rows), ["trade_date", "symbol"])
-    if all_limit_rows:
-        _merge_parquet(paths["limit"], pd.DataFrame(all_limit_rows), ["trade_date", "symbol"])
+                if _is_cancelled():
+                    paused = True
+                    for f in fut_map:
+                        f.cancel()
+                    break
+        if buf_cp:
+            _flush_batch(buf_bars, [], [], buf_cp)
 
-    # Update universe metadata dynamically from bars_df
-    prev_uni = {}
-    if os.path.isfile(paths["universe"]):
-        try:
-            with open(paths["universe"], "r", encoding="utf-8") as f:
-                prev_uni = json.load(f).get("universes") or {}
-        except Exception:
-            prev_uni = {}
-
-    present = set(bars_df["symbol"].unique()) if not bars_df.empty else set()
-    if hs300_codes:
-        valid_h = [c for c in hs300_codes if c in present]
-        if valid_h:
-            prev_uni["hs300"] = {"label": f"沪深300核心池 ({len(valid_h)}只)", "symbols": valid_h}
-    if zz500_codes:
-        valid_z = [c for c in zz500_codes if c in present]
-        if valid_z:
-            prev_uni["zz500"] = {"label": f"中证500核心池 ({len(valid_z)}只)", "symbols": valid_z}
-    if not bars_df.empty:
+    # Refresh quant_universes metadata directly in unified o2.sqlite
+    emit_progress(95, "正在刷新标的池索引...")
+    con_u = _db_con(dbp, readonly=False)
+    try:
+        ts_fin = int(time.time())
+        present = {
+            str(r[0])
+            for r in con_u.execute("SELECT DISTINCT symbol FROM market_bars WHERE interval='1d'").fetchall()
+        }
+        uni_updates: dict[str, tuple[str, list[str]]] = {}
+        if hs300_codes:
+            valid_h = [c for c in hs300_codes if c in present]
+            if valid_h:
+                uni_updates["hs300"] = (f"沪深300核心池 ({len(valid_h)}只)", valid_h)
+        if zz500_codes:
+            valid_z = [c for c in zz500_codes if c in present]
+            if valid_z:
+                uni_updates["zz500"] = (f"中证500核心池 ({len(valid_z)}只)", valid_z)
         for mkt_k, u_k, u_name in [
             ("CN_ETF", "etf_pool", "A股主流ETF池"),
             ("US_STOCK", "us_stocks", "美股核心龙头池"),
@@ -1022,34 +1427,52 @@ def cmd_sync_data(params: dict, store_dir: str) -> dict:
             ("GLOBAL", "global_core", "全球指数/商品/加密池"),
             ("CN_STOCK", "all_cn_stocks", "全部已同步A股"),
         ]:
-            syms_m = sorted(bars_df.loc[bars_df["market"] == mkt_k, "symbol"].unique().tolist())
+            syms_m = [
+                str(r[0])
+                for r in con_u.execute(
+                    "SELECT DISTINCT symbol FROM market_bars WHERE interval='1d' AND market=? ORDER BY symbol",
+                    (mkt_k,),
+                ).fetchall()
+            ]
             if syms_m:
-                prev_uni[u_k] = {"label": f"{u_name} ({len(syms_m)}只)", "symbols": syms_m}
+                uni_updates[u_k] = (f"{u_name} ({len(syms_m)}只)", syms_m)
+        for uid, (lbl, syms) in uni_updates.items():
+            con_u.execute(
+                "INSERT OR REPLACE INTO quant_universes(universe_id, label, symbols_json, updated_at) VALUES (?,?,?,?)",
+                (uid, lbl, json.dumps(syms, ensure_ascii=False), ts_fin),
+            )
+        final_status = "paused" if paused else ("partial" if failed_count > 0 else "done")
+        con_u.execute(
+            "UPDATE sync_tasks SET status=?, updated_at=? WHERE task_key=?",
+            (final_status, ts_fin, task_key),
+        )
+        con_u.commit()
+    finally:
+        con_u.close()
 
-    with open(paths["universe"], "w", encoding="utf-8") as f:
-        json.dump({"updated_at": int(time.time()), "universes": prev_uni}, f, ensure_ascii=False, indent=2)
-
-    emit_progress(89, "正在导出全站共享历史库 (quant_bars.sqlite)...")
-    _export_shared_sqlite_bars(bars_df, store_dir)
-
-    emit_progress(94, "正在导出 Microsoft Qlib 二进制特征目录 (qlib_bin)...")
-    qlib_dump = _dump_qlib_bin(bars_df, paths["qlib_bin"], hs300_codes)
-
-    emit_progress(100, "本地量化数据仓同步完成")
-    env = cmd_env_check(store_dir)
+    stage_msg = (
+        f"同步已暂停（已保存断点，下次可续传）"
+        if paused
+        else (f"同步完成（{failed_count} 只拉取失败，可一键重试）" if failed_count else "数据同步完成")
+    )
+    emit_progress(100, stage_msg)
+    env = cmd_env_check(store_dir, dbp)
     return {
         "ok": True,
+        "task_key": task_key,
+        "paused": paused,
         "date_range": [start_dt.isoformat(), end_dt.isoformat()],
-        "synced_bars": len(all_bar_rows),
-        "synced_basic": len(all_basic_rows),
-        "synced_limit": len(all_limit_rows),
-        "qlib_bin": qlib_dump,
+        "synced_bars": synced_bars_total,
+        "synced_basic": synced_basic_total,
+        "synced_limit": synced_limit_total,
+        "skipped_symbols": len(skipped_syms),
+        "failed_symbols": failed_count,
         "store": env["store"],
     }
 
 
 # ---------------------------------------------------------------------------
-# DuckDB Panel Loader
+# Unified SQLite Panel Loader
 # ---------------------------------------------------------------------------
 
 def _load_panels(
@@ -1059,131 +1482,130 @@ def _load_panels(
     start_date: str = "",
     end_date: str = "",
 ) -> tuple[dict[str, pd.DataFrame], dict[str, dict]]:
-    paths = _store_paths(store_dir)
-    if not os.path.isfile(paths["bars"]):
-        raise RuntimeError("本地量化数据仓为空，请先点击「同步本地数据仓」拉取历史数据。")
+    dbp = _resolve_db_path(store_dir)
+    if not os.path.isfile(dbp):
+        raise RuntimeError("本地数据库为空，请先同步历史行情数据。")
 
-    target_syms: list[str] = []
-    if symbols:
-        target_syms = [str(s).strip() for s in symbols if str(s).strip()]
-    elif os.path.isfile(paths["universe"]):
-        with open(paths["universe"], "r", encoding="utf-8") as f:
-            u = json.load(f).get("universes") or {}
-        if universe in u:
-            target_syms = list(u[universe].get("symbols") or [])
+    con = _db_con(dbp, readonly=True)
+    try:
+        target_syms: list[str] = []
+        if symbols:
+            target_syms = [str(s).strip() for s in symbols if str(s).strip()]
+        else:
+            row_u = con.execute("SELECT symbols_json FROM quant_universes WHERE universe_id=?", (universe,)).fetchone()
+            if row_u:
+                target_syms = list(json.loads(row_u["symbols_json"] or "[]"))
 
-    where_clauses = []
-    if start_date:
-        where_clauses.append(f"trade_date >= '{start_date[:10]}'")
-    if end_date:
-        where_clauses.append(f"trade_date <= '{end_date[:10]}'")
-    if target_syms:
-        in_sql = ",".join("'" + s.replace("'", "''") + "'" for s in target_syms)
-        where_clauses.append(f"(symbol IN ({in_sql}) OR secid IN ({in_sql}))")
-    elif universe == "hs300":
-        where_clauses.append("market = 'CN_STOCK'")
-    elif universe == "etf_pool":
-        where_clauses.append("market = 'CN_ETF'")
-    elif universe == "us_stocks":
-        where_clauses.append("market = 'US_STOCK'")
-    elif universe == "us_etf":
-        where_clauses.append("market = 'US_ETF'")
-    elif universe == "hk_stocks":
-        where_clauses.append("market = 'HK_STOCK'")
-    elif universe == "global_core":
-        where_clauses.append("market = 'GLOBAL'")
-
-    where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
-
-    if duckdb is not None:
-        p_esc = paths["bars"].replace("\\", "/").replace("'", "''")
-        df = duckdb.sql(f"SELECT * FROM read_parquet('{p_esc}') {where_sql} ORDER BY trade_date, symbol").df()
-    else:
-        df = pd.read_parquet(paths["bars"])
+        where_clauses = ["interval = '1d'"]
+        sql_params: list = []
         if start_date:
-            df = df[df["trade_date"] >= start_date[:10]]
+            where_clauses.append("trade_date >= ?")
+            sql_params.append(start_date[:10])
         if end_date:
-            df = df[df["trade_date"] <= end_date[:10]]
+            where_clauses.append("trade_date <= ?")
+            sql_params.append(end_date[:10])
         if target_syms:
-            df = df[df["symbol"].isin(target_syms) | df["secid"].isin(target_syms)]
+            ph = ",".join("?" for _ in target_syms)
+            where_clauses.append(f"(symbol IN ({ph}) OR secid IN ({ph}))")
+            sql_params.extend(target_syms)
+            sql_params.extend(target_syms)
+        elif universe == "hs300":
+            where_clauses.append("market = 'CN_STOCK'")
+        elif universe == "etf_pool":
+            where_clauses.append("market = 'CN_ETF'")
+        elif universe == "us_stocks":
+            where_clauses.append("market = 'US_STOCK'")
+        elif universe == "us_etf":
+            where_clauses.append("market = 'US_ETF'")
+        elif universe == "hk_stocks":
+            where_clauses.append("market = 'HK_STOCK'")
+        elif universe == "global_core":
+            where_clauses.append("market = 'GLOBAL'")
 
-    if df.empty:
-        raise RuntimeError(f"数据仓中未找到符合条件的标的（universe={universe}），请先同步对应板块数据。")
+        where_sql = "WHERE " + " AND ".join(where_clauses)
+        df = pd.read_sql_query(
+            f"""SELECT trade_date, symbol, secid, name, market, industry,
+                       open, high, low, close, volume, amount, pct_chg
+                FROM market_bars {where_sql} ORDER BY trade_date, symbol""",
+            con,
+            params=sql_params,
+        )
+        if df.empty:
+            raise RuntimeError(f"数据库中未找到符合条件的标的（universe={universe}），请先同步对应板块数据。")
 
-    df["trade_date"] = pd.to_datetime(df["trade_date"])
-    meta_map: dict[str, dict] = {}
-    for sym, grp in df.groupby("symbol"):
-        last = grp.iloc[-1]
-        meta_map[str(sym)] = {
-            "symbol": str(sym),
-            "secid": str(last.get("secid") or sym),
-            "name": str(last.get("name") or sym),
-            "market": str(last.get("market") or ""),
-            "industry": str(last.get("industry") or "综合"),
-        }
+        df["trade_date"] = pd.to_datetime(df["trade_date"])
+        meta_map: dict[str, dict] = {}
+        for sym, grp in df.groupby("symbol"):
+            last = grp.iloc[-1]
+            meta_map[str(sym)] = {
+                "symbol": str(sym),
+                "secid": str(last.get("secid") or sym),
+                "name": str(last.get("name") or sym),
+                "market": str(last.get("market") or ""),
+                "industry": str(last.get("industry") or "综合"),
+            }
 
-    panels: dict[str, pd.DataFrame] = {}
-    for col in ("open", "high", "low", "close", "volume", "amount", "pct_chg"):
-        if col in df.columns:
-            panels[col] = df.pivot_table(index="trade_date", columns="symbol", values=col, aggfunc="last").sort_index()
+        panels: dict[str, pd.DataFrame] = {}
+        for col in ("open", "high", "low", "close", "volume", "amount", "pct_chg"):
+            if col in df.columns:
+                panels[col] = df.pivot_table(index="trade_date", columns="symbol", values=col, aggfunc="last").sort_index()
 
-    # Load daily_basic if present
-    syms_loaded = list(panels["close"].columns)
-    if os.path.isfile(paths["basic"]) and syms_loaded:
-        try:
-            if duckdb is not None:
-                b_esc = paths["basic"].replace("\\", "/").replace("'", "''")
-                in_sql = ",".join("'" + s.replace("'", "''") + "'" for s in syms_loaded)
-                bdf = duckdb.sql(f"SELECT * FROM read_parquet('{b_esc}') WHERE symbol IN ({in_sql})").df()
-            else:
-                bdf = pd.read_parquet(paths["basic"])
-                bdf = bdf[bdf["symbol"].isin(syms_loaded)]
-            if not bdf.empty:
-                bdf["trade_date"] = pd.to_datetime(bdf["trade_date"])
-                for col in ("pe_ttm", "pb", "ps_ttm", "dv_ttm", "total_mv", "circ_mv", "turnover_rate_f", "volume_ratio"):
-                    if col in bdf.columns:
-                        piv = bdf.pivot_table(index="trade_date", columns="symbol", values=col, aggfunc="last")
-                        panels[col] = piv.reindex(index=panels["close"].index, columns=syms_loaded)
-        except Exception:
-            pass
-
-    # Load stk_limit if present
-    if os.path.isfile(paths["limit"]) and syms_loaded:
-        try:
-            if duckdb is not None:
-                l_esc = paths["limit"].replace("\\", "/").replace("'", "''")
-                in_sql = ",".join("'" + s.replace("'", "''") + "'" for s in syms_loaded)
-                ldf = duckdb.sql(f"SELECT * FROM read_parquet('{l_esc}') WHERE symbol IN ({in_sql})").df()
-            else:
-                ldf = pd.read_parquet(paths["limit"])
-                ldf = ldf[ldf["symbol"].isin(syms_loaded)]
-            if not ldf.empty:
-                ldf["trade_date"] = pd.to_datetime(ldf["trade_date"])
-                for col in ("up_limit", "down_limit"):
-                    if col in ldf.columns:
-                        piv = ldf.pivot_table(index="trade_date", columns="symbol", values=col, aggfunc="last")
-                        panels[col] = piv.reindex(index=panels["close"].index, columns=syms_loaded)
-        except Exception:
-            pass
+        syms_loaded = list(panels["close"].columns)
+        if syms_loaded:
+            ph = ",".join("?" for _ in syms_loaded)
+            try:
+                bdf = pd.read_sql_query(
+                    f"""SELECT trade_date, symbol, pe_ttm, pb, ps_ttm, dv_ttm,
+                               total_mv, circ_mv, turnover_rate_f, volume_ratio
+                        FROM market_daily_basic WHERE symbol IN ({ph})""",
+                    con,
+                    params=syms_loaded,
+                )
+                if not bdf.empty:
+                    bdf["trade_date"] = pd.to_datetime(bdf["trade_date"])
+                    for col in ("pe_ttm", "pb", "ps_ttm", "dv_ttm", "total_mv", "circ_mv", "turnover_rate_f", "volume_ratio"):
+                        if col in bdf.columns:
+                            piv = bdf.pivot_table(index="trade_date", columns="symbol", values=col, aggfunc="last")
+                            panels[col] = piv.reindex(index=panels["close"].index, columns=syms_loaded)
+            except Exception:
+                pass
+            try:
+                ldf = pd.read_sql_query(
+                    f"SELECT trade_date, symbol, up_limit, down_limit FROM market_stk_limit WHERE symbol IN ({ph})",
+                    con,
+                    params=syms_loaded,
+                )
+                if not ldf.empty:
+                    ldf["trade_date"] = pd.to_datetime(ldf["trade_date"])
+                    for col in ("up_limit", "down_limit"):
+                        if col in ldf.columns:
+                            piv = ldf.pivot_table(index="trade_date", columns="symbol", values=col, aggfunc="last")
+                            panels[col] = piv.reindex(index=panels["close"].index, columns=syms_loaded)
+            except Exception:
+                pass
+    finally:
+        con.close()
 
     return panels, meta_map
 
 
 def _load_benchmark_series(store_dir: str, benchmark: str, index_dates: pd.DatetimeIndex) -> pd.Series:
-    paths = _store_paths(store_dir)
-    if not os.path.isfile(paths["bars"]):
+    dbp = _resolve_db_path(store_dir)
+    if not os.path.isfile(dbp):
         return pd.Series(1.0, index=index_dates)
     bm = (benchmark or "000300.SH").strip()
     try:
-        if duckdb is not None:
-            p_esc = paths["bars"].replace("\\", "/").replace("'", "''")
-            bm_esc = bm.replace("'", "''")
-            df = duckdb.sql(
-                f"SELECT trade_date, close FROM read_parquet('{p_esc}') WHERE symbol='{bm_esc}' OR secid='{bm_esc}' ORDER BY trade_date"
-            ).df()
-        else:
-            df = pd.read_parquet(paths["bars"], columns=["trade_date", "symbol", "secid", "close"])
-            df = df[(df["symbol"] == bm) | (df["secid"] == bm)].sort_values("trade_date")
+        con = _db_con(dbp, readonly=True)
+        try:
+            df = pd.read_sql_query(
+                """SELECT trade_date, close FROM market_bars
+                   WHERE interval='1d' AND (symbol=? OR secid=?)
+                   ORDER BY trade_date""",
+                con,
+                params=[bm, bm],
+            )
+        finally:
+            con.close()
         if df.empty:
             return pd.Series(1.0, index=index_dates)
         s = pd.Series(df["close"].astype(float).values, index=pd.to_datetime(df["trade_date"]))
@@ -2809,39 +3231,33 @@ def cmd_factor_corr(params: dict, store_dir: str) -> dict:
     }
 
 
-def cmd_store_symbols(store_dir: str) -> dict:
-    paths = _store_paths(store_dir)
-    if not os.path.isfile(paths["bars"]):
+def cmd_store_symbols(store_dir: str, db_path: str = "") -> dict:
+    dbp = _resolve_db_path(store_dir, db_path)
+    if not os.path.isfile(dbp):
         return {"ok": True, "items": []}
-    if duckdb is not None:
-        b_esc = paths["bars"].replace("\\", "/").replace("'", "''")
-        q = f"""
-            SELECT symbol, ANY_VALUE(secid) AS secid, ANY_VALUE(name) AS name,
-                   ANY_VALUE(market) AS market, ANY_VALUE(industry) AS industry,
-                   COUNT(*) AS rows, MIN(trade_date) AS min_date, MAX(trade_date) AS max_date
-            FROM read_parquet('{b_esc}')
-            GROUP BY symbol
-            ORDER BY market, symbol
-        """
-        df = duckdb.sql(q).df()
-        basic_syms = set()
-        if os.path.isfile(paths["basic"]):
-            bs_esc = paths["basic"].replace("\\", "/").replace("'", "''")
-            basic_syms = set(duckdb.sql(f"SELECT DISTINCT symbol FROM read_parquet('{bs_esc}')").df()["symbol"].tolist())
-        limit_syms = set()
-        if os.path.isfile(paths["limit"]):
-            ls_esc = paths["limit"].replace("\\", "/").replace("'", "''")
-            limit_syms = set(duckdb.sql(f"SELECT DISTINCT symbol FROM read_parquet('{ls_esc}')").df()["symbol"].tolist())
-    else:
-        raw = pd.read_parquet(paths["bars"])
-        df = raw.groupby("symbol", as_index=False).agg(
-            secid=("secid", "last"), name=("name", "last"), market=("market", "last"),
-            industry=("industry", "last"), rows=("trade_date", "count"),
-            min_date=("trade_date", "min"), max_date=("trade_date", "max"),
-        )
-        basic_syms, limit_syms = set(), set()
+    con = _db_con(dbp, readonly=True)
+    try:
+        rows = con.execute(
+            """SELECT mb.symbol,
+                      MAX(mb.secid) AS secid,
+                      MAX(mb.name) AS name,
+                      MAX(mb.market) AS market,
+                      COALESCE(NULLIF(MAX(mb.industry), ''), NULLIF(MAX(ins.industry), ''), '') AS industry,
+                      COUNT(*) AS rows,
+                      MIN(mb.trade_date) AS min_date,
+                      MAX(mb.trade_date) AS max_date
+               FROM market_bars mb
+               LEFT JOIN instruments ins ON ins.symbol = mb.symbol
+               WHERE mb.interval = '1d'
+               GROUP BY mb.symbol
+               ORDER BY market, mb.symbol"""
+        ).fetchall()
+        basic_syms = {str(r[0]) for r in con.execute("SELECT DISTINCT symbol FROM market_daily_basic").fetchall()}
+        limit_syms = {str(r[0]) for r in con.execute("SELECT DISTINCT symbol FROM market_stk_limit").fetchall()}
+    finally:
+        con.close()
     items = []
-    for _, r in df.iterrows():
+    for r in rows:
         s = str(r["symbol"])
         items.append({
             "symbol": s,
@@ -2859,12 +3275,18 @@ def cmd_store_symbols(store_dir: str) -> dict:
 
 
 def main() -> int:
+    global _ACTIVE_DB_PATH
     ap = argparse.ArgumentParser()
     ap.add_argument("--cmd", required=True)
+    ap.add_argument("--db", default="")
     ap.add_argument("--store", required=True)
     ap.add_argument("--in", dest="in_file", default="")
     ap.add_argument("--out", dest="out_file", required=True)
     args = ap.parse_args()
+
+    _ACTIVE_DB_PATH = _resolve_db_path(args.store, args.db)
+    _ensure_worker_schema(_ACTIVE_DB_PATH)
+    _migrate_legacy_parquet_once(_ACTIVE_DB_PATH, args.store)
 
     params = {}
     if args.in_file and os.path.isfile(args.in_file):
@@ -2873,11 +3295,11 @@ def main() -> int:
 
     try:
         if args.cmd == "env_check":
-            res = cmd_env_check(args.store)
+            res = cmd_env_check(args.store, _ACTIVE_DB_PATH)
         elif args.cmd == "factor_catalog":
             res = {"ok": True, "items": qf.FACTOR_CATALOG}
         elif args.cmd == "sync_data":
-            res = cmd_sync_data(params, args.store)
+            res = cmd_sync_data(params, args.store, _ACTIVE_DB_PATH)
         elif args.cmd == "factor_eval":
             res = cmd_factor_eval(params, args.store)
         elif args.cmd == "backtest":
@@ -2889,7 +3311,7 @@ def main() -> int:
         elif args.cmd == "factor_corr":
             res = cmd_factor_corr(params, args.store)
         elif args.cmd == "store_symbols":
-            res = cmd_store_symbols(args.store)
+            res = cmd_store_symbols(args.store, _ACTIVE_DB_PATH)
         else:
             res = {"ok": False, "error": f"未知命令: {args.cmd}"}
     except Exception as e:

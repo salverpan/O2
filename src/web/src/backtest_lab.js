@@ -1,5 +1,5 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue/dist/vue.esm-bundler.js'
-import { message } from 'ant-design-vue'
+import { auiMessage as message } from './aui_components.js'
 import * as echarts from 'echarts/core'
 import { createChart, ColorType, CrosshairMode } from 'lightweight-charts'
 import { O2Echarts, SymbolPicker } from './widgets_hub.js'
@@ -39,6 +39,109 @@ function isoOffsetDays(daysBack) {
 
 function todayIso() {
   return isoOffsetDays(0)
+}
+
+// ---------------------------------------------------------------------------
+// Global Persistent Sync Store (survives tab switches & browser refreshes)
+// ---------------------------------------------------------------------------
+const _syncListeners = new Set()
+let _syncTimer = null
+
+export const quantSyncStore = reactive({
+  job: null,
+  resumable: null,
+  get isRunning() {
+    return !!(this.job && (this.job.status === 'pending' || this.job.status === 'running'))
+  },
+  get progress() {
+    return this.job ? Math.max(0, Math.min(100, Number(this.job.progress) || 0)) : 0
+  },
+  get stage() {
+    return (this.job && this.job.stage) || ''
+  },
+})
+
+function _notifySyncListeners(ev) {
+  for (const fn of _syncListeners) {
+    try { fn(ev) } catch (e) {}
+  }
+}
+
+export function onQuantSyncEvent(fn) {
+  _syncListeners.add(fn)
+  return () => _syncListeners.delete(fn)
+}
+
+function _ensureGlobalSyncPolling() {
+  if (_syncTimer) return
+  _syncTimer = setInterval(async () => {
+    const cur = quantSyncStore.job
+    if (!cur || (cur.status !== 'pending' && cur.status !== 'running')) {
+      clearInterval(_syncTimer)
+      _syncTimer = null
+      return
+    }
+    try {
+      const res = await qGet('/api/quant/job/' + encodeURIComponent(cur.id))
+      if (!res || !res.ok || !res.job) return
+      const u = res.job
+      quantSyncStore.job = u
+      if (u.status === 'done' || u.status === 'failed') {
+        clearInterval(_syncTimer)
+        _syncTimer = null
+        if (u.status === 'done') {
+          const r = u.result || {}
+          if (r.paused) message.info('已暂停同步，断点已保存')
+          else if (r.failed_symbols) message.warning(`同步完成，${r.failed_symbols} 只失败可续传`)
+          else message.success('数据同步完成')
+        } else if (u.error) {
+          message.error(String(u.error).slice(0, 120))
+        }
+        await hydrateActiveSync(false)
+        _notifySyncListeners({ type: 'finished', job: u })
+      }
+    } catch (e) {}
+  }, 1100)
+}
+
+export async function hydrateActiveSync(startPoll = true) {
+  try {
+    const res = await qGet('/api/quant/sync/active')
+    if (res && res.ok) {
+      quantSyncStore.resumable = res.resumable || null
+      if (res.job) {
+        quantSyncStore.job = res.job
+        if (startPoll) _ensureGlobalSyncPolling()
+      } else if (quantSyncStore.job && (quantSyncStore.job.status === 'pending' || quantSyncStore.job.status === 'running')) {
+        quantSyncStore.job = null
+      }
+    }
+  } catch (e) {}
+}
+
+export async function startGlobalSync(payload, isResume = false) {
+  const res = await qPost('/api/quant/sync', payload)
+  if (!res || !res.ok) {
+    message.error((res && res.error) || '提交同步失败')
+    return false
+  }
+  quantSyncStore.job = {
+    id: res.job_id,
+    job_type: 'sync_data',
+    title: res.title,
+    status: res.status || 'pending',
+    progress: res.progress != null ? res.progress : 3,
+    stage: res.stage || (isResume ? '正在从断点恢复同步...' : '正在启动同步...'),
+  }
+  if (res.already_running) message.info('数据同步已在后台运行')
+  _ensureGlobalSyncPolling()
+  return true
+}
+
+export async function stopGlobalSync() {
+  const jid = (quantSyncStore.job && quantSyncStore.job.id) || ''
+  const res = await qPost('/api/quant/sync/stop', { job_id: jid })
+  if (res && res.ok) message.info('正在保存断点并暂停...')
 }
 
 // ---------------------------------------------------------------------------
@@ -482,6 +585,15 @@ export const BacktestLab = {
 
     // Config Accordion Sections (Time range is ALWAYS visible at top — never collapsed!)
     const cfgOpen = reactive({ strategy: true, cost: true, risk: false })
+    const openAccKeys = computed({
+      get: () => ['strategy', 'cost', 'risk'].filter((k) => cfgOpen[k]),
+      set: (arr) => {
+        const s = new Set(arr || [])
+        cfgOpen.strategy = s.has('strategy')
+        cfgOpen.cost = s.has('cost')
+        cfgOpen.risk = s.has('risk')
+      },
+    })
 
     // Environment & Warehouse
     const envLoading = ref(false)
@@ -503,7 +615,8 @@ export const BacktestLab = {
     const activeSweepJob = ref(null)
     const activeEvalJob = ref(null)
     const activeBatchJob = ref(null)
-    const activeSyncJob = ref(null)
+    const activeSyncJob = computed(() => quantSyncStore.job)
+    const resumableSync = computed(() => quantSyncStore.resumable || envStatus.value.resumable_sync || null)
 
     // Backtest Form
     const btForm = reactive({
@@ -607,14 +720,24 @@ export const BacktestLab = {
         const res = await qGet('/api/quant/jobs?limit=60')
         if (res && res.ok && Array.isArray(res.items)) {
           jobs.value = res.items
-          if (!activeBtJob.value) {
+          let hasRunning = false
+          const runBt = res.items.find((j) => j.job_type === 'backtest' && (j.status === 'pending' || j.status === 'running'))
+          if (runBt) { activeBtJob.value = runBt; hasRunning = true }
+          else if (!activeBtJob.value) {
             const firstBt = res.items.find((j) => j.job_type === 'backtest' && j.status === 'done')
             if (firstBt) await openJobDetail(firstBt.id, false)
           }
-          if (!activeEvalJob.value) {
+          const runEv = res.items.find((j) => j.job_type === 'factor_eval' && (j.status === 'pending' || j.status === 'running'))
+          if (runEv) { activeEvalJob.value = runEv; hasRunning = true }
+          else if (!activeEvalJob.value) {
             const firstEv = res.items.find((j) => j.job_type === 'factor_eval' && j.status === 'done')
             if (firstEv) await openJobDetail(firstEv.id, false)
           }
+          const runSw = res.items.find((j) => j.job_type === 'param_sweep' && (j.status === 'pending' || j.status === 'running'))
+          if (runSw) { activeSweepJob.value = runSw; hasRunning = true }
+          const runBa = res.items.find((j) => j.job_type === 'factor_batch' && (j.status === 'pending' || j.status === 'running'))
+          if (runBa) { activeBatchJob.value = runBa; hasRunning = true }
+          if (hasRunning) ensurePolling()
         }
       } catch (e) {}
     }
@@ -648,7 +771,7 @@ export const BacktestLab = {
     function ensurePolling() {
       if (pollTimer) return
       pollTimer = setInterval(async () => {
-        const running = [activeBtJob.value, activeSweepJob.value, activeEvalJob.value, activeBatchJob.value, activeSyncJob.value].filter(
+        const running = [activeBtJob.value, activeSweepJob.value, activeEvalJob.value, activeBatchJob.value].filter(
           (j) => j && (j.status === 'pending' || j.status === 'running')
         )
         if (!running.length) {
@@ -666,16 +789,11 @@ export const BacktestLab = {
             else if (u.job_type === 'param_sweep') activeSweepJob.value = u
             else if (u.job_type === 'factor_eval') activeEvalJob.value = u
             else if (u.job_type === 'factor_batch') activeBatchJob.value = u
-            else if (u.job_type === 'sync_data') activeSyncJob.value = u
 
             if (u.status === 'done' || u.status === 'failed') {
               anyDone = true
               if (u.status === 'done') {
-                if (u.job_type === 'sync_data') {
-                  message.success('数据仓同步完成（已同步至全站共享历史库）')
-                  loadStatus(true)
-                  loadStoreSymbols()
-                } else if (u.job_type === 'backtest') {
+                if (u.job_type === 'backtest') {
                   compareCache[u.id] = u
                   message.success('回测完成')
                 } else if (u.job_type === 'param_sweep') {
@@ -874,6 +992,7 @@ export const BacktestLab = {
       btForm.strategy = 'qlib_multifactor'
       btForm.universe = evalForm.universe
       btForm.custom_factor_ids = [...factorBasket.value]
+      cfgOpen.strategy = true
       rightRailMode.value = 'config'
       showRightRail.value = true
       mode.value = 'workbench'
@@ -885,6 +1004,7 @@ export const BacktestLab = {
       btForm.strategy = 'factor_timing'
       btForm.sp.factor_id = fid
       btForm.custom_factor_ids = []
+      cfgOpen.strategy = true
       rightRailMode.value = 'config'
       showRightRail.value = true
       mode.value = 'workbench'
@@ -933,27 +1053,43 @@ export const BacktestLab = {
       message.success(`已导入 ${codes.length} 个自选标的`)
     }
 
-    async function runSync() {
-      const customText = (syncForm.custom_symbols_text || '').trim()
-      if (!syncForm.scopes.length && !customText) {
-        return message.warning('请至少勾选一个标的池或输入自定义代码')
-      }
-      const payload = {
-        scopes: [...syncForm.scopes],
-        hs300_limit: syncForm.hs300_limit,
-        zz500_limit: syncForm.zz500_limit,
-        custom_symbols: customText,
-      }
-      if (syncForm.rangeMode === 'custom_dates') {
-        payload.start_date = syncForm.start_date
-        payload.end_date = syncForm.end_date
+    async function runSync(resumeTask = null) {
+      const isResume = resumeTask && typeof resumeTask === 'object' && resumeTask.task_key
+      let payload
+      if (isResume) {
+        const rp = resumeTask.params || {}
+        payload = {
+          scopes: Array.isArray(rp.scopes) && rp.scopes.length ? rp.scopes : [...syncForm.scopes],
+          start_date: rp.start_date || resumeTask.start_date || syncForm.start_date,
+          end_date: rp.end_date || resumeTask.end_date || syncForm.end_date,
+          hs300_limit: rp.hs300_limit || syncForm.hs300_limit,
+          zz500_limit: rp.zz500_limit || syncForm.zz500_limit,
+          custom_symbols: rp.custom_symbols || '',
+          resume_task_key: resumeTask.task_key,
+        }
       } else {
-        payload.years = Number(syncForm.years) || 3
+        const customText = (syncForm.custom_symbols_text || '').trim()
+        if (!syncForm.scopes.length && !customText) {
+          return message.warning('请至少勾选一个标的池或输入自定义代码')
+        }
+        payload = {
+          scopes: [...syncForm.scopes],
+          hs300_limit: syncForm.hs300_limit,
+          zz500_limit: syncForm.zz500_limit,
+          custom_symbols: customText,
+        }
+        if (syncForm.rangeMode === 'custom_dates') {
+          payload.start_date = syncForm.start_date
+          payload.end_date = syncForm.end_date
+        } else {
+          payload.years = Number(syncForm.years) || 3
+        }
       }
-      const res = await qPost('/api/quant/sync', payload)
-      if (!res || !res.ok) return message.error((res && res.error) || '提交同步失败')
-      activeSyncJob.value = { id: res.job_id, job_type: 'sync_data', title: res.title, status: 'pending', progress: 3, stage: '正在启动多市场同步任务...' }
-      ensurePolling()
+      await startGlobalSync(payload, !!isResume)
+    }
+
+    async function stopSync() {
+      await stopGlobalSync()
     }
 
     function jumpBacktestSymbol(sym, mkt) {
@@ -1005,6 +1141,13 @@ export const BacktestLab = {
     const btResult = computed(() => (activeBtJob.value && activeBtJob.value.result && activeBtJob.value.result.ok ? activeBtJob.value.result : null))
     const sweepResult = computed(() => (activeSweepJob.value && activeSweepJob.value.result && activeSweepJob.value.result.ok ? activeSweepJob.value.result : null))
     const evalResult = computed(() => (activeEvalJob.value && activeEvalJob.value.result && activeEvalJob.value.result.ok ? activeEvalJob.value.result : null))
+    // Strict boolean loading flags — NEVER pass null into Ant Design Vue <a-button :loading>,
+    // because typeof null === 'object' crashes antd Button (reading 'delay') and hides the button!
+    const isBtRunning = computed(() => !!(activeBtJob.value && (activeBtJob.value.status === 'pending' || activeBtJob.value.status === 'running')))
+    const isSweepRunning = computed(() => !!(activeSweepJob.value && (activeSweepJob.value.status === 'pending' || activeSweepJob.value.status === 'running')))
+    const isBatchRunning = computed(() => !!(activeBatchJob.value && (activeBatchJob.value.status === 'pending' || activeBatchJob.value.status === 'running')))
+    const isEvalRunning = computed(() => !!(activeEvalJob.value && (activeEvalJob.value.status === 'pending' || activeEvalJob.value.status === 'running')))
+    const isSyncRunning = computed(() => quantSyncStore.isRunning)
     const vectorbtTemplates = computed(() => (envStatus.value.templates || []).filter((t) => t.engine === 'vectorbt'))
     const isSingleAssetStrategy = computed(() => btForm.engine === 'vectorbt' && btForm.strategy !== 'etf_momentum_rotation')
     const universeOptions = computed(() => {
@@ -1211,20 +1354,31 @@ export const BacktestLab = {
       if (m === 'factors') loadLeaderboard()
     })
 
+    let offSyncEv = null
     onMounted(() => {
+      hydrateActiveSync(true)
       loadStatus()
       loadFactors()
       loadLeaderboard()
       loadJobs()
+      offSyncEv = onQuantSyncEvent(() => {
+        loadStatus(true)
+        loadStoreSymbols()
+        loadJobs()
+      })
     })
-    onBeforeUnmount(() => { if (pollTimer) clearInterval(pollTimer) })
+    onBeforeUnmount(() => {
+      if (pollTimer) clearInterval(pollTimer)
+      if (offSyncEv) offSyncEv()
+    })
 
     return {
       mode, showRunsRail, showRightRail, rightRailMode, showBottomDock, dockHeight,
-      mainView, dockTab, tradeFilter, focusedTrade, equityLogScale, equityRange, sweepMetric, cfgOpen,
+      mainView, dockTab, tradeFilter, focusedTrade, equityLogScale, equityRange, sweepMetric, cfgOpen, openAccKeys,
       envLoading, envStatus, storeSymbols, symbolSearch, symbolMarketFilter, filteredStoreSymbols,
-      jobs, btJobs, runsFilter, compareIds, compareRuns, activeBtJob, activeSweepJob, activeEvalJob, activeBatchJob, activeSyncJob,
+      jobs, btJobs, runsFilter, compareIds, compareRuns, activeBtJob, activeSweepJob, activeEvalJob, activeBatchJob, activeSyncJob, resumableSync,
       btForm, btResult, sweepResult, evalResult, vectorbtTemplates, isSingleAssetStrategy, universeOptions, filteredTrades,
+      isBtRunning, isSweepRunning, isBatchRunning, isEvalRunning, isSyncRunning,
       factors, factorFamily, factorSearch, factorSortKey, factorSortDir, factorBasket, selectedFactorId, customFactorExpr, useCustomExpr,
       evalForm, familyCounts, sortedLeaderboardRows, corrModalOpen, corrLoading, corrResult,
       syncForm,
@@ -1234,7 +1388,7 @@ export const BacktestLab = {
       loadStatus, loadJobs, loadStoreSymbols, openJobDetail, setQuickDateRange, applyPreset, selectEngine, onStrategyChange, onPickSymbol,
       runBacktest, runParamSweep, applySweepCell, runFactorEval, runFactorBatch, toggleBasket, toggleFactorSort,
       openFactorCorrModal, sendBasketToQlib, sendSingleFactorToTiming, toggleCompare, deleteJob, onClickTradeRow,
-      toggleSyncScope, importWatchlistToSync, runSync, jumpBacktestSymbol, askAiReviewBacktest, startDockResize,
+      toggleSyncScope, importWatchlistToSync, runSync, stopSync, jumpBacktestSymbol, askAiReviewBacktest, startDockResize,
       fmtSigned, clsVal,
     }
   },
@@ -1244,11 +1398,18 @@ export const BacktestLab = {
   <div class="bt-topbar">
     <div class="bt-tb-left">
       <span class="ft-brand-pill"><span>QUANT</span></span>
-      <div class="bt-mode-strip" role="tablist">
-        <button type="button" :class="['bt-mt', mode === 'workbench' ? 'on' : '']" @click="mode = 'workbench'">回测工作台</button>
-        <button type="button" :class="['bt-mt', mode === 'factors' ? 'on' : '']" @click="mode = 'factors'">因子投研台 ({{ factors.length }})</button>
-        <button type="button" :class="['bt-mt', mode === 'data' ? 'on' : '']" @click="mode = 'data'">数据仓 &amp; 引擎</button>
-      </div>
+      <aui-highlight class="aui-hl-card-surface" mode="parent" container-class-name="bt-mode-strip"
+                     role="tablist" :model-value="mode" :controlled-items="true" :click="false">
+        <aui-highlight-item value="workbench" as-child>
+          <button type="button" :class="['bt-mt', mode === 'workbench' ? 'on' : '']" @click="mode = 'workbench'">回测工作台</button>
+        </aui-highlight-item>
+        <aui-highlight-item value="factors" as-child>
+          <button type="button" :class="['bt-mt', mode === 'factors' ? 'on' : '']" @click="mode = 'factors'">因子投研台 ({{ factors.length }})</button>
+        </aui-highlight-item>
+        <aui-highlight-item value="data" as-child>
+          <button type="button" :class="['bt-mt', mode === 'data' ? 'on' : '']" @click="mode = 'data'">数据仓 &amp; 引擎</button>
+        </aui-highlight-item>
+      </aui-highlight>
       <template v-if="mode === 'workbench'">
         <span class="ft-sep"></span>
         <button type="button" :class="['bt-tbtn', showRunsRail ? 'on' : '']" @click="showRunsRail = !showRunsRail">实验栏</button>
@@ -1258,14 +1419,9 @@ export const BacktestLab = {
     </div>
 
     <div class="bt-tb-right ft-mono">
-      <button type="button" class="bt-stat-pill" :class="envStatus.store && envStatus.store.exists ? 'ok' : 'warn'"
-              @click="mode = 'data'" title="点击管理本地数据仓（同步后全站共享）">
-        <span class="bt-dot"></span>
-        <template v-if="envStatus.store && envStatus.store.exists">
-          {{ envStatus.store.symbols }}标的 · {{ envStatus.store.min_date }} ~ {{ envStatus.store.max_date }}
-        </template>
-        <template v-else>未同步数据仓</template>
-      </button>
+      <a-button v-if="mode === 'workbench'" type="primary" size="small"
+                :loading="isBtRunning"
+                @click="runBacktest">▶ 运行回测</a-button>
       <button type="button" class="bt-tbtn" :disabled="envLoading" @click="loadStatus(true); loadJobs()">刷新</button>
     </div>
   </div>
@@ -1276,10 +1432,13 @@ export const BacktestLab = {
     <aside v-if="showRunsRail" class="bt-rail-left">
       <div class="bt-rail-head">
         <span class="bt-rh-title">实验记录 ({{ btJobs.length }})</span>
-        <div class="bt-seg">
-          <button v-for="rf in [{k:'all',l:'全'},{k:'vectorbt',l:'VBT'},{k:'qlib',l:'QL'}]" :key="rf.k" type="button"
-                  :class="['bt-seg-btn', runsFilter === rf.k ? 'on' : '']" @click="runsFilter = rf.k">{{ rf.l }}</button>
-        </div>
+        <aui-highlight class="aui-hl-pill-surface" mode="parent" container-class-name="bt-seg"
+                       :model-value="runsFilter" :controlled-items="true" :click="false">
+          <aui-highlight-item v-for="rf in [{k:'all',l:'全'},{k:'vectorbt',l:'VBT'},{k:'qlib',l:'QL'}]" :key="rf.k" :value="rf.k" as-child>
+            <button type="button"
+                    :class="['bt-seg-btn', runsFilter === rf.k ? 'on' : '']" @click="runsFilter = rf.k">{{ rf.l }}</button>
+          </aui-highlight-item>
+        </aui-highlight>
       </div>
       <div v-if="compareIds.length" class="bt-cmp-banner">
         <span>对比已选 <b>{{ compareIds.length }}</b> 条</span>
@@ -1333,16 +1492,19 @@ export const BacktestLab = {
           </span>
         </div>
         <div class="bt-ribbon ft-mono">
-          <div class="bt-rb-cell"><span>累计收益</span><strong :class="clsVal(btResult.kpis.total_return)">{{ fmtSigned(btResult.kpis.total_return) }}</strong></div>
-          <div class="bt-rb-cell"><span>策略年化</span><strong :class="clsVal(btResult.kpis.annual_return)">{{ fmtSigned(btResult.kpis.annual_return) }}</strong></div>
-          <div class="bt-rb-cell"><span>基准收益</span><strong>{{ fmtSigned(btResult.kpis.benchmark_return) }}</strong></div>
-          <div class="bt-rb-cell"><span>超额收益</span><strong :class="clsVal(btResult.kpis.excess_return)">{{ fmtSigned(btResult.kpis.excess_return) }}</strong></div>
-          <div class="bt-rb-cell"><span>夏普 Sharpe</span><strong :class="btResult.kpis.sharpe >= 1 ? 'bt-up' : ''">{{ btResult.kpis.sharpe }}</strong></div>
-          <div class="bt-rb-cell"><span>最大回撤</span><strong class="bt-down">{{ btResult.kpis.max_drawdown }}%</strong></div>
-          <div class="bt-rb-cell"><span>胜率 / 盈亏比</span><strong>{{ btResult.kpis.win_rate }}% / {{ btResult.kpis.profit_factor }}</strong></div>
+          <div class="bt-rb-cell"><span>累计收益</span><strong :class="clsVal(btResult.kpis.total_return)"><aui-metric-number :value="btResult.kpis.total_return" :decimals="2" signed suffix="%" :fallback="fmtSigned(btResult.kpis.total_return)" /></strong></div>
+          <div class="bt-rb-cell"><span>策略年化</span><strong :class="clsVal(btResult.kpis.annual_return)"><aui-metric-number :value="btResult.kpis.annual_return" :decimals="2" signed suffix="%" :fallback="fmtSigned(btResult.kpis.annual_return)" /></strong></div>
+          <div class="bt-rb-cell"><span>基准收益</span><strong><aui-metric-number :value="btResult.kpis.benchmark_return" :decimals="2" signed suffix="%" :fallback="fmtSigned(btResult.kpis.benchmark_return)" /></strong></div>
+          <div class="bt-rb-cell"><span>超额收益</span><strong :class="clsVal(btResult.kpis.excess_return)"><aui-metric-number :value="btResult.kpis.excess_return" :decimals="2" signed suffix="%" :fallback="fmtSigned(btResult.kpis.excess_return)" /></strong></div>
+          <div class="bt-rb-cell"><span>夏普 Sharpe</span><strong :class="btResult.kpis.sharpe >= 1 ? 'bt-up' : ''"><aui-metric-number :value="btResult.kpis.sharpe" :decimals="2" /></strong></div>
+          <div class="bt-rb-cell"><span>最大回撤</span><strong class="bt-down"><aui-metric-number :value="btResult.kpis.max_drawdown" :decimals="2" suffix="%" /></strong></div>
+          <div class="bt-rb-cell"><span>胜率 / 盈亏比</span><strong><aui-metric-number :value="btResult.kpis.win_rate" :decimals="1" suffix="%" /> / <aui-metric-number :value="btResult.kpis.profit_factor" :decimals="2" /></strong></div>
           <div class="bt-rb-cell">
             <span>{{ btResult.meta.oos_rank_ic != null ? '样本外 IC' : '交易笔数' }}</span>
-            <strong>{{ btResult.meta.oos_rank_ic != null ? fmtSigned(btResult.meta.oos_rank_ic, '', 4) : (btResult.kpis.total_trades + ' 笔') }}</strong>
+            <strong>
+              <aui-metric-number v-if="btResult.meta.oos_rank_ic != null" :value="btResult.meta.oos_rank_ic" :decimals="4" signed />
+              <aui-metric-number v-else :value="btResult.kpis.total_trades" :decimals="0" suffix=" 笔" />
+            </strong>
           </div>
         </div>
       </div>
@@ -1350,28 +1512,47 @@ export const BacktestLab = {
       <!-- 主图画布 -->
       <div class="bt-canvas-panel">
         <div class="bt-panel-bar">
-          <div class="bt-view-tabs">
-            <button type="button" :class="['bt-vtab', mainView === 'equity' ? 'on' : '']" @click="mainView = 'equity'">净值 &amp; 回撤联动</button>
-            <button type="button" :class="['bt-vtab', mainView === 'kline' ? 'on' : '']"
-                    :disabled="!(btResult && btResult.kline_replay)"
-                    @click="mainView = 'kline'">K 线买卖点复盘</button>
-            <button type="button" :class="['bt-vtab', mainView === 'risk' ? 'on' : '']" @click="mainView = 'risk'">风险归因 &amp; 分布</button>
-            <button type="button" :class="['bt-vtab', mainView === 'sweep' ? 'on' : '']" @click="mainView = 'sweep'">参数敏感性热力图</button>
-          </div>
+          <aui-highlight class="aui-hl-card-surface" mode="parent" container-class-name="bt-view-tabs"
+                         :model-value="mainView" :controlled-items="true" :click="false">
+            <aui-highlight-item value="equity" as-child>
+              <button type="button" :class="['bt-vtab', mainView === 'equity' ? 'on' : '']" @click="mainView = 'equity'">净值 &amp; 回撤联动</button>
+            </aui-highlight-item>
+            <aui-highlight-item value="kline" as-child>
+              <button type="button" :class="['bt-vtab', mainView === 'kline' ? 'on' : '']"
+                      :disabled="!(btResult && btResult.kline_replay)"
+                      @click="mainView = 'kline'">K 线买卖点复盘</button>
+            </aui-highlight-item>
+            <aui-highlight-item value="risk" as-child>
+              <button type="button" :class="['bt-vtab', mainView === 'risk' ? 'on' : '']" @click="mainView = 'risk'">风险归因 &amp; 分布</button>
+            </aui-highlight-item>
+            <aui-highlight-item value="sweep" as-child>
+              <button type="button" :class="['bt-vtab', mainView === 'sweep' ? 'on' : '']" @click="mainView = 'sweep'">参数敏感性热力图</button>
+            </aui-highlight-item>
+          </aui-highlight>
           <div class="bt-view-tools">
             <template v-if="mainView === 'equity' && btResult">
-              <div class="bt-seg">
-                <button v-for="rk in ['1M','3M','6M','1Y','ALL']" :key="rk" type="button"
-                        :class="['bt-seg-btn', equityRange === rk ? 'on' : '']" @click="equityRange = rk">{{ rk }}</button>
-              </div>
+              <aui-highlight class="aui-hl-pill-surface" mode="parent" container-class-name="bt-seg"
+                             :model-value="equityRange" :controlled-items="true" :click="false">
+                <aui-highlight-item v-for="rk in ['1M','3M','6M','1Y','ALL']" :key="rk" :value="rk" as-child>
+                  <button type="button"
+                          :class="['bt-seg-btn', equityRange === rk ? 'on' : '']" @click="equityRange = rk">{{ rk }}</button>
+                </aui-highlight-item>
+              </aui-highlight>
               <button type="button" :class="['bt-tbtn', equityLogScale ? 'on' : '']" @click="equityLogScale = !equityLogScale">对数</button>
             </template>
             <template v-else-if="mainView === 'sweep'">
-              <div class="bt-seg">
-                <button type="button" :class="['bt-seg-btn', sweepMetric === 'sharpe' ? 'on' : '']" @click="sweepMetric = 'sharpe'">夏普</button>
-                <button type="button" :class="['bt-seg-btn', sweepMetric === 'return' ? 'on' : '']" @click="sweepMetric = 'return'">年化%</button>
-                <button type="button" :class="['bt-seg-btn', sweepMetric === 'maxdd' ? 'on' : '']" @click="sweepMetric = 'maxdd'">回撤%</button>
-              </div>
+              <aui-highlight class="aui-hl-pill-surface" mode="parent" container-class-name="bt-seg"
+                             :model-value="sweepMetric" :controlled-items="true" :click="false">
+                <aui-highlight-item value="sharpe" as-child>
+                  <button type="button" :class="['bt-seg-btn', sweepMetric === 'sharpe' ? 'on' : '']" @click="sweepMetric = 'sharpe'">夏普</button>
+                </aui-highlight-item>
+                <aui-highlight-item value="return" as-child>
+                  <button type="button" :class="['bt-seg-btn', sweepMetric === 'return' ? 'on' : '']" @click="sweepMetric = 'return'">年化%</button>
+                </aui-highlight-item>
+                <aui-highlight-item value="maxdd" as-child>
+                  <button type="button" :class="['bt-seg-btn', sweepMetric === 'maxdd' ? 'on' : '']" @click="sweepMetric = 'maxdd'">回撤%</button>
+                </aui-highlight-item>
+              </aui-highlight>
               <button type="button" class="bt-tbtn on" @click="runParamSweep">扫描当前策略</button>
             </template>
             <button v-if="btResult" type="button" class="bt-tbtn" @click="askAiReviewBacktest">AI 诊断</button>
@@ -1472,21 +1653,21 @@ export const BacktestLab = {
         </div>
       </div>
 
-      <!-- 底部 Dock：含聚宽同款「交易详情 / 每日持仓与收益 / 最新持仓 / 特征重要度 / 运行日志 / 实验对比」 -->
-      <div v-if="showBottomDock && btResult" class="bt-dock" :style="{ height: dockHeight + 'px' }">
+      <!-- 底部 Dock：含聚宽同款「交易详情 / 每日持仓与收益 / 最新持仓 / 特征重要度 / 运行日志 / 实验对比」（无结果时同样常驻可开关） -->
+      <div v-if="showBottomDock" class="bt-dock" :style="{ height: dockHeight + 'px' }">
         <div class="bt-dock-handle" title="上下拖动调整高度" @pointerdown="startDockResize"></div>
         <div class="bt-panel-bar">
           <div class="bt-view-tabs">
-            <button type="button" :class="['bt-vtab', dockTab === 'trades' ? 'on' : '']" @click="dockTab = 'trades'">交易详情 ({{ (btResult.trades || []).length }})</button>
-            <button type="button" :class="['bt-vtab', dockTab === 'positions' ? 'on' : '']" @click="dockTab = 'positions'">每日持仓 &amp; 收益 ({{ (btResult.daily_positions || []).length }})</button>
-            <button v-if="btResult.latest_holdings && btResult.latest_holdings.length" type="button"
+            <button type="button" :class="['bt-vtab', dockTab === 'trades' ? 'on' : '']" @click="dockTab = 'trades'">交易详情 ({{ (btResult && btResult.trades || []).length }})</button>
+            <button type="button" :class="['bt-vtab', dockTab === 'positions' ? 'on' : '']" @click="dockTab = 'positions'">每日持仓 &amp; 收益 ({{ (btResult && btResult.daily_positions || []).length }})</button>
+            <button v-if="btResult && btResult.latest_holdings && btResult.latest_holdings.length" type="button"
                     :class="['bt-vtab', dockTab === 'holdings' ? 'on' : '']" @click="dockTab = 'holdings'">最新持仓信号 ({{ btResult.latest_holdings.length }})</button>
-            <button v-if="btResult.feature_importance && btResult.feature_importance.length" type="button"
+            <button v-if="btResult && btResult.feature_importance && btResult.feature_importance.length" type="button"
                     :class="['bt-vtab', dockTab === 'importance' ? 'on' : '']" @click="dockTab = 'importance'">因子贡献度</button>
-            <button type="button" :class="['bt-vtab', dockTab === 'logs' ? 'on' : '']" @click="dockTab = 'logs'">运行日志 ({{ (btResult.run_logs || []).length }})</button>
-            <button v-if="compareRuns.length" type="button" :class="['bt-vtab', dockTab === 'compare' ? 'on' : '']" @click="dockTab = 'compare'">实验对比 ({{ compareRuns.length + 1 }})</button>
+            <button type="button" :class="['bt-vtab', dockTab === 'logs' ? 'on' : '']" @click="dockTab = 'logs'">运行日志 ({{ (btResult && btResult.run_logs || []).length }})</button>
+            <button v-if="btResult && compareRuns.length" type="button" :class="['bt-vtab', dockTab === 'compare' ? 'on' : '']" @click="dockTab = 'compare'">实验对比 ({{ compareRuns.length + 1 }})</button>
           </div>
-          <div v-if="dockTab === 'trades'" class="bt-view-tools">
+          <div v-if="btResult && dockTab === 'trades'" class="bt-view-tools">
             <span v-if="btResult.kline_replay" class="hint" style="font-size:11px">点击行定位 K 线</span>
             <div class="bt-seg">
               <button type="button" :class="['bt-seg-btn', tradeFilter === 'all' ? 'on' : '']" @click="tradeFilter = 'all'">全</button>
@@ -1497,7 +1678,10 @@ export const BacktestLab = {
         </div>
 
         <div class="bt-dock-body">
-          <table v-if="dockTab === 'trades'" class="bt-tbl">
+          <div v-if="!btResult" class="bt-rail-empty" style="padding:28px 16px">
+            暂无回测明细 — 点击右上角或右下角「▶ 运行回测」后，此处将展示逐笔交易详情、每日持仓与收益、最新持仓信号与引擎运行日志。
+          </div>
+          <table v-else-if="dockTab === 'trades'" class="bt-tbl">
             <thead><tr><th>标的</th><th>买入日</th><th>卖出日</th><th>买价</th><th>卖价</th><th>数量</th><th>盈亏</th><th>收益率</th><th>费用</th><th>持仓</th></tr></thead>
             <tbody>
               <tr v-if="!filteredTrades.length"><td colspan="10" style="text-align:center;color:var(--muted-foreground);padding:16px">无匹配成交记录</td></tr>
@@ -1606,16 +1790,27 @@ export const BacktestLab = {
           </div>
         </div>
 
+        <!-- Animate UI Reka Accordion (键盘导航 + 底部边缘防截断遮罩 + 轻模糊清焦) -->
+        <aui-accordion type="multiple" v-model="openAccKeys" class="aui-acc-root">
         <!-- 1. 引擎 · 策略 · 标的 -->
-        <div class="bt-acc">
-          <button type="button" class="bt-acc-h" @click="cfgOpen.strategy = !cfgOpen.strategy">
-            <span>1. 引擎 · 策略 · 标的</span><span>{{ cfgOpen.strategy ? '▾' : '▸' }}</span>
-          </button>
-          <div v-if="cfgOpen.strategy" class="bt-acc-b">
-            <div class="bt-seg" style="width:100%">
-              <button type="button" :class="['bt-seg-btn', btForm.engine === 'vectorbt' ? 'on' : '']" style="flex:1" @click="selectEngine('vectorbt')">VectorBT 择时/轮动</button>
-              <button type="button" :class="['bt-seg-btn', btForm.engine === 'qlib' ? 'on' : '']" style="flex:1" @click="selectEngine('qlib')">Qlib 多因子选股</button>
-            </div>
+        <aui-accordion-item value="strategy" class="bt-acc">
+          <aui-accordion-header class="aui-acc-header">
+            <aui-accordion-trigger class="aui-acc-trigger">
+              <span>1. 引擎 · 策略 · 标的</span>
+              <span class="bt-acc-chev" aria-hidden="true">▸</span>
+            </aui-accordion-trigger>
+          </aui-accordion-header>
+          <aui-accordion-content>
+            <div class="bt-acc-b">
+            <aui-highlight class="aui-hl-pill-surface" mode="parent" container-class-name="bt-seg" style="width:100%"
+                           :model-value="btForm.engine" :controlled-items="true" :click="false">
+              <aui-highlight-item value="vectorbt" as-child>
+                <button type="button" :class="['bt-seg-btn', btForm.engine === 'vectorbt' ? 'on' : '']" style="flex:1" @click="selectEngine('vectorbt')">VectorBT 择时/轮动</button>
+              </aui-highlight-item>
+              <aui-highlight-item value="qlib" as-child>
+                <button type="button" :class="['bt-seg-btn', btForm.engine === 'qlib' ? 'on' : '']" style="flex:1" @click="selectEngine('qlib')">Qlib 多因子选股</button>
+              </aui-highlight-item>
+            </aui-highlight>
 
             <div v-if="btForm.engine === 'vectorbt'" class="bt-fg">
               <label>策略模板</label>
@@ -1625,7 +1820,7 @@ export const BacktestLab = {
             </div>
 
             <div v-if="isSingleAssetStrategy" class="bt-fg">
-              <label>回测标的 (支持 A股 / 美股 / 港股 / ETF / 加密)</label>
+              <label>回测标的</label>
               <div style="display:flex;gap:4px">
                 <a-input v-model:value="btForm.symbol" size="small" placeholder="510300.SH / NVDA / 0700.HK" />
                 <symbol-picker mode="add" compact width="96px" :watchlist="watchlist" placeholder="搜标的" @pick="onPickSymbol" />
@@ -1646,7 +1841,7 @@ export const BacktestLab = {
             <div v-if="btForm.strategy === 'dual_ma'" class="bt-g2">
               <div class="bt-fg"><label>快线周期</label><a-input-number v-model:value="btForm.sp.fast" :min="2" :max="120" size="small" style="width:100%" /></div>
               <div class="bt-fg"><label>慢线周期</label><a-input-number v-model:value="btForm.sp.slow" :min="5" :max="250" size="small" style="width:100%" /></div>
-              <div class="bt-sw-row" style="grid-column:span 2"><span>使用指数加权 EMA</span><a-switch v-model:checked="btForm.sp.ema" size="small" /></div>
+              <div class="bt-sw-row" style="grid-column:span 2"><span>使用指数加权 EMA</span><aui-switch v-model:checked="btForm.sp.ema" size="small" /></div>
             </div>
             <div v-else-if="btForm.strategy === 'macd_trend'" class="bt-g2">
               <div class="bt-fg"><label>快线</label><a-input-number v-model:value="btForm.sp.fast" :min="4" :max="50" size="small" style="width:100%" /></div>
@@ -1668,8 +1863,8 @@ export const BacktestLab = {
               <div class="bt-fg"><label>动量回看(日)</label><a-input-number v-model:value="btForm.sp.lookback" :min="5" :max="120" size="small" style="width:100%" /></div>
               <div class="bt-fg"><label>调仓周期(日)</label><a-input-number v-model:value="btForm.sp.rebalance_days" :min="1" :max="60" size="small" style="width:100%" /></div>
               <div class="bt-fg"><label>持仓 Top-K</label><a-input-number v-model:value="btForm.sp.top_k" :min="1" :max="15" size="small" style="width:100%" /></div>
-              <div class="bt-sw-row" style="padding-top:16px"><span>空仓避险</span><a-switch v-model:checked="btForm.sp.abs_momentum_filter" size="small" /></div>
-              <div class="bt-sw-row" style="grid-column:span 2"><span>波动率风险调整 (动量/波动)</span><a-switch v-model:checked="btForm.sp.risk_adjusted" size="small" /></div>
+              <div class="bt-sw-row" style="padding-top:16px"><span>空仓避险</span><aui-switch v-model:checked="btForm.sp.abs_momentum_filter" size="small" /></div>
+              <div class="bt-sw-row" style="grid-column:span 2"><span>波动率风险调整 (动量/波动)</span><aui-switch v-model:checked="btForm.sp.risk_adjusted" size="small" /></div>
             </div>
             <div v-else-if="btForm.strategy === 'factor_timing'" class="bt-g2">
               <div class="bt-fg" style="grid-column:span 2">
@@ -1710,15 +1905,20 @@ export const BacktestLab = {
               <div class="bt-fg"><label>调仓间隔(日)</label><a-input-number v-model:value="btForm.sp.rebalance_days" :min="1" :max="30" size="small" style="width:100%" /></div>
               <div class="bt-fg"><label>预测周期(日)</label><a-input-number v-model:value="btForm.sp.label_horizon" :min="1" :max="20" size="small" style="width:100%" /></div>
             </div>
-          </div>
-        </div>
+            </div>
+          </aui-accordion-content>
+        </aui-accordion-item>
 
-        <!-- 2. 资金 · 基准 · 摩擦成本 -->
-        <div class="bt-acc">
-          <button type="button" class="bt-acc-h" @click="cfgOpen.cost = !cfgOpen.cost">
-            <span>2. 资金 · 基准 · 交易成本</span><span>{{ cfgOpen.cost ? '▾' : '▸' }}</span>
-          </button>
-          <div v-if="cfgOpen.cost" class="bt-acc-b bt-g2">
+        <!-- 2. 交易 -->
+        <aui-accordion-item value="cost" class="bt-acc">
+          <aui-accordion-header class="aui-acc-header">
+            <aui-accordion-trigger class="aui-acc-trigger">
+              <span>2. 交易</span>
+              <span class="bt-acc-chev" aria-hidden="true">▸</span>
+            </aui-accordion-trigger>
+          </aui-accordion-header>
+          <aui-accordion-content>
+            <div class="bt-acc-b bt-g2">
             <div class="bt-fg"><label>初始资金</label><a-input-number v-model:value="btForm.init_cash" :min="10000" :step="100000" size="small" style="width:100%" /></div>
             <div class="bt-fg">
               <label>对比基准 (支持A/美/港)</label>
@@ -1734,28 +1934,26 @@ export const BacktestLab = {
             </div>
             <div class="bt-fg"><label>佣金 (万分之)</label><a-input-number v-model:value="btForm.fees_bps" :min="0" :max="50" :step="0.5" size="small" style="width:100%" /></div>
             <div class="bt-fg"><label>滑点 (万分之)</label><a-input-number v-model:value="btForm.slippage_bps" :min="0" :max="50" :step="1" size="small" style="width:100%" /></div>
-          </div>
-        </div>
+            </div>
+          </aui-accordion-content>
+        </aui-accordion-item>
 
         <!-- 3. 止盈止损 -->
-        <div v-if="isSingleAssetStrategy" class="bt-acc">
-          <button type="button" class="bt-acc-h" @click="cfgOpen.risk = !cfgOpen.risk">
-            <span>3. 止盈止损风控</span><span>{{ cfgOpen.risk ? '▾' : '▸' }}</span>
-          </button>
-          <div v-if="cfgOpen.risk" class="bt-acc-b bt-g2">
+        <aui-accordion-item v-if="isSingleAssetStrategy" value="risk" class="bt-acc">
+          <aui-accordion-header class="aui-acc-header">
+            <aui-accordion-trigger class="aui-acc-trigger">
+              <span>3. 止盈止损风控</span>
+              <span class="bt-acc-chev" aria-hidden="true">▸</span>
+            </aui-accordion-trigger>
+          </aui-accordion-header>
+          <aui-accordion-content>
+            <div class="bt-acc-b bt-g2">
             <div class="bt-fg"><label>固定止损 % (0=关)</label><a-input-number v-model:value="btForm.stop_loss_pct" :min="0" :max="50" size="small" style="width:100%" /></div>
             <div class="bt-fg"><label>固定止盈 % (0=关)</label><a-input-number v-model:value="btForm.take_profit_pct" :min="0" :max="200" size="small" style="width:100%" /></div>
-          </div>
-        </div>
-
-        <div class="bt-cfg-foot">
-          <a-button type="primary" block size="small"
-                    :loading="activeBtJob && (activeBtJob.status === 'pending' || activeBtJob.status === 'running')"
-                    @click="runBacktest">运行回测</a-button>
-          <a-button v-if="btForm.engine === 'vectorbt' && !['factor_timing','custom_code'].includes(btForm.strategy)" block size="small" style="margin-top:6px"
-                    :loading="activeSweepJob && (activeSweepJob.status === 'pending' || activeSweepJob.status === 'running')"
-                    @click="runParamSweep">2D 参数敏感性热力扫描</a-button>
-        </div>
+            </div>
+          </aui-accordion-content>
+        </aui-accordion-item>
+        </aui-accordion>
       </div>
 
       <!-- 机构指标表 -->
@@ -1796,6 +1994,16 @@ export const BacktestLab = {
           </div>
         </template>
       </div>
+
+      <!-- 永久吸底操作栏：不随配置滚动消失，切换指标表也可见 -->
+      <div class="bt-cfg-foot">
+        <a-button type="primary" block size="small"
+                  :loading="isBtRunning"
+                  @click="runBacktest">▶ 运行回测</a-button>
+        <a-button v-if="btForm.engine === 'vectorbt' && !['factor_timing','custom_code'].includes(btForm.strategy)" block size="small" style="margin-top:6px"
+                  :loading="isSweepRunning"
+                  @click="runParamSweep">2D 参数敏感性热力扫描</a-button>
+      </div>
     </aside>
   </div>
 
@@ -1813,7 +2021,7 @@ export const BacktestLab = {
         <a-select-option v-for="u in universeOptions" :key="u.value" :value="u.value">{{ u.label }}</a-select-option>
       </a-select>
       <a-button type="primary" size="small"
-                :loading="activeBatchJob && (activeBatchJob.status === 'pending' || activeBatchJob.status === 'running')"
+                :loading="isBatchRunning"
                 @click="runFactorBatch">批量体检当前家族</a-button>
 
       <span class="spacer"></span>
@@ -1888,7 +2096,7 @@ export const BacktestLab = {
       </div>
       <a-checkbox v-model:checked="evalForm.flip_sign" style="font-size:12px">反向</a-checkbox>
       <a-button type="primary" size="small"
-                :loading="activeEvalJob && (activeEvalJob.status === 'pending' || activeEvalJob.status === 'running')"
+                :loading="isEvalRunning"
                 @click="runFactorEval()">{{ useCustomExpr ? '体检自定义公式' : 'Alphalens 体检' }}</a-button>
     </div>
 
@@ -1937,7 +2145,7 @@ export const BacktestLab = {
       </div>
     </div>
 
-    <a-modal v-model:open="corrModalOpen" title="因子篮子横截面秩相关性矩阵 (Spearman)" :footer="null" width="680px">
+    <aui-dialog v-model:open="corrModalOpen" title="因子篮子横截面秩相关性矩阵 (Spearman)" :footer="null" width="680px">
       <div v-if="corrLoading" style="text-align:center;padding:40px"><a-spin tip="正在计算相关性矩阵..." /></div>
       <template v-else-if="corrResult">
         <div v-if="corrResult.high_pairs && corrResult.high_pairs.length" class="bt-corr-warn">
@@ -1946,21 +2154,16 @@ export const BacktestLab = {
         </div>
         <div style="height:360px"><o2-echarts :option="corrHeatmapOpt" :theme="dark ? 'dark' : 'light'" /></div>
       </template>
-    </a-modal>
+    </aui-dialog>
   </div>
 
-  <!-- ==================== 模式 3: 数据仓 & 引擎（全自由多市场同步 + 全站共享） ==================== -->
+  <!-- ==================== 模式 3: 数据同步 ==================== -->
   <div v-else class="bt-data-wrap">
-    <div class="bt-shared-banner">
-      <b>全站历史数据已互通：</b>在此同步的 A 股、美股、港股、ETF 与全球跨资产数据会同时写入 Parquet、Qlib 二进制库与 <code>data/quant_bars.sqlite</code>，「看板」「行情」「量化小组件」与「AI 问答」将自动优先秒读本地历史数据。
-    </div>
-
     <div class="bt-data-top">
-      <!-- 左：全自由多市场 + 自定义年限/日期 + 自定义代码同步 -->
+      <!-- 左：标的池与同步控制 -->
       <div class="bt-subpanel" style="width:410px;flex:none">
         <div class="bt-subhead">
-          <span>自由多市场数据同步 (Tushare + YahooFinance)</span>
-          <span class="bt-stat-pill" :class="envStatus.tushare_ready ? 'ok' : 'warn'">{{ envStatus.tushare_ready ? '网关就绪' : '未配置' }}</span>
+          <span>数据同步</span>
         </div>
         <div class="bt-subbody bt-scroll" style="padding:10px;gap:10px">
           <div>
@@ -1971,7 +2174,6 @@ export const BacktestLab = {
                 <input type="checkbox" class="bt-chk" :checked="syncForm.scopes.includes(opt.id)" @change="toggleSyncScope(opt.id)" />
                 <div class="bt-pool-txt">
                   <div class="bt-pool-t">{{ opt.label }}</div>
-                  <div class="bt-pool-s">{{ opt.sub }}</div>
                 </div>
               </label>
             </div>
@@ -2015,21 +2217,23 @@ export const BacktestLab = {
                         placeholder="逗号或空格分隔，如: TSLA, PLTR, SMH, 600519.SH, 0700.HK, BTC-USD" />
           </div>
 
-          <a-button type="primary" size="small" block
-                    :loading="activeSyncJob && (activeSyncJob.status === 'pending' || activeSyncJob.status === 'running')"
-                    @click="runSync">开始同步（Parquet + Qlib + 全站共享 SQLite）</a-button>
+          <div style="display:flex;gap:6px">
+            <a-button type="primary" size="small" style="flex:1"
+                      :loading="isSyncRunning"
+                      @click="runSync()">开始同步</a-button>
+            <a-button v-if="isSyncRunning" size="small" danger @click="stopSync">暂停</a-button>
+          </div>
+
+          <div v-if="!isSyncRunning && resumableSync" class="bt-resume-bar">
+            <span class="ft-mono">
+              断点 {{ resumableSync.done_symbols }}/{{ resumableSync.total_symbols }}<template v-if="resumableSync.failed_symbols"> · 失败 {{ resumableSync.failed_symbols }}</template>
+            </span>
+            <button type="button" class="bt-tbtn on" @click="runSync(resumableSync)">继续同步</button>
+          </div>
 
           <div v-if="activeSyncJob" class="bt-sync-term ft-mono">
             <div>[{{ activeSyncJob.status.toUpperCase() }}] {{ activeSyncJob.progress }}% — {{ activeSyncJob.stage }}</div>
             <div v-if="activeSyncJob.error" class="bt-down">{{ activeSyncJob.error }}</div>
-          </div>
-
-          <div class="bt-metric-grp">
-            <div class="bt-mg-h">数据仓统计</div>
-            <div class="bt-mg-row"><span>覆盖标的 / 磁盘</span><b class="ft-mono">{{ envStatus.store.symbols }} 只 / {{ envStatus.store.disk_mb }} MB</b></div>
-            <div class="bt-mg-row"><span>复权日线 / 基本面 / 涨跌停</span><b class="ft-mono">{{ Number(envStatus.store.total_rows || 0).toLocaleString() }} / {{ Number(envStatus.store.basic_rows || 0).toLocaleString() }} / {{ Number(envStatus.store.limit_rows || 0).toLocaleString() }}</b></div>
-            <div class="bt-mg-row"><span>日期区间</span><b class="ft-mono">{{ envStatus.store.min_date || '-' }} ~ {{ envStatus.store.max_date || '-' }}</b></div>
-            <div class="bt-mg-row"><span>Qlib 二进制库</span><b class="ft-mono" :class="envStatus.store.qlib_bin_ready ? 'bt-up' : ''">{{ envStatus.store.qlib_bin_ready ? '已就绪' : '未生成' }}</b></div>
           </div>
         </div>
       </div>
@@ -2067,13 +2271,6 @@ export const BacktestLab = {
           </table>
         </div>
       </div>
-    </div>
-
-    <div class="bt-env-bar ft-mono">
-      <span class="hint">隔离环境 .venv_quant (Python {{ envStatus.python }})</span>
-      <span v-for="(p, k) in (envStatus.packages || {})" :key="k" :class="['bt-env-chip', p.installed ? 'ok' : '']">
-        {{ p.label }} {{ p.installed ? ('v' + p.version) : '×' }}
-      </span>
     </div>
   </div>
 </div>

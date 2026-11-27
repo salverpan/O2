@@ -745,12 +745,12 @@ class NewsStore:
 
     @contextlib.contextmanager
     def con(self):
-        c = sqlite3.connect(self.db_path, timeout=15.0, check_same_thread=False)
+        c = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
         c.row_factory = sqlite3.Row
         try:
             c.execute("PRAGMA journal_mode=WAL")
             c.execute("PRAGMA synchronous=NORMAL")
-            c.execute("PRAGMA busy_timeout=5000")
+            c.execute("PRAGMA busy_timeout=15000")
             with c:
                 yield c
         finally:

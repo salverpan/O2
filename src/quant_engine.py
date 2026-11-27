@@ -121,7 +121,7 @@ STRATEGY_TEMPLATES: list[dict] = [
 
 
 class QuantManager:
-    """Manages isolated .venv_quant worker execution, SQLite job history & local quant data warehouse."""
+    """Manages isolated .venv_quant worker execution, SQLite job history & unified O2 quant warehouse."""
 
     def __init__(self, base_dir: str, db_path: str, cfg, market_mgr=None):
         self.base_dir = base_dir
@@ -133,21 +133,28 @@ class QuantManager:
         self._env_cache: dict | None = None
         self._env_cache_at: float = 0.0
         self._catalog_cache: list[dict] | None = None
+        self._sync_cancel_files: dict[str, str] = {}
         os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
-        os.makedirs(self.store_dir, exist_ok=True)
         with self.con() as c:
             c.executescript(SCHEMA)
             # Mark orphaned running jobs from previous crash as failed
             c.execute(
-                "UPDATE quant_jobs SET status='failed', error='服务重启导致任务中断' WHERE status IN ('pending', 'running')"
+                "UPDATE quant_jobs SET status='failed', error='服务重启导致任务中断（已同步数据已保留，可断点续传）' WHERE status IN ('pending', 'running')"
             )
+            try:
+                c.execute(
+                    "UPDATE sync_tasks SET status='paused' WHERE status='running'"
+                )
+            except sqlite3.Error:
+                pass
 
     @contextlib.contextmanager
     def con(self):
         c = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
         c.row_factory = sqlite3.Row
         c.execute("PRAGMA journal_mode=WAL")
-        c.execute("PRAGMA busy_timeout=5000")
+        c.execute("PRAGMA synchronous=NORMAL")
+        c.execute("PRAGMA busy_timeout=15000")
         try:
             with c:
                 yield c
@@ -178,7 +185,7 @@ class QuantManager:
                 json.dump(params or {}, f, ensure_ascii=False)
             creation = getattr(subprocess, "CREATE_NO_WINDOW", 0)
             proc = subprocess.run(
-                [py, script, "--cmd", cmd, "--store", self.store_dir, "--in", in_path, "--out", out_path],
+                [py, script, "--cmd", cmd, "--db", self.db_path, "--store", self.store_dir, "--in", in_path, "--out", out_path],
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -201,14 +208,74 @@ class QuantManager:
             except OSError:
                 pass
 
+    def get_active_sync(self) -> dict | None:
+        try:
+            with self.con() as c:
+                row = c.execute(
+                    """SELECT id, job_type, title, engine, status, progress, stage, error,
+                              created_at, updated_at, finished_at
+                       FROM quant_jobs
+                       WHERE job_type='sync_data' AND status IN ('pending', 'running')
+                       ORDER BY created_at DESC LIMIT 1"""
+                ).fetchone()
+            return dict(row) if row else None
+        except Exception:
+            return None
+
+    def _get_resumable_sync(self) -> dict | None:
+        try:
+            with self.con() as c:
+                row = c.execute(
+                    """SELECT task_key, scopes_json, start_date, end_date, params_json,
+                              total_symbols, done_symbols, failed_symbols, status, updated_at
+                       FROM sync_tasks
+                       WHERE status IN ('paused', 'partial')
+                         AND (done_symbols < total_symbols OR failed_symbols > 0)
+                       ORDER BY updated_at DESC LIMIT 1"""
+                ).fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            try:
+                d["scopes"] = json.loads(d.pop("scopes_json") or "[]")
+            except Exception:
+                d["scopes"] = []
+            try:
+                d["params"] = json.loads(d.pop("params_json") or "{}")
+            except Exception:
+                d["params"] = {}
+            return d
+        except Exception:
+            return None
+
+    def stop_sync(self, job_id: str = "") -> dict:
+        stopped = []
+        with self._lock:
+            targets = [job_id] if job_id and job_id in self._sync_cancel_files else list(self._sync_cancel_files.keys())
+            for jid in targets:
+                cpath = self._sync_cancel_files.get(jid)
+                if cpath:
+                    try:
+                        with open(cpath, "w", encoding="utf-8") as f:
+                            f.write("stop")
+                        stopped.append(jid)
+                    except OSError:
+                        pass
+        return {"ok": True, "stopped": stopped}
+
     def status(self, force: bool = False) -> dict:
         now = time.time()
         if not force and self._env_cache and (now - self._env_cache_at) < 20.0:
-            return self._env_cache
+            cached = dict(self._env_cache)
+            cached["active_sync"] = self.get_active_sync()
+            cached["resumable_sync"] = self._get_resumable_sync()
+            return cached
         res = self._run_worker_sync("env_check", {}, timeout=25.0)
         res["quant_python"] = self.quant_python()
         res["isolated_venv"] = ".venv_quant" in self.quant_python().replace("\\", "/")
         res["templates"] = STRATEGY_TEMPLATES
+        res["active_sync"] = self.get_active_sync()
+        res["resumable_sync"] = self._get_resumable_sync()
         if self.market_mgr is not None:
             try:
                 base, tok = self.market_mgr._tushare_creds()
@@ -358,6 +425,28 @@ class QuantManager:
             c.execute(f"UPDATE quant_jobs SET {cols} WHERE id=?", vals)
 
     def submit_job(self, job_type: str, title: str, engine: str, params: dict, *, wait: bool = False) -> dict:
+        # Singleton guard for sync_data: never spawn duplicate concurrent sync workers
+        if job_type == "sync_data" and not wait:
+            with self._lock:
+                with self.con() as c:
+                    existing = c.execute(
+                        """SELECT id, title, engine, status, progress, stage
+                           FROM quant_jobs
+                           WHERE job_type='sync_data' AND status IN ('pending', 'running')
+                           ORDER BY created_at DESC LIMIT 1"""
+                    ).fetchone()
+                if existing:
+                    return {
+                        "ok": True,
+                        "job_id": existing["id"],
+                        "status": existing["status"],
+                        "progress": existing["progress"],
+                        "stage": existing["stage"],
+                        "title": existing["title"],
+                        "engine": existing["engine"],
+                        "already_running": True,
+                    }
+
         job_id = uuid.uuid4().hex[:12]
         now = int(time.time())
         # Store sanitized params in DB (never persist Tushare token in sqlite)
@@ -404,14 +493,22 @@ class QuantManager:
         td = tempfile.mkdtemp(prefix=f"o2-qjob-{job_id}-")
         in_path = os.path.join(td, "in.json")
         out_path = os.path.join(td, "out.json")
+        cancel_path = os.path.join(td, "cancel.flag")
+        if job_type == "sync_data":
+            with self._lock:
+                self._sync_cancel_files[job_id] = cancel_path
 
         try:
+            wp = dict(worker_params)
+            if job_type == "sync_data":
+                wp["job_id"] = job_id
+                wp["cancel_file"] = cancel_path
             with open(in_path, "w", encoding="utf-8") as f:
-                json.dump(worker_params, f, ensure_ascii=False)
+                json.dump(wp, f, ensure_ascii=False)
 
             creation = getattr(subprocess, "CREATE_NO_WINDOW", 0)
             proc = subprocess.Popen(
-                [py, script, "--cmd", job_type, "--store", self.store_dir, "--in", in_path, "--out", out_path],
+                [py, script, "--cmd", job_type, "--db", self.db_path, "--store", self.store_dir, "--in", in_path, "--out", out_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -494,8 +591,11 @@ class QuantManager:
                 finished_at=int(time.time()),
             )
         finally:
+            if job_type == "sync_data":
+                with self._lock:
+                    self._sync_cancel_files.pop(job_id, None)
             try:
-                for fn in (in_path, out_path):
+                for fn in (in_path, out_path, cancel_path):
                     if os.path.isfile(fn):
                         os.remove(fn)
                 os.rmdir(td)

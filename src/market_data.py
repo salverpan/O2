@@ -603,12 +603,251 @@ class MarketStore:
         c = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
         c.row_factory = sqlite3.Row
         c.execute("PRAGMA journal_mode=WAL")
-        c.execute("PRAGMA busy_timeout=5000")
+        c.execute("PRAGMA synchronous=NORMAL")
+        c.execute("PRAGMA busy_timeout=15000")
         try:
             with c:
                 yield c
         finally:
             c.close()
+
+    def save_quotes(self, qmap: dict[str, dict], panel_lookup: dict[str, str] | None = None) -> None:
+        if not qmap:
+            return
+        now = int(time.time())
+        pl = panel_lookup or {}
+        rows = []
+        for sid, q in qmap.items():
+            if not sid or not isinstance(q, dict) or q.get("price") is None:
+                continue
+            rows.append((
+                str(sid),
+                str(q.get("symbol") or sid),
+                str(q.get("name") or sid),
+                str(pl.get(sid) or ""),
+                _num(q.get("price")),
+                _num(q.get("chg"), 0.0) or 0.0,
+                _num(q.get("pct"), 0.0) or 0.0,
+                _num(q.get("open")),
+                _num(q.get("high")),
+                _num(q.get("low")),
+                _num(q.get("prev_close")),
+                _num(q.get("volume"), 0.0) or 0.0,
+                _num(q.get("amount"), 0.0) or 0.0,
+                str(q.get("source") or ""),
+                str(q.get("time") or ""),
+                now,
+            ))
+        if not rows:
+            return
+        try:
+            with self._lock, self.con() as c:
+                c.executemany(
+                    """INSERT OR REPLACE INTO market_quotes
+                       (secid, symbol, name, panel_id, price, chg, pct, open, high, low, prev_close,
+                        volume, amount, source, quote_time, updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    rows,
+                )
+        except Exception:
+            pass
+
+    def save_bars(self, secid: str, symbol: str, name: str, market: str, interval: str, bars: list[dict], source: str = "") -> None:
+        if not bars or not symbol:
+            return
+        now = int(time.time())
+        rows = []
+        prev_c = None
+        for b in bars:
+            dt = str(b.get("time") or "")[:10]
+            cl = _num(b.get("close"))
+            if not dt or cl is None:
+                continue
+            pct = round((cl / prev_c - 1.0) * 100.0, 4) if prev_c and prev_c > 0 else 0.0
+            prev_c = cl
+            rows.append((
+                symbol, secid, interval, dt, name or symbol, market or "", "",
+                _num(b.get("open"), cl), _num(b.get("high"), cl), _num(b.get("low"), cl), cl,
+                _num(b.get("volume"), 0.0) or 0.0, _num(b.get("amount"), 0.0) or 0.0,
+                1.0, pct, source or "", now,
+            ))
+        if not rows:
+            return
+        try:
+            with self._lock, self.con() as c:
+                c.executemany(
+                    """INSERT INTO market_bars
+                       (symbol, secid, interval, trade_date, name, market, industry,
+                        open, high, low, close, volume, amount, adj_factor, pct_chg, source, updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                       ON CONFLICT(symbol, interval, trade_date) DO UPDATE SET
+                         secid=CASE WHEN excluded.secid!='' THEN excluded.secid ELSE market_bars.secid END,
+                         name=CASE WHEN excluded.name!='' THEN excluded.name ELSE market_bars.name END,
+                         open=excluded.open, high=excluded.high, low=excluded.low, close=excluded.close,
+                         volume=excluded.volume, pct_chg=excluded.pct_chg,
+                         source=CASE WHEN market_bars.source='' THEN excluded.source ELSE market_bars.source END,
+                         updated_at=excluded.updated_at""",
+                    rows,
+                )
+                c.execute(
+                    """INSERT INTO instruments(symbol, secid, name, market, updated_at)
+                       VALUES (?,?,?,?,?)
+                       ON CONFLICT(symbol) DO UPDATE SET
+                         secid=CASE WHEN excluded.secid!='' THEN excluded.secid ELSE instruments.secid END,
+                         name=CASE WHEN excluded.name!='' THEN excluded.name ELSE instruments.name END,
+                         market=CASE WHEN excluded.market!='' THEN excluded.market ELSE instruments.market END,
+                         updated_at=excluded.updated_at""",
+                    (symbol, secid, name or symbol, market or "", now),
+                )
+        except Exception:
+            pass
+
+    def save_instruments(self, items: list[tuple]) -> None:
+        if not items:
+            return
+        try:
+            with self._lock, self.con() as c:
+                c.executemany(
+                    """INSERT INTO instruments(symbol, secid, ts_code, name, market, industry, updated_at)
+                       VALUES (?,?,?,?,?,?,?)
+                       ON CONFLICT(symbol) DO UPDATE SET
+                         secid=CASE WHEN excluded.secid!='' THEN excluded.secid ELSE instruments.secid END,
+                         ts_code=CASE WHEN excluded.ts_code!='' THEN excluded.ts_code ELSE instruments.ts_code END,
+                         name=CASE WHEN excluded.name!='' THEN excluded.name ELSE instruments.name END,
+                         market=CASE WHEN excluded.market!='' THEN excluded.market ELSE instruments.market END,
+                         industry=CASE WHEN excluded.industry!='' THEN excluded.industry ELSE instruments.industry END,
+                         updated_at=excluded.updated_at""",
+                    items,
+                )
+        except Exception:
+            pass
+
+    def save_sector_snapshots(self, trade_date: str, taxonomy: str, items: list[dict], source: str, is_live: bool) -> None:
+        if not items:
+            return
+        now = int(time.time())
+        td = (trade_date or datetime.date.today().isoformat())[:10]
+        rows = [
+            (
+                td, taxonomy, str(it.get("code") or it.get("name") or ""), str(it.get("name") or ""),
+                _num(it.get("price"), 0.0) or 0.0, _num(it.get("pct"), 0.0) or 0.0,
+                _num(it.get("chg"), 0.0) or 0.0, _num(it.get("mkt_cap"), 0.0) or 0.0,
+                _num(it.get("amount"), 0.0) or 0.0,
+                _num(it.get("net_inflow")) if it.get("net_inflow") is not None else None,
+                int(it.get("up_count") or 0), int(it.get("down_count") or 0),
+                int(it.get("stock_count") or 0), str(it.get("lead_stock") or ""),
+                _num(it.get("lead_pct"), 0.0) or 0.0, 1 if is_live else 0, source or "", now,
+            )
+            for it in items
+        ]
+        try:
+            with self._lock, self.con() as c:
+                c.executemany(
+                    """INSERT OR REPLACE INTO sector_snapshots
+                       (trade_date, taxonomy, sector_code, sector_name, price, pct, chg,
+                        mkt_cap, amount, net_inflow, up_count, down_count, stock_count,
+                        lead_stock, lead_pct, is_live, source, updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    rows,
+                )
+        except Exception:
+            pass
+
+    def save_movers_snapshots(self, trade_date: str, data: dict, source: str) -> None:
+        now = int(time.time())
+        td = (trade_date or datetime.date.today().isoformat())[:10]
+        rows = []
+        for btype in ("gainers", "losers", "active"):
+            for idx, it in enumerate(data.get(btype) or [], 1):
+                rows.append((
+                    td, btype, idx, str(it.get("secid") or ""), str(it.get("symbol") or ""),
+                    str(it.get("name") or ""), _num(it.get("price"), 0.0) or 0.0,
+                    _num(it.get("pct"), 0.0) or 0.0, _num(it.get("chg"), 0.0) or 0.0,
+                    _num(it.get("amount"), 0.0) or 0.0, source or "", now,
+                ))
+        if not rows:
+            return
+        try:
+            with self._lock, self.con() as c:
+                c.executemany(
+                    """INSERT OR REPLACE INTO movers_snapshots
+                       (trade_date, board_type, rank_no, secid, symbol, name, price, pct, chg, amount, source, updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    rows,
+                )
+        except Exception:
+            pass
+
+    def save_macro_indicators(self, out: dict) -> None:
+        now = int(time.time())
+        rows = []
+        tr = out.get("treasury") or {}
+        for r in (tr.get("rates") or []):
+            v = _num(r.get("rate"))
+            if v is not None:
+                rows.append((f"UST:{r.get('label')}", "treasury", str(r.get("label") or ""), str(r.get("date") or tr.get("date") or "")[:10], v, "%", str(tr.get("source") or ""), "{}", now))
+        fx = out.get("fx") or {}
+        fx_d = str(fx.get("date") or datetime.date.today().isoformat())[:10]
+        for cur, val in (fx.get("rates") or {}).items():
+            v = _num(val)
+            if v is not None:
+                rows.append((f"FX:USD/{cur}", "fx", f"USD/{cur}", fx_d, v, "", str(fx.get("source") or ""), "{}", now))
+        cbr = out.get("cbr") or {}
+        cbr_d = str(cbr.get("date") or datetime.date.today().isoformat())[:10]
+        for k, it in (cbr.get("items") or {}).items():
+            v = _num((it or {}).get("price"))
+            if v is not None:
+                rows.append((f"CBR:{k}", "cbr", str((it or {}).get("name") or k), cbr_d, v, "RUB", "CBR", "{}", now))
+        for f in (out.get("fred") or []):
+            v = _num(f.get("value"))
+            if v is not None:
+                rows.append((f"FRED:{f.get('id')}", "fred", str(f.get("label") or f.get("id") or ""), str(f.get("date") or "")[:10], v, "", "FRED", "{}", now))
+        if not rows:
+            return
+        try:
+            with self._lock, self.con() as c:
+                c.executemany(
+                    """INSERT OR REPLACE INTO macro_indicators
+                       (series_id, category, label, obs_date, value, unit, source, extra_json, updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?)""",
+                    rows,
+                )
+        except Exception:
+            pass
+
+    def save_geo_events(self, events: list[dict], chokepoints: list[dict]) -> None:
+        now = int(time.time())
+        rows = []
+        for ev in (events or []):
+            eid = str(ev.get("id") or ev.get("title") or "")[:120]
+            if not eid:
+                continue
+            rows.append((
+                f"ev:{eid}", str(ev.get("tag") or "geopolitics"), str(ev.get("title") or ""),
+                "", None, None, "", "", "", "Polymarket", "",
+                json.dumps(ev, ensure_ascii=False), now,
+            ))
+        for cp in (chokepoints or []):
+            pname = str(cp.get("portname") or cp.get("name") or "")
+            if not pname:
+                continue
+            rows.append((
+                f"cp:{pname}:{cp.get('date') or ''}", "chokepoint", pname, pname,
+                None, None, "", "", "", "IMF PortWatch", str(cp.get("date") or ""),
+                json.dumps(cp, ensure_ascii=False), now,
+            ))
+        if not rows:
+            return
+        try:
+            with self._lock, self.con() as c:
+                c.executemany(
+                    """INSERT OR REPLACE INTO geo_events
+                       (event_id, category, title, region, lat, lon, severity, status, summary, source, event_time, extra_json, updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    rows,
+                )
+        except Exception:
+            pass
 
     def cache_get(self, key: str, allow_stale: bool = False):
         now = int(time.time())
@@ -1006,6 +1245,13 @@ class MarketManager:
                 }
         if out:
             self.store.cache_set("ts_stock_basic", out, ttl=86400)
+            now = int(time.time())
+            ins_rows = []
+            for tc, info in out.items():
+                code, _, suf = tc.partition(".")
+                sid = f"1.{code}" if suf == "SH" else (f"0.{code}" if suf == "SZ" else tc)
+                ins_rows.append((tc, sid, tc, info["name"], "CN_STOCK", info["industry"], now))
+            self.store.save_instruments(ins_rows)
         return out
 
     def _ts_latest_trade_date(self) -> str:
@@ -1510,6 +1756,8 @@ class MarketManager:
             "_qmap": qmap,
         }
         self.store.cache_set("overview", res, ttl=60)
+        panel_lookup = {it["secid"]: p["id"] for p in MARKET_PANELS for it in p["items"]}
+        self.store.save_quotes(qmap, panel_lookup)
         return res
 
     def _kline_tushare(self, secid: str, iv: str, limit: int) -> tuple[list[dict], str, str]:
@@ -1769,10 +2017,10 @@ class MarketManager:
         return markers, events[:20]
 
     def _kline_local_quant_store(self, secid: str, iv: str, limit: int) -> tuple[list[dict], str, str]:
-        """Read locally synced daily bars from data/quant_bars.sqlite (shared with Backtest Lab warehouse)."""
+        """Read locally synced daily bars directly from unified data/o2.sqlite (market_bars)."""
         if iv not in ("1d", "1w", "1M"):
             return [], "", ""
-        qdb = os.path.join(os.path.dirname(self.store.db_path) or ".", "quant_bars.sqlite")
+        qdb = self.store.db_path
         if not os.path.isfile(qdb):
             return [], "", ""
         sid = (secid or "").strip()
@@ -1792,25 +2040,20 @@ class MarketManager:
             cand_syms.append(yf_s)
         raw_lim = limit if iv == "1d" else min(4000, limit * (6 if iv == "1w" else 24))
         try:
-            con = sqlite3.connect(f"file:{qdb}?mode=ro", uri=True, timeout=5.0)
-            con.row_factory = sqlite3.Row
-            try:
+            with self.store.con() as con:
                 ph = ",".join("?" for _ in cand_syms)
                 rows = con.execute(
                     f"""SELECT trade_date, open, high, low, close, volume, name, market
-                        FROM hist_bars
-                        WHERE secid = ? OR symbol IN ({ph})
+                        FROM market_bars
+                        WHERE interval = '1d' AND (secid = ? OR symbol IN ({ph}))
                         ORDER BY trade_date DESC LIMIT ?""",
                     [sid, *cand_syms, int(raw_lim)],
                 ).fetchall()
-            finally:
-                con.close()
         except Exception:
             return [], "", ""
         if len(rows) < 15:
             return [], "", ""
         rows = list(reversed(rows))
-        # Ensure local warehouse data isn't severely stale (within 7 days of today)
         last_d = str(rows[-1]["trade_date"] or "")[:10]
         try:
             age_days = (datetime.date.today() - datetime.date.fromisoformat(last_d)).days
@@ -1833,7 +2076,7 @@ class MarketManager:
         if iv in ("1w", "1M"):
             bars = _resample_bars(bars, iv)
         nm = str(rows[-1]["name"] or "")
-        return bars[-limit:], nm, "本地量化数据仓"
+        return bars[-limit:], nm, "本地统一数据库"
 
     def kline(self, secid: str, interval: str = "1d", limit: int = 160, name: str = "", force: bool = False) -> dict:
         sid = (secid or "").strip()
@@ -1934,104 +2177,297 @@ class MarketManager:
                     "indicators": ind,
                 }
                 self.store.cache_set(ck, data, ttl=120)
+                if iv == "1d" and source and source != "本地统一数据库":
+                    tgt_ts = _resolve_tushare_target(sid)
+                    sym_store = tgt_ts[1] if tgt_ts else (_resolve_yf_symbol(sid) or sid)
+                    mkt_store = "CN_STOCK" if _is_cn_secid(sid) else ("HK_STOCK" if sid.startswith("116.") else ("US_STOCK" if sid[:4] in ("105.", "106.", "107.") else "GLOBAL"))
+                    self.store.save_bars(sid, sym_store, resolved_name, mkt_store, "1d", bars, source)
 
         markers, events = self._news_markers_for_bars(sid, data.get("name") or name or sid, data.get("bars") or [])
         return {**data, "markers": markers, "news_events": events}
 
+    # Official 31 Shenwan 2021 Level-1 A-share industry boards (mutually exclusive, 100% coverage)
+    _SW_L1_BOARDS: list[tuple[str, str]] = [
+        ("BK1283", "银行"), ("BK1201", "电子"), ("BK1203", "非银金融"), ("BK1216", "医药生物"),
+        ("BK1215", "通信"), ("BK1200", "电力设备"), ("BK0464", "石油石化"), ("BK1205", "机械设备"),
+        ("BK0427", "公用事业"), ("BK0438", "食品饮料"), ("BK0478", "有色金属"), ("BK1211", "汽车"),
+        ("BK1206", "基础化工"), ("BK1207", "计算机"), ("BK1210", "交通运输"), ("BK1204", "国防军工"),
+        ("BK0437", "煤炭"), ("BK0456", "家用电器"), ("BK0486", "传媒"), ("BK1202", "房地产"),
+        ("BK1209", "建筑装饰"), ("BK0433", "农林牧渔"), ("BK1213", "商贸零售"), ("BK0479", "钢铁"),
+        ("BK1208", "建筑材料"), ("BK0436", "纺织服饰"), ("BK1212", "轻工制造"), ("BK1214", "社会服务"),
+        ("BK0728", "环保"), ("BK1035", "美容护理"), ("BK1217", "综合"),
+    ]
+
+    def _sectors_eastmoney_sw_l1(self) -> list[dict]:
+        """Fetch live real-time Shenwan Level-1 (31 industries) from EastMoney in a single request."""
+        secids = ",".join(f"90.{code}" for code, _ in self._SW_L1_BOARDS)
+        sw_names = {nm for _, nm in self._SW_L1_BOARDS}
+        hdrs = {
+            "User-Agent": USER_AGENT,
+            "Referer": "https://quote.eastmoney.com/center/boardlist.html",
+            "Accept": "*/*",
+            "Connection": "close",
+        }
+        qs_ulist = urllib.parse.urlencode({
+            "fltt": "2",
+            "invt": "2",
+            "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+            "fields": "f2,f3,f4,f6,f12,f14,f20,f62,f104,f105,f128,f136",
+            "secids": secids,
+        })
+        diffs: list[dict] = []
+        for host in ("push2.eastmoney.com", "82.push2.eastmoney.com", "push2delay.eastmoney.com"):
+            try:
+                res = _http_json(f"https://{host}/api/qt/ulist.np/get?{qs_ulist}", headers=hdrs, timeout=6.0)
+                cand = ((res or {}).get("data") or {}).get("diff") or []
+                if len(cand) >= 20:
+                    diffs = cand
+                    break
+            except Exception:
+                continue
+
+        # Secondary EastMoney query: single clist page filtered strictly to Shenwan L1 names
+        if not diffs:
+            qs_clist = urllib.parse.urlencode({
+                "pn": "1",
+                "pz": "100",
+                "po": "1",
+                "np": "1",
+                "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+                "fltt": "2",
+                "invt": "2",
+                "fid": "f20",
+                "fs": "m:90+t:2+f:!50",
+                "fields": "f2,f3,f4,f6,f12,f14,f20,f62,f104,f105,f128,f136",
+            })
+            for host in ("push2.eastmoney.com", "82.push2.eastmoney.com"):
+                try:
+                    res = _http_json(f"https://{host}/api/qt/clist/get?{qs_clist}", headers=hdrs, timeout=6.0)
+                    raw = ((res or {}).get("data") or {}).get("diff") or []
+                    dedup: dict[str, dict] = {}
+                    for d in raw:
+                        nm = str(d.get("f14") or "").strip()
+                        if nm in sw_names:
+                            prev = dedup.get(nm)
+                            if not prev or (_num(d.get("f20"), 0.0) or 0.0) > (_num(prev.get("f20"), 0.0) or 0.0):
+                                dedup[nm] = d
+                    if len(dedup) >= 15:
+                        diffs = list(dedup.values())
+                        break
+                except Exception:
+                    continue
+
+        items: list[dict] = []
+        for d in diffs:
+            nm = str(d.get("f14") or "").strip()
+            if not nm:
+                continue
+            pct_val = _num(d.get("f3"))
+            if pct_val is None:
+                continue
+            up_c = int(_num(d.get("f104"), 0.0) or 0)
+            dn_c = int(_num(d.get("f105"), 0.0) or 0)
+            inflow_raw = _num(d.get("f62"))
+            items.append({
+                "code": str(d.get("f12") or nm),
+                "name": nm,
+                "price": round(_num(d.get("f2"), 0.0) or 0.0, 2),
+                "pct": round(pct_val, 2),
+                "chg": round(_num(d.get("f4"), 0.0) or 0.0, 2),
+                "mkt_cap": round(_num(d.get("f20"), 0.0) or 1.0, 0),
+                "amount": round(_num(d.get("f6"), 0.0) or 0.0, 0),
+                "net_inflow": round(inflow_raw, 0) if inflow_raw is not None else None,
+                "up_count": up_c,
+                "down_count": dn_c,
+                "stock_count": up_c + dn_c,
+                "lead_stock": str(d.get("f128") or ""),
+                "lead_pct": round(_num(d.get("f136"), 0.0) or 0.0, 2),
+            })
+        items.sort(key=lambda x: x["mkt_cap"], reverse=True)
+        return items
+
+    def _sectors_sina_live(self) -> list[dict]:
+        """Fetch live real-time industry boards from Sina Finance (reliable low-latency backup)."""
+        url = "https://vip.stock.finance.sina.com.cn/q/view/newSinaHy.php"
+        hdrs = {"User-Agent": USER_AGENT, "Referer": "https://finance.sina.com.cn/", "Connection": "close"}
+        req = urllib.request.Request(url, headers=hdrs)
+        with urllib.request.urlopen(req, timeout=7.0) as r:
+            txt = r.read().decode("gbk", errors="replace")
+        eq_idx = txt.find("=")
+        if eq_idx < 0:
+            return []
+        obj = json.loads(txt[eq_idx + 1 :].strip().rstrip(";"))
+        items: list[dict] = []
+        for code, raw in (obj or {}).items():
+            parts = str(raw).split(",")
+            if len(parts) < 13:
+                continue
+            nm = parts[1].strip()
+            cnt = int(_num(parts[2], 0.0) or 0)
+            avg_px = _num(parts[3], 0.0) or 0.0
+            chg = _num(parts[4], 0.0) or 0.0
+            pct = _num(parts[5], 0.0) or 0.0
+            amt = _num(parts[7], 0.0) or 0.0
+            lead_pct = _num(parts[9], 0.0) or 0.0
+            lead_nm = parts[12].strip()
+            if not nm or cnt <= 0:
+                continue
+            # Use turnover + constituent count to produce realistic area weight when mkt_cap isn't provided
+            est_cap = max(amt * 40.0, float(cnt) * 8e9, 1.0)
+            items.append({
+                "code": str(code),
+                "name": nm,
+                "price": round(avg_px, 2),
+                "pct": round(pct, 2),
+                "chg": round(chg, 2),
+                "mkt_cap": round(est_cap, 0),
+                "amount": round(amt, 0),
+                "net_inflow": None,
+                "up_count": 0,
+                "down_count": 0,
+                "stock_count": cnt,
+                "lead_stock": lead_nm,
+                "lead_pct": round(lead_pct, 2),
+            })
+        items.sort(key=lambda x: x["amount"], reverse=True)
+        return items
+
     def sectors(self, limit: int = 36, force: bool = False) -> dict:
         lim = max(8, min(60, int(limit or 36)))
+        ck = f"sectors_v2:{lim}"
         if not force:
-            cached = self.store.cache_get(f"sectors:{lim}")
+            cached = self.store.cache_get(ck)
             if cached:
                 return cached
 
-        # Primary: Tushare daily + daily_basic + stock_basic grouped by industry
-        td = self._ts_latest_trade_date()
-        if td:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
-                f_sb = ex.submit(self._ts_stock_basic)
-                f_dl = ex.submit(self._ts_call, "daily", {"trade_date": td}, "ts_code,close,pct_chg,amount", 10.0)
-                f_db = ex.submit(self._ts_call, "daily_basic", {"trade_date": td}, "ts_code,total_mv", 10.0)
-                sb = f_sb.result()
-                dl_rows = f_dl.result()
-                db_rows = f_db.result()
-            if sb and dl_rows:
-                mv_map = {str(r["ts_code"]): (_num(r.get("total_mv"), 0.0) or 0.0) for r in (db_rows or []) if r.get("ts_code")}
-                agg: dict[str, dict] = {}
-                for r in dl_rows:
-                    tc = str(r.get("ts_code") or "")
-                    info = sb.get(tc)
-                    if not info:
-                        continue
-                    ind = info.get("industry") or "综合"
-                    pct = _num(r.get("pct_chg"), 0.0) or 0.0
-                    amt = (_num(r.get("amount"), 0.0) or 0.0) * 1000.0
-                    mv = mv_map.get(tc, 0.0) * 10000.0
-                    w = mv if mv > 0 else max(amt, 1.0)
-                    b = agg.setdefault(ind, {"w_sum": 0.0, "w_pct": 0.0, "mkt_cap": 0.0, "cnt": 0, "amt": 0.0})
-                    b["w_sum"] += w
-                    b["w_pct"] += w * pct
-                    b["mkt_cap"] += mv if mv > 0 else amt
-                    b["amt"] += amt
-                    b["cnt"] += 1
-                items = []
-                for ind, b in agg.items():
-                    if b["cnt"] == 0 or b["w_sum"] <= 0:
-                        continue
-                    pct_avg = b["w_pct"] / b["w_sum"]
-                    items.append({
-                        "code": ind,
-                        "name": ind,
-                        "price": b["cnt"],
-                        "pct": round(pct_avg, 2),
-                        "chg": round(pct_avg, 2),
-                        "mkt_cap": round(b["mkt_cap"], 0) or 1.0,
-                        "net_inflow": round(b["amt"] * (pct_avg / 100.0), 0),
-                    })
-                items.sort(key=lambda x: x["mkt_cap"], reverse=True)
-                if items:
-                    out = {"ok": True, "items": items[:lim], "source": "Tushare山西网关", "trade_date": td, "updated_at": int(time.time())}
-                    self.store.cache_set(f"sectors:{lim}", out, ttl=300)
-                    return out
+        now_ts = int(time.time())
+        today_iso = datetime.date.today().isoformat()
+        now_hm = datetime.datetime.now().strftime("%H:%M")
 
-        # Fallback: EastMoney sectors
+        # Priority 1: Live real-time EastMoney 31 Shenwan Level-1 industries (mutually exclusive + real net inflow)
         try:
-            url = (
-                "https://push2.eastmoney.com/api/qt/clist/get?"
-                + urllib.parse.urlencode({
-                    "pn": "1",
-                    "pz": str(lim),
-                    "po": "1",
-                    "np": "1",
-                    "fltt": "2",
-                    "invt": "2",
-                    "fid": "f20",
-                    "fs": "m:90+t:2",
-                    "fields": "f2,f3,f4,f12,f14,f20,f62",
-                })
-            )
-            res = _http_json(url, headers=EM_HEADERS, timeout=8.0)
-            diffs = ((res or {}).get("data") or {}).get("diff") or []
-            items = []
-            for d in diffs:
-                items.append({
-                    "code": str(d.get("f12") or ""),
-                    "name": str(d.get("f14") or ""),
-                    "price": _num(d.get("f2"), 0.0),
-                    "pct": round(_num(d.get("f3"), 0.0) or 0.0, 2),
-                    "chg": round(_num(d.get("f4"), 0.0) or 0.0, 2),
-                    "mkt_cap": _num(d.get("f20"), 0.0) or 1.0,
-                    "net_inflow": _num(d.get("f62"), 0.0) or 0.0,
-                })
-            out = {"ok": True, "items": items, "source": "EastMoney", "updated_at": int(time.time())}
-            if items:
-                self.store.cache_set(f"sectors:{lim}", out, ttl=120)
-            return out
-        except Exception as e:
-            stale = self.store.cache_get(f"sectors:{lim}", allow_stale=True)
-            if stale:
-                return stale
-            return {"ok": False, "error": str(e), "items": []}
+            em_items = self._sectors_eastmoney_sw_l1()
+            if em_items:
+                out = {
+                    "ok": True,
+                    "items": em_items[:lim],
+                    "source": "申万一级",
+                    "taxonomy": "sw_l1",
+                    "is_live": True,
+                    "trade_date": today_iso,
+                    "quote_time": now_hm,
+                    "updated_at": now_ts,
+                }
+                self.store.cache_set(ck, out, ttl=45)
+                self.store.save_sector_snapshots(today_iso, "sw_l1", em_items[:lim], "EastMoney·申万一级", True)
+                return out
+        except Exception:
+            pass
+
+        # Priority 2: Live real-time Sina Finance industry boards
+        try:
+            sina_items = self._sectors_sina_live()
+            if sina_items:
+                out = {
+                    "ok": True,
+                    "items": sina_items[:lim],
+                    "source": "新浪行业",
+                    "taxonomy": "sina_hy",
+                    "is_live": True,
+                    "trade_date": today_iso,
+                    "quote_time": now_hm,
+                    "updated_at": now_ts,
+                }
+                self.store.cache_set(ck, out, ttl=45)
+                self.store.save_sector_snapshots(today_iso, "sina_hy", sina_items[:lim], "Sina·实时行业", True)
+                return out
+        except Exception:
+            pass
+
+        # Priority 3: Offline EOD fallback via Tushare daily + daily_basic (honestly marked EOD, no fake net_inflow)
+        try:
+            td = self._ts_latest_trade_date()
+            if td:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+                    f_sb = ex.submit(self._ts_stock_basic)
+                    f_dl = ex.submit(self._ts_call, "daily", {"trade_date": td}, "ts_code,close,pct_chg,amount", 10.0)
+                    f_db = ex.submit(self._ts_call, "daily_basic", {"trade_date": td}, "ts_code,circ_mv,total_mv", 10.0)
+                    sb = f_sb.result()
+                    dl_rows = f_dl.result()
+                    db_rows = f_db.result()
+                if sb and dl_rows:
+                    mv_map = {
+                        str(r["ts_code"]): (_num(r.get("circ_mv"), 0.0) or _num(r.get("total_mv"), 0.0) or 0.0)
+                        for r in (db_rows or [])
+                        if r.get("ts_code")
+                    }
+                    agg: dict[str, dict] = {}
+                    for r in dl_rows:
+                        tc = str(r.get("ts_code") or "")
+                        info = sb.get(tc)
+                        if not info:
+                            continue
+                        ind = info.get("industry") or "综合"
+                        pct = _num(r.get("pct_chg"), 0.0) or 0.0
+                        amt = (_num(r.get("amount"), 0.0) or 0.0) * 1000.0
+                        mv = mv_map.get(tc, 0.0) * 10000.0
+                        w = mv if mv > 0 else max(amt, 1.0)
+                        b = agg.setdefault(ind, {"w_sum": 0.0, "w_pct": 0.0, "mkt_cap": 0.0, "cnt": 0, "up": 0, "dn": 0, "amt": 0.0, "lead_nm": "", "lead_pct": -999.0})
+                        b["w_sum"] += w
+                        b["w_pct"] += w * pct
+                        b["mkt_cap"] += mv if mv > 0 else amt
+                        b["amt"] += amt
+                        b["cnt"] += 1
+                        if pct > 0:
+                            b["up"] += 1
+                        elif pct < 0:
+                            b["dn"] += 1
+                        if pct > b["lead_pct"]:
+                            b["lead_pct"] = pct
+                            b["lead_nm"] = info.get("name") or tc
+                    items = []
+                    for ind, b in agg.items():
+                        if b["cnt"] == 0 or b["w_sum"] <= 0:
+                            continue
+                        pct_avg = b["w_pct"] / b["w_sum"]
+                        items.append({
+                            "code": ind,
+                            "name": ind,
+                            "price": 0.0,
+                            "pct": round(pct_avg, 2),
+                            "chg": round(pct_avg, 2),
+                            "mkt_cap": round(b["mkt_cap"], 0) or 1.0,
+                            "amount": round(b["amt"], 0),
+                            "net_inflow": None,
+                            "up_count": b["up"],
+                            "down_count": b["dn"],
+                            "stock_count": b["cnt"],
+                            "lead_stock": b["lead_nm"],
+                            "lead_pct": round(b["lead_pct"], 2) if b["lead_pct"] > -900 else 0.0,
+                        })
+                    items.sort(key=lambda x: x["mkt_cap"], reverse=True)
+                    if items:
+                        td_iso = _iso_date(td)
+                        out = {
+                            "ok": True,
+                            "items": items[:lim],
+                            "source": f"Tushare 收盘 {td_iso}",
+                            "taxonomy": "ts_ind",
+                            "is_live": False,
+                            "trade_date": td_iso,
+                            "quote_time": td_iso,
+                            "updated_at": now_ts,
+                        }
+                        self.store.cache_set(ck, out, ttl=300)
+                        self.store.save_sector_snapshots(td_iso, "ts_ind", items[:lim], "Tushare·收盘", False)
+                        return out
+        except Exception:
+            pass
+
+        stale = self.store.cache_get(ck, allow_stale=True)
+        if stale:
+            return stale
+        return {"ok": False, "error": "暂无法获取行业板块行情", "items": []}
 
     def movers(self, limit: int = 15, force: bool = False) -> dict:
         lim = max(5, min(30, int(limit or 15)))
@@ -2081,6 +2517,7 @@ class MarketManager:
                         "updated_at": int(time.time()),
                     }
                     self.store.cache_set(f"movers:{lim}", out, ttl=300)
+                    self.store.save_movers_snapshots(_iso_date(td), out, "Tushare")
                     return out
 
         # Fallback: EastMoney
@@ -2131,6 +2568,7 @@ class MarketManager:
                     "updated_at": int(time.time()),
                 }
             self.store.cache_set(f"movers:{lim}", out, ttl=120)
+            self.store.save_movers_snapshots(datetime.date.today().isoformat(), out, "EastMoney")
             return out
         except Exception as e:
             stale = self.store.cache_get(f"movers:{lim}", allow_stale=True)
@@ -2234,6 +2672,7 @@ class MarketManager:
                 "updated_at": int(time.time()),
             }
         self.store.cache_set("macro", out, ttl=1800)
+        self.store.save_macro_indicators(out)
         return out
 
     def geopolitics(self, force: bool = False) -> dict:
@@ -2333,6 +2772,7 @@ class MarketManager:
             "updated_at": int(time.time()),
         }
         self.store.cache_set("geopolitics", out, ttl=600)
+        self.store.save_geo_events(out["events"], out["chokepoints"])
         return out
 
     def search_symbols(self, q: str) -> dict:

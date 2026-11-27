@@ -599,7 +599,9 @@ def commit(
 
 def ai_organize_project(cfg, db_path: str, project: str) -> dict:
     """对指定项目下的文档自动识别共性并归入合理的子文件夹与文件性质。"""
-    con = sqlite3.connect(db_path)
+    con = sqlite3.connect(db_path, timeout=30.0)
+    con.execute("PRAGMA journal_mode=WAL")
+    con.execute("PRAGMA busy_timeout=15000")
     con.row_factory = sqlite3.Row
     build_mod.ensure_schema(con)
     rows = con.execute(
@@ -720,7 +722,9 @@ def find_same_document(db_path: str, project: str, digest: str, src_root: str = 
     if not digest or not db_path:
         return None
     project = (project or "").strip() or "集团制度库"
-    con = sqlite3.connect(db_path)
+    con = sqlite3.connect(db_path, timeout=30.0)
+    con.execute("PRAGMA journal_mode=WAL")
+    con.execute("PRAGMA busy_timeout=15000")
     con.row_factory = sqlite3.Row
     try:
         build_mod.ensure_schema(con)

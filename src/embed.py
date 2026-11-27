@@ -467,6 +467,8 @@ def embed_document(cfg, db_path: str, doc_id: int) -> int:
     if not ch or not ch.get("api_key") or not ch.get("model"):
         return 0
     con = sqlite3.connect(db_path, timeout=30)
+    con.execute("PRAGMA journal_mode=WAL")
+    con.execute("PRAGMA busy_timeout=15000")
     try:
         ensure_schema(con)
         pending = pending_rows(con, ch["id"], ch["model"], doc_id)
@@ -556,6 +558,8 @@ def _run_job(cfg, db_path: str) -> None:
         _job_error = "未配置 Embedding 渠道"
         return
     con = sqlite3.connect(db_path, check_same_thread=False, timeout=30)
+    con.execute("PRAGMA journal_mode=WAL")
+    con.execute("PRAGMA busy_timeout=15000")
     try:
         ensure_schema(con)
         pending = pending_rows(con, ch["id"], ch["model"])

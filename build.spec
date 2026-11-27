@@ -47,6 +47,7 @@ a = Analysis(
         "attach",
         "shell_tool",
         "browser_tool",
+        "web_search_tool",
         "news",
         "news_engine",
         "news_tool",

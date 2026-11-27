@@ -14,6 +14,7 @@ import news_tool as news_tool_mod
 import providers as prov_mod
 import search as search_mod
 import shell_tool as shell_mod
+import web_search_tool as web_search_mod
 import widget_tool as widget_mod
 
 
@@ -436,6 +437,9 @@ def _iter_event_sse_body(resp, event, chunks):
 def _anthropic_tools(tools: list[dict] | None = None) -> list[dict]:
     out = []
     for t in tools if tools is not None else TOOLS:
+        if isinstance(t, dict) and t.get("type") and t.get("type") != "function":
+            out.append(dict(t))
+            continue
         fn = t.get("function") or t
         out.append({
             "name": fn.get("name") or "",
@@ -783,9 +787,80 @@ def _prepare_read(con, args: dict, used: set[int], cfg=None) -> tuple[str, list[
     return note, kept, rest
 
 
+def _looks_like_native_search_error(code: int, detail: str) -> bool:
+    if code not in (400, 422):
+        return False
+    low = (detail or "").lower()
+    return any(
+        k in low
+        for k in (
+            "deepseek_web_search",
+            "deepseek_read_url",
+            "server_tool",
+            "web_search",
+            "read_url",
+            "tool type",
+            "unknown tool",
+            "unsupported tool",
+            "invalid tool",
+        )
+    )
+
+
+def _srv_call_meta(call: dict) -> tuple[str, str, bool]:
+    ctype = str(call.get("type") or "").lower()
+    ckind = str(call.get("kind") or "").lower()
+    action = call.get("action") if isinstance(call.get("action"), dict) else {}
+    atype = str(action.get("type") or "").lower()
+    is_fetch = (
+        ctype == "deepseek_read_url"
+        or ckind in ("open_page", "read_url", "fetch", "web_fetch")
+        or atype in ("open_page", "read_url", "fetch", "web_fetch")
+    )
+    tname = "web_fetch" if is_fetch else "web_search"
+    if is_fetch:
+        url = str(action.get("url") or "").strip()
+        if not url and isinstance(action.get("urls"), list) and action["urls"]:
+            url = str(action["urls"][0] or "").strip()
+        if not url and isinstance(call.get("page"), dict):
+            url = str(call["page"].get("url") or "").strip()
+        label = web_search_mod.action_label("web_fetch", {"url": url}) if url else "读取网页"
+    else:
+        queries = action.get("queries")
+        if isinstance(queries, list):
+            qs = [str(x).strip() for x in queries if str(x).strip()]
+        else:
+            q1 = str(action.get("query") or "").strip()
+            qs = [q1] if q1 else []
+        if qs:
+            label = " / ".join(qs)[:80]
+        elif "image" in ckind or "image" in atype:
+            label = "图片搜索"
+        else:
+            label = "联网搜索"
+    return tname, label, is_fetch
+
+
+def _srv_call_sources(call: dict) -> list[dict]:
+    out: list[dict] = []
+    raw_srcs = call.get("sources") or call.get("results") or []
+    if isinstance(raw_srcs, list):
+        for s in raw_srcs:
+            ns = web_search_mod.normalize_web_source(s, cited=False)
+            if ns:
+                out.append(ns)
+    page = call.get("page")
+    if isinstance(page, dict):
+        ns = web_search_mod.normalize_web_source(page, cited=False)
+        if ns:
+            out.append(ns)
+    return out
+
+
 def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         prior_sources: list[dict] | None = None, model: str | None = None,
         effort: str | None = None, provider_id: str | None = None,
+        web_search: bool | None = None,
         news_mgr=None, market_mgr=None, quant_mgr=None, widget_store=None) -> None:
     import catalog as cat_mod
 
@@ -816,24 +891,69 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         if _emit(event) is False:
             raise ChatCancelled()
 
+    ws_plan = web_search_mod.resolve_plan(cfg, ch, override_enabled=web_search)
+    ws_mode = ws_plan["mode"]
+    web_source_seen: dict[str, dict] = {}
+
+    def emit_web_sources(items: list[dict]) -> None:
+        changed: list[dict] = []
+        for raw in items or []:
+            src = web_search_mod.normalize_web_source(raw, cited=bool(raw.get("cited")) if isinstance(raw, dict) else False)
+            if not src:
+                continue
+            u = src["url"]
+            prev = web_source_seen.get(u)
+            if prev is None:
+                web_source_seen[u] = src
+                changed.append(src)
+            else:
+                updated = False
+                if src.get("cited") and not prev.get("cited"):
+                    prev["cited"] = True
+                    updated = True
+                if src.get("title") and (not prev.get("title") or prev.get("title") == prev.get("url")):
+                    prev["title"] = src["title"]
+                    updated = True
+                if src.get("snippet") and not prev.get("snippet"):
+                    prev["snippet"] = src["snippet"]
+                    updated = True
+                if src.get("date") and not prev.get("date"):
+                    prev["date"] = src["date"]
+                    updated = True
+                if updated:
+                    changed.append(dict(prev))
+        if changed:
+            emit({"type": "web_sources", "items": changed})
+
     prior = _coerce_prior_sources(prior_sources)
-    tools = list(TOOLS)
-    if shell_mod.enabled(cfg):
-        tools.append(shell_mod.TOOL)
-    if browser_mod.enabled(cfg):
-        tools.append(browser_mod.TOOL)
-    if api_mod.enabled(cfg):
-        tools.append(api_mod.TOOL)
-    if news_mgr is not None and news_tool_mod.enabled(cfg):
-        tools.extend(news_tool_mod.TOOLS)
-    if market_mgr is not None and market_tool_mod.enabled(cfg):
-        tools.extend(market_tool_mod.TOOLS)
-    tools.extend(widget_mod.TOOLS)
+
+    def _build_tools() -> list[dict]:
+        t = list(TOOLS)
+        if ws_mode == "native":
+            t.extend(web_search_mod.native_tools(protocol, read_url=ws_plan["read_url"]))
+        elif ws_mode == "api":
+            t.extend(web_search_mod.TOOLS)
+        if shell_mod.enabled(cfg):
+            t.append(shell_mod.TOOL)
+        if browser_mod.enabled(cfg):
+            t.append(browser_mod.TOOL)
+        if api_mod.enabled(cfg):
+            t.append(api_mod.TOOL)
+        if news_mgr is not None and news_tool_mod.enabled(cfg):
+            t.extend(news_tool_mod.TOOLS)
+        if market_mgr is not None and market_tool_mod.enabled(cfg):
+            t.extend(market_tool_mod.TOOLS)
+        t.extend(widget_mod.TOOLS)
+        return t
 
     route_q = ""
+    last_user_q = ""
     for m in reversed(messages[-4:]):
         if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), str):
-            route_q = (route_q + " " + m["content"].strip()).strip()
+            txt = m["content"].strip()
+            if txt and not last_user_q:
+                last_user_q = txt
+            route_q = (route_q + " " + txt).strip()
 
     def _build_system() -> str:
         s = SYSTEM_PROMPT
@@ -841,6 +961,10 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
             s += shell_mod.PROMPT
         if browser_mod.enabled(cfg):
             s += browser_mod.PROMPT
+        if ws_mode == "native":
+            s += web_search_mod.PROMPT_NATIVE
+        elif ws_mode == "api":
+            s += web_search_mod.PROMPT_API
         if api_mod.enabled(cfg):
             s += api_mod.PROMPT + api_mod.format_api_catalog(cfg, query=route_q)
         if news_mgr is not None and news_tool_mod.enabled(cfg):
@@ -866,6 +990,14 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         if body == "" or body == []:
             continue
         item = {"role": m["role"], "content": body}
+        if (
+            m.get("role") == "assistant"
+            and ws_mode == "native"
+            and protocol == "openai"
+            and isinstance(m.get("server_tool_calls"), list)
+            and m["server_tool_calls"]
+        ):
+            item["server_tool_calls"] = m["server_tool_calls"]
         hist.append(item)
     if prior:
         note = {
@@ -887,6 +1019,18 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
     else:
         convo.extend(hist)
 
+    def _downgrade_native_search() -> bool:
+        nonlocal ws_mode
+        if ws_mode != "native":
+            return False
+        ws_mode = "api" if ws_plan["can_api"] else "off"
+        if convo and convo[0].get("role") == "system":
+            convo[0]["content"] = _build_system()
+        for msg in convo:
+            if isinstance(msg, dict) and "server_tool_calls" in msg:
+                msg.pop("server_tool_calls", None)
+        return True
+
     def _openai_payload(use_tools: bool, thinking: bool) -> dict:
         payload = {
             "model": model,
@@ -894,7 +1038,7 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
             "stream": True,
         }
         if use_tools:
-            payload["tools"] = tools
+            payload["tools"] = _build_tools()
             payload["tool_choice"] = "auto"
         cap = int(cfg.data.get("max_tokens") or 0)
         if cap > 0:
@@ -919,7 +1063,7 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         if system:
             payload["system"] = system
         if use_tools:
-            payload["tools"] = _anthropic_tools(tools)
+            payload["tools"] = _anthropic_tools(_build_tools())
         if thinking:
             budget = max(1024, min(int(cap * 0.5), cap - 256))
             payload["thinking"] = {"type": "enabled", "budget_tokens": budget}
@@ -934,11 +1078,99 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         reasoning = ""
         thought = False
         calls: dict[int, dict] = {}
+        server_tool_calls: list[dict] = []
+        srv_started: dict[str, dict] = {}
+        srv_done: set[str] = set()
         split = _ThinkSplit()
         extra = prov_mod.extra_headers(base, protocol, key, oc_session)
         with _post_stream(chat_url, payload, key, extra_headers=extra or None) as resp:
             for choice in _iter_sse(resp):
+                ste = choice.get("server_tool_event")
+                if isinstance(ste, dict):
+                    ste_type = str(ste.get("type") or "").lower()
+                    call = ste.get("call") if isinstance(ste.get("call"), dict) else {}
+                    cid = str(call.get("id") or f"srv_{ste.get('step', 0)}_{call.get('index', 0)}")
+                    if ste_type == "step_reasoning_done":
+                        thought = False
+                    elif ste_type == "call_started":
+                        tname, label, is_fetch = _srv_call_meta(call)
+                        srv_started[cid] = {"name": tname, "label": label, "is_fetch": is_fetch}
+                        thought = False
+                        emit({"type": "tool", "name": tname, "call_id": cid, "args": {"query": label, "engine": "deepseek"}})
+                    elif ste_type == "call_completed":
+                        info = srv_started.get(cid)
+                        if not info:
+                            tname, label, is_fetch = _srv_call_meta(call)
+                            info = {"name": tname, "label": label, "is_fetch": is_fetch}
+                            srv_started[cid] = info
+                            emit({"type": "tool", "name": tname, "call_id": cid, "args": {"query": label, "engine": "deepseek"}})
+                        srcs = _srv_call_sources(call)
+                        if srcs:
+                            emit_web_sources(srcs)
+                        ok_srv = str(call.get("status") or "completed").lower() != "failed"
+                        n_src = len(srcs)
+                        note = (
+                            f"{n_src} 条网页"
+                            if n_src
+                            else ("已读取" if (info["is_fetch"] and ok_srv) else ("完成" if ok_srv else "失败"))
+                        )
+                        srv_done.add(cid)
+                        thought = False
+                        emit({
+                            "type": "tool_result",
+                            "call_id": cid,
+                            "query": info["label"],
+                            "count": n_src or (1 if ok_srv else 0),
+                            "exit": 0 if ok_srv else 1,
+                            "note": note,
+                        })
+
                 delta = choice.get("delta") or choice.get("message") or {}
+                stc = (
+                    delta.get("server_tool_calls")
+                    or choice.get("server_tool_calls")
+                    or (choice.get("message") or {}).get("server_tool_calls")
+                )
+                if isinstance(stc, list) and stc:
+                    server_tool_calls = stc
+                    for idx_c, c_obj in enumerate(stc):
+                        if not isinstance(c_obj, dict):
+                            continue
+                        cid = str(c_obj.get("id") or f"srv_final_{idx_c}")
+                        srcs = _srv_call_sources(c_obj)
+                        if srcs:
+                            emit_web_sources(srcs)
+                        if cid not in srv_done:
+                            tname, label, is_fetch = _srv_call_meta(c_obj)
+                            if cid not in srv_started:
+                                emit({"type": "tool", "name": tname, "call_id": cid, "args": {"query": label, "engine": "deepseek"}})
+                            ok_srv = str(c_obj.get("status") or "completed").lower() != "failed"
+                            n_src = len(srcs)
+                            note = (
+                                f"{n_src} 条网页"
+                                if n_src
+                                else ("已读取" if (is_fetch and ok_srv) else ("完成" if ok_srv else "失败"))
+                            )
+                            srv_done.add(cid)
+                            emit({
+                                "type": "tool_result",
+                                "call_id": cid,
+                                "query": label,
+                                "count": n_src or (1 if ok_srv else 0),
+                                "exit": 0 if ok_srv else 1,
+                                "note": note,
+                            })
+
+                anns = (
+                    delta.get("annotations")
+                    or choice.get("annotations")
+                    or (choice.get("message") or {}).get("annotations")
+                )
+                if isinstance(anns, list) and anns:
+                    cited_srcs = web_search_mod.extract_annotations_sources(anns)
+                    if cited_srcs:
+                        emit_web_sources(cited_srcs)
+
                 rc = _delta_reasoning(delta) + _delta_reasoning(choice)
                 text, hid_parts = _content_channels(delta.get("content"))
                 if hid_parts:
@@ -978,7 +1210,9 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
             emit({"type": "delta", "text": vis})
         if reasoning:
             emit({"type": "reasoning", "text": reasoning})
-        return buf, calls, reasoning
+        if server_tool_calls:
+            emit({"type": "server_tool_calls", "items": server_tool_calls})
+        return buf, calls, reasoning, server_tool_calls
 
     def _consume_anthropic(payload: dict):
         buf = ""
@@ -986,8 +1220,32 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         thought = False
         calls: dict[int, dict] = {}
         index_map: dict[int, int] = {}
+        srv_blocks: dict[int, dict] = {}
+        srv_by_id: dict[str, dict] = {}
         next_idx = 0
         extra = prov_mod.extra_headers(base, protocol, key, oc_session)
+
+        def _flush_srv_block(slot: dict) -> None:
+            if slot.get("emitted"):
+                return
+            try:
+                inp = json.loads(slot.get("args") or "{}") if slot.get("args") else {}
+            except ValueError:
+                inp = {}
+            if not isinstance(inp, dict):
+                inp = {}
+            is_fetch = bool(slot.get("is_fetch"))
+            if is_fetch:
+                label = web_search_mod.action_label("web_fetch", {"url": inp.get("url") or ""})
+            else:
+                q = inp.get("query") or ""
+                if not q and isinstance(inp.get("queries"), list):
+                    q = " / ".join(str(x).strip() for x in inp["queries"] if str(x).strip())
+                label = (str(q).strip() or "联网搜索")[:80]
+            slot["label"] = label
+            slot["emitted"] = True
+            emit({"type": "tool", "name": slot["name"], "call_id": slot["id"], "args": {"query": label, "engine": "deepseek"}})
+
         with _post_stream(chat_url, payload, key, extra_headers=extra) as resp:
             for _ev, obj in _iter_event_sse(resp):
                 typ = obj.get("type") or _ev
@@ -1011,6 +1269,68 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                             "name": block.get("name") or "",
                             "args": args,
                         }
+                    elif btype == "server_tool_use":
+                        thought = False
+                        bname = str(block.get("name") or "")
+                        is_fetch = ("fetch" in bname.lower() or "read_url" in bname.lower())
+                        cid = str(block.get("id") or f"srv_a_{bidx}")
+                        args = ""
+                        if isinstance(block.get("input"), dict) and block["input"]:
+                            args = json.dumps(block["input"], ensure_ascii=False)
+                        slot = {
+                            "id": cid,
+                            "name": "web_fetch" if is_fetch else "web_search",
+                            "is_fetch": is_fetch,
+                            "args": args,
+                            "label": "读取网页" if is_fetch else "联网搜索",
+                            "emitted": False,
+                        }
+                        srv_blocks[bidx] = slot
+                        srv_by_id[cid] = slot
+                        if args:
+                            _flush_srv_block(slot)
+                    elif btype in ("web_search_tool_result", "web_fetch_tool_result"):
+                        thought = False
+                        cid = str(block.get("tool_use_id") or "")
+                        slot = srv_by_id.get(cid)
+                        if slot and not slot.get("emitted"):
+                            _flush_srv_block(slot)
+                        content = block.get("content")
+                        is_err = isinstance(content, dict) and str(content.get("type") or "").endswith("_error")
+                        srcs: list[dict] = []
+                        if isinstance(content, list):
+                            for item in content:
+                                ns = web_search_mod.normalize_web_source(item, cited=False)
+                                if ns:
+                                    srcs.append(ns)
+                        elif isinstance(content, dict) and not is_err:
+                            inner = content.get("content") if isinstance(content.get("content"), dict) else {}
+                            ns = web_search_mod.normalize_web_source(
+                                {
+                                    "url": content.get("url") or inner.get("url") or "",
+                                    "title": content.get("title") or inner.get("title") or "",
+                                    "date": content.get("retrieved_at") or "",
+                                },
+                                cited=False,
+                            )
+                            if ns:
+                                srcs.append(ns)
+                        if srcs:
+                            emit_web_sources(srcs)
+                        is_fetch_res = (btype == "web_fetch_tool_result") or bool(slot and slot.get("is_fetch"))
+                        note = (
+                            "失败"
+                            if is_err
+                            else (f"{len(srcs)} 条网页" if (srcs and not is_fetch_res) else ("已读取" if is_fetch_res else "完成"))
+                        )
+                        emit({
+                            "type": "tool_result",
+                            "call_id": cid,
+                            "query": (slot or {}).get("label") or ("读取网页" if is_fetch_res else "联网搜索"),
+                            "count": len(srcs) or (0 if is_err else 1),
+                            "exit": 1 if is_err else 0,
+                            "note": note,
+                        })
                 elif typ == "content_block_delta":
                     delta = obj.get("delta") or {}
                     dtyp = delta.get("type")
@@ -1031,6 +1351,19 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                         i = index_map.get(bidx)
                         if i is not None:
                             calls[i]["args"] += delta.get("partial_json") or ""
+                        elif bidx in srv_blocks:
+                            srv_blocks[bidx]["args"] += delta.get("partial_json") or ""
+                    elif dtyp == "citations_delta":
+                        cit = delta.get("citation")
+                        if isinstance(cit, dict):
+                            cited_srcs = web_search_mod.extract_annotations_sources([cit])
+                            if cited_srcs:
+                                emit_web_sources(cited_srcs)
+                elif typ == "content_block_stop":
+                    bidx = obj.get("index", 0)
+                    slot = srv_blocks.get(bidx)
+                    if slot and not slot.get("emitted"):
+                        _flush_srv_block(slot)
                 elif typ == "error":
                     err = obj.get("error") or obj
                     msg = err.get("message") if isinstance(err, dict) else str(err)
@@ -1039,7 +1372,7 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                     raise ChatCancelled()
         if reasoning:
             emit({"type": "reasoning", "text": reasoning})
-        return buf, calls, reasoning
+        return buf, calls, reasoning, []
 
     def call_model(use_tools: bool):
         last_detail = ""
@@ -1047,24 +1380,41 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
         want_think = meta.get("reasoning") is not False
         tries = (True, False) if want_think else (False,)
         for thinking in tries:
-            for attempt in range(3):
-                try:
-                    if protocol == "anthropic":
-                        return _consume_anthropic(_anthropic_payload(use_tools, thinking))
-                    return _consume_openai(_openai_payload(use_tools, thinking))
-                except urllib.error.HTTPError as e:
-                    last_code = e.code
-                    last_detail = prov_mod.http_error_text(e)
-                    if thinking and e.code in (400, 422):
-                        break
-                    emit({"type": "error", "message": f"接口错误 {e.code}: {last_detail}"})
-                    emit({"type": "done"})
-                    raise ChatCancelled()
-                except Exception as e:
-                    if attempt < 2 and prov_mod.is_transient_ssl(e):
-                        time.sleep(0.4 * (attempt + 1))
-                        continue
-                    raise
+            downgraded_here = False
+            while True:
+                retry_after_downgrade = False
+                for attempt in range(3):
+                    try:
+                        if protocol == "anthropic":
+                            return _consume_anthropic(_anthropic_payload(use_tools, thinking))
+                        return _consume_openai(_openai_payload(use_tools, thinking))
+                    except urllib.error.HTTPError as e:
+                        last_code = e.code
+                        last_detail = prov_mod.http_error_text(e)
+                        if (
+                            use_tools
+                            and ws_mode == "native"
+                            and not downgraded_here
+                            and (_looks_like_native_search_error(e.code, last_detail) or not thinking)
+                            and e.code in (400, 422)
+                        ):
+                            downgraded_here = True
+                            if _downgrade_native_search():
+                                retry_after_downgrade = True
+                                break
+                        if thinking and e.code in (400, 422):
+                            break
+                        emit({"type": "error", "message": f"接口错误 {e.code}: {last_detail}"})
+                        emit({"type": "done"})
+                        raise ChatCancelled()
+                    except Exception as e:
+                        if attempt < 2 and prov_mod.is_transient_ssl(e):
+                            time.sleep(0.4 * (attempt + 1))
+                            continue
+                        raise
+                if retry_after_downgrade:
+                    continue
+                break
         emit({"type": "error", "message": f"接口错误 {last_code}: {last_detail}"})
         emit({"type": "done"})
         raise ChatCancelled()
@@ -1079,7 +1429,7 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
     try:
         for _round in range(max_rounds):
             try:
-                content_buf, tool_calls, reasoning = call_model(True)
+                content_buf, tool_calls, reasoning, server_tool_calls = call_model(True)
             except ChatCancelled:
                 raise
             except urllib.error.HTTPError as e:
@@ -1116,6 +1466,8 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
             }
             if reasoning:
                 asst["reasoning_content"] = reasoning
+            if server_tool_calls and protocol == "openai":
+                asst["server_tool_calls"] = server_tool_calls
             convo.append(asst)
 
             ask_qs: list[dict] = []
@@ -1129,6 +1481,33 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
                     args = {}
                 if name == "ask_user":
                     ask_qs.extend(_normalize_ask(args))
+                    continue
+
+                if name in ("web_search", "web_fetch"):
+                    label = web_search_mod.action_label(name, args)
+                    emit({"type": "tool", "name": name, "call_id": call_id, "args": {"query": label, "engine": "deepseek-api"}})
+                    try:
+                        text, ok_ws, note_ws, cnt_ws, wsrcs = web_search_mod.run_web_search_tool(
+                            name,
+                            args,
+                            ws_plan["api_base"],
+                            ws_plan["api_key"],
+                            default_count=ws_plan["count"],
+                            ori_question=last_user_q,
+                        )
+                    except Exception as e:
+                        text, ok_ws, note_ws, cnt_ws, wsrcs = f"Error: {e}", False, "失败", 0, []
+                    convo.append({"role": "tool", "tool_call_id": call_id, "content": text})
+                    if wsrcs:
+                        emit_web_sources(wsrcs)
+                    emit({
+                        "type": "tool_result",
+                        "call_id": call_id,
+                        "query": label,
+                        "count": cnt_ws,
+                        "exit": 0 if ok_ws else 1,
+                        "note": note_ws,
+                    })
                     continue
 
                 if name in ("search_news", "entity_brief", "news_digest"):
@@ -1295,6 +1674,8 @@ def run(cfg, con, messages: list[dict], emit, max_rounds: int = MAX_ROUNDS,
 
                 if name not in ("search_docs", "search_regulations", ""):
                     known = "search_docs、read_doc、ask_user"
+                    if ws_mode == "api":
+                        known += "、web_search、web_fetch"
                     if shell_mod.enabled(cfg):
                         known += "、pwsh"
                     if browser_mod.enabled(cfg):

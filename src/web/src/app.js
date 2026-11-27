@@ -1,5 +1,5 @@
 import { createApp, reactive, ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from 'vue/dist/vue.esm-bundler.js'
-import Antd, { message, Modal, theme as antdTheme } from 'ant-design-vue'
+import Antd, { Modal, theme as antdTheme } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import { Marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
@@ -8,7 +8,27 @@ import { createChart, ColorType, CrosshairMode } from 'lightweight-charts'
 import * as echarts from 'echarts/core'
 import { BUILTIN_GALLERY_CATALOG, GALLERY_MAP, SymbolPicker, O2Echarts, QuantWidget, WidgetConfigDrawer, LazyChatVisual, WidgetGalleryModal } from './widgets_hub.js'
 import { EntityGeoAtlas } from './geo_atlas.js'
-import { BacktestLab } from './backtest_lab.js'
+import { BacktestLab, quantSyncStore, hydrateActiveSync } from './backtest_lab.js'
+import {
+  AnimateUIProvider,
+  ReducedMotionConfig,
+  AuiMenuPop,
+  AuiPopover,
+  AuiSheet,
+  AuiDisclosure,
+  AuiBackdrop,
+  AuiIconSwap,
+  AuiStepSwap,
+  AuiMetricNumber,
+  clampTempo,
+  syncMotionCssVars,
+  triggerThemeWipe,
+} from './motion_kit.js'
+import {
+  AuiMotionLoader,
+  auiMessage as message,
+  registerAuiComponents,
+} from './aui_components.js'
 
 const api = {
   async get(path) {
@@ -128,6 +148,9 @@ const IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.svg', '.webp', '.
 
 const App = {
   template: `
+<animate-ui-provider :tempo="uiTempo">
+<reduced-motion-config>
+<aui-tooltip-provider :open-delay="220" :close-delay="260">
 <a-config-provider :theme="theme" :locale="zhCN">
 <div class="shell" :class="cfg.ui_density ? ('density-' + cfg.ui_density) : 'density-default'">
   <!-- 布局一：顶部标签页 -->
@@ -139,6 +162,9 @@ const App = {
               @click="tab = n.key">
         <span class="nav-ico" v-html="n.icon"></span>
         <span>{{ n.label }}</span>
+        <span v-if="n.key === 'backtest' && quantSyncStore.isRunning" class="nav-sync-badge ft-mono" :title="quantSyncStore.stage || '后台同步中'">
+          <i class="nav-sync-dot"></i>{{ quantSyncStore.progress }}%
+        </span>
       </button>
       <span class="att-divider"></span>
       <button type="button" class="att-nav-btn" title="管理会话" aria-label="管理会话" @click="openHistBrowse">
@@ -161,12 +187,19 @@ const App = {
       </button>
     </div>
     <div class="att-right">
-      <button type="button" class="att-nav-btn"
-              :title="cfg.ui_theme === 'dark' ? '切换浅色外观' : '切换深色外观'"
-              aria-label="切换外观主题"
-              @click="toggleTheme">
-        <span class="nav-ico" v-html="cfg.ui_theme === 'dark' ? ICO.sun : ICO.moon"></span>
-      </button>
+      <aui-theme-toggler :theme="cfg.ui_theme" :resolved-theme="cfg.ui_theme"
+                         :set-theme="(t) => { cfg.ui_theme = t }"
+                         :direction="cfg.ui_theme === 'dark' ? 'rtl' : 'ltr'"
+                         v-slot="{ toggleTheme: runWipe }">
+        <button type="button" class="att-nav-btn"
+                :title="cfg.ui_theme === 'dark' ? '切换浅色外观' : '切换深色外观'"
+                aria-label="切换外观主题"
+                @click="runWipe(cfg.ui_theme === 'dark' ? 'light' : 'dark')">
+          <span class="nav-ico">
+            <aui-icon-swap :icon-key="cfg.ui_theme === 'dark' ? 'sun' : 'moon'" :html="cfg.ui_theme === 'dark' ? ICO.sun : ICO.moon" />
+          </span>
+        </button>
+      </aui-theme-toggler>
       <button type="button" :class="['att-nav-btn', tab === 'settings' ? 'on' : '']"
               @click="tab = tab === 'settings' ? (lastAppTab || 'ask') : 'settings'">
         <span class="nav-ico" v-html="ICO.settings"></span>
@@ -182,11 +215,11 @@ const App = {
       <div class="hist-manage-head">
         <span class="hist-manage-title">{{ histPaneTitle }}</span>
         <span class="hist-head-actions">
-          <a-tooltip v-if="histMode === 'browse'" title="管理">
+          <aui-tooltip v-if="histMode === 'browse'" title="管理">
             <button type="button" class="hist-tool" :disabled="!histGroups.length" @click="openHistManage">
               <span class="nav-ico" v-html="ICO.manage"></span>
             </button>
-          </a-tooltip>
+          </aui-tooltip>
           <button type="button" class="hist-close" aria-label="关闭" @click="closeHistManage">
             <span v-html="ICO.close"></span>
           </button>
@@ -219,17 +252,21 @@ const App = {
       </div>
     </div>
     <nav v-else class="nav" aria-label="主导航">
-      <div class="nav-switch">
-        <span class="slide-pill" :style="navPillStyle"></span>
-        <button v-for="n in navs" :key="n.key"
-                :ref="(el) => bindMainNav(n.key, el)"
-                :class="['nav-item', tab === n.key ? 'on' : '']"
-                :aria-current="tab === n.key ? 'page' : undefined"
-                @click="tab = n.key">
-          <span class="nav-ico" v-html="n.icon"></span>
-          <span>{{ n.label }}</span>
-        </button>
-      </div>
+      <aui-highlight class="aui-hl-surface" mode="parent" container-class-name="nav-switch"
+                     :model-value="tab" :controlled-items="true" :click="false">
+        <aui-highlight-item v-for="n in navs" :key="n.key" :value="n.key" as-child>
+          <button type="button"
+                  :class="['nav-item', tab === n.key ? 'on' : '']"
+                  :aria-current="tab === n.key ? 'page' : undefined"
+                  @click="tab = n.key">
+            <span class="nav-ico" v-html="n.icon"></span>
+            <span>{{ n.label }}</span>
+            <span v-if="n.key === 'backtest' && quantSyncStore.isRunning" class="nav-sync-badge ft-mono" :title="quantSyncStore.stage || '后台同步中'">
+              <i class="nav-sync-dot"></i>{{ quantSyncStore.progress }}%
+            </span>
+          </button>
+        </aui-highlight-item>
+      </aui-highlight>
 
       <!-- 收件箱顶部快捷操作：搜索会话 -->
       <div v-if="cfg.ui_density === 'compact'" class="sider-quick-actions">
@@ -249,47 +286,103 @@ const App = {
         <div class="hist-head">
           <span class="hist-head-label">{{ cfg.ui_density === 'compact' ? '最近' : '会话' }}</span>
           <span class="hist-head-actions">
-            <a-tooltip title="新建会话">
+            <aui-tooltip title="新建会话">
               <button type="button" class="hist-tool" aria-label="新建会话" @click="newChat">
                 <span class="nav-ico" v-html="ICO.plus"></span>
               </button>
-            </a-tooltip>
-            <a-tooltip title="管理">
+            </aui-tooltip>
+            <aui-tooltip title="管理">
               <button type="button" class="hist-tool" aria-label="管理会话" :disabled="!allSessionChats.length" @click="openHistManage">
                 <span class="nav-ico" v-html="ICO.manage"></span>
               </button>
-            </a-tooltip>
+            </aui-tooltip>
           </span>
         </div>
 
-        <!-- 布局三：收件箱模式 -->
+        <!-- 布局三：收件箱模式 (PinnedList 跨组飞移) -->
         <div v-if="cfg.ui_density === 'compact'" class="hist-scroll inbox-scroll">
           <div v-if="!filteredSessionChats.length" class="hist-empty">暂无匹配会话</div>
-          <button type="button" v-for="c in filteredSessionChats" :key="c.id"
-                  :class="['inbox-item', c.id === chatId ? 'on' : '']"
-                  :title="c.title" @click="openHistChat(c)">
-            <div class="inbox-item-top">
-              <span class="inbox-item-title">{{ c.title || '新对话' }}</span>
-              <matrix-loader v-if="runningIds[c.id]" />
-              <span v-else-if="c.pinned" class="hist-pin" v-html="ICO.pin"></span>
-            </div>
-            <div class="inbox-item-sub">
-              <span class="inbox-item-proj">{{ convTurnCount(c) }} 轮对话</span>
-              <span class="inbox-item-time">{{ convRelTime(c.activeAt || c.createdAt) }}</span>
-            </div>
-          </button>
+          <aui-pinned-list v-else class="aui-pinned-list" @pinned-change="togglePinSessionById">
+            <aui-pinned-group v-if="pinnedFilteredChats.length">
+              <aui-pinned-label class="aui-pinned-label">已置顶</aui-pinned-label>
+              <aui-pinned-items class="aui-pinned-items">
+                <aui-pinned-item v-for="c in pinnedFilteredChats" :key="c.id" :id="c.id" custom-trigger>
+                  <div role="button" tabindex="0" :class="['inbox-item', c.id === chatId ? 'on' : '']"
+                       :title="c.title" @click="openHistChat(c)" @keydown.enter.prevent="openHistChat(c)">
+                    <div class="inbox-item-top">
+                      <span class="inbox-item-title">{{ c.title || '新对话' }}</span>
+                      <matrix-loader v-if="runningIds[c.id]" />
+                      <aui-pinned-trigger v-else as-child>
+                        <button type="button" class="hist-pin-btn on" title="取消置顶" aria-label="取消置顶" @click.stop v-html="ICO.pin"></button>
+                      </aui-pinned-trigger>
+                    </div>
+                    <div class="inbox-item-sub">
+                      <span class="inbox-item-proj">{{ convTurnCount(c) }} 轮对话</span>
+                      <span class="inbox-item-time">{{ convRelTime(c.activeAt || c.createdAt) }}</span>
+                    </div>
+                  </div>
+                </aui-pinned-item>
+              </aui-pinned-items>
+            </aui-pinned-group>
+            <aui-unpinned-group v-if="unpinnedFilteredChats.length">
+              <aui-pinned-label v-if="pinnedFilteredChats.length" class="aui-pinned-label">最近</aui-pinned-label>
+              <aui-pinned-items class="aui-pinned-items">
+                <aui-pinned-item v-for="c in unpinnedFilteredChats" :key="c.id" :id="c.id" custom-trigger>
+                  <div role="button" tabindex="0" :class="['inbox-item', c.id === chatId ? 'on' : '']"
+                       :title="c.title" @click="openHistChat(c)" @keydown.enter.prevent="openHistChat(c)">
+                    <div class="inbox-item-top">
+                      <span class="inbox-item-title">{{ c.title || '新对话' }}</span>
+                      <matrix-loader v-if="runningIds[c.id]" />
+                      <aui-pinned-trigger v-else as-child>
+                        <button type="button" class="hist-pin-btn" title="置顶会话" aria-label="置顶会话" @click.stop v-html="ICO.pin"></button>
+                      </aui-pinned-trigger>
+                    </div>
+                    <div class="inbox-item-sub">
+                      <span class="inbox-item-proj">{{ convTurnCount(c) }} 轮对话</span>
+                      <span class="inbox-item-time">{{ convRelTime(c.activeAt || c.createdAt) }}</span>
+                    </div>
+                  </div>
+                </aui-pinned-item>
+              </aui-pinned-items>
+            </aui-unpinned-group>
+          </aui-pinned-list>
         </div>
 
-        <!-- 布局二：侧边标签页模式 -->
+        <!-- 布局二：侧边标签页模式 (PinnedList 跨组飞移) -->
         <div v-else class="hist-scroll">
           <div v-if="!allSessionChats.length" class="hist-empty">暂无历史对话</div>
-          <button type="button" v-for="c in allSessionChats" :key="c.id"
-                  :class="['hist-item', c.id === chatId ? 'on' : '']"
-                  :title="c.title" @click="openHistChat(c)">
-            <span v-if="c.pinned" class="hist-pin" v-html="ICO.pin"></span>
-            <span class="hist-title">{{ c.title || '新对话' }}</span>
-            <matrix-loader v-if="runningIds[c.id]" />
-          </button>
+          <aui-pinned-list v-else class="aui-pinned-list" @pinned-change="togglePinSessionById">
+            <aui-pinned-group v-if="pinnedSessionChats.length">
+              <aui-pinned-label class="aui-pinned-label">已置顶</aui-pinned-label>
+              <aui-pinned-items class="aui-pinned-items">
+                <aui-pinned-item v-for="c in pinnedSessionChats" :key="c.id" :id="c.id" custom-trigger>
+                  <div role="button" tabindex="0" :class="['hist-item', c.id === chatId ? 'on' : '']"
+                       :title="c.title" @click="openHistChat(c)" @keydown.enter.prevent="openHistChat(c)">
+                    <span class="hist-title">{{ c.title || '新对话' }}</span>
+                    <matrix-loader v-if="runningIds[c.id]" />
+                    <aui-pinned-trigger v-else as-child>
+                      <button type="button" class="hist-pin-btn on" title="取消置顶" aria-label="取消置顶" @click.stop v-html="ICO.pin"></button>
+                    </aui-pinned-trigger>
+                  </div>
+                </aui-pinned-item>
+              </aui-pinned-items>
+            </aui-pinned-group>
+            <aui-unpinned-group v-if="unpinnedSessionChats.length">
+              <aui-pinned-label v-if="pinnedSessionChats.length" class="aui-pinned-label">全部会话</aui-pinned-label>
+              <aui-pinned-items class="aui-pinned-items">
+                <aui-pinned-item v-for="c in unpinnedSessionChats" :key="c.id" :id="c.id" custom-trigger>
+                  <div role="button" tabindex="0" :class="['hist-item', c.id === chatId ? 'on' : '']"
+                       :title="c.title" @click="openHistChat(c)" @keydown.enter.prevent="openHistChat(c)">
+                    <span class="hist-title">{{ c.title || '新对话' }}</span>
+                    <matrix-loader v-if="runningIds[c.id]" />
+                    <aui-pinned-trigger v-else as-child>
+                      <button type="button" class="hist-pin-btn" title="置顶会话" aria-label="置顶会话" @click.stop v-html="ICO.pin"></button>
+                    </aui-pinned-trigger>
+                  </div>
+                </aui-pinned-item>
+              </aui-pinned-items>
+            </aui-unpinned-group>
+          </aui-pinned-list>
         </div>
       </section>
 
@@ -467,9 +560,11 @@ const App = {
             </div>
           </div>
 
-          <div v-if="cfg.news_enabled && askNewsOpen"
-               :class="['ask-news-float', askNewsMode === 'float' ? 'mode-float' : 'mode-dock']"
-               :style="askNewsMode === 'float' ? askNewsFloatStyle : null">
+          <aui-sheet :open="!!(cfg.news_enabled && askNewsOpen)"
+                     side="right"
+                     :floating="askNewsMode === 'float'"
+                     :sheet-class="['ask-news-float', askNewsMode === 'float' ? 'mode-float' : 'mode-dock']"
+                     :sheet-style="askNewsMode === 'float' ? askNewsFloatStyle : null">
             <div class="anf-head" @pointerdown="onAskNewsDragStart">
               <div class="anf-title">
                 <span class="nav-ico" v-html="ICO.rss"></span>
@@ -479,24 +574,26 @@ const App = {
                 </span>
               </div>
               <div style="display:flex;align-items:center;gap:4px" @pointerdown.stop>
-                <a-tooltip :title="askNewsMode === 'float' ? '右侧停靠' : '自由悬浮'">
+                <aui-tooltip :title="askNewsMode === 'float' ? '右侧停靠' : '自由悬浮'">
                   <button type="button" class="bw-btn" aria-label="切换窗口停靠模式" @click="askNewsMode = askNewsMode === 'float' ? 'dock' : 'float'" v-html="ICO.pinWindow"></button>
-                </a-tooltip>
-                <a-tooltip title="刷新">
+                </aui-tooltip>
+                <aui-tooltip title="刷新">
                   <button type="button" class="bw-btn" aria-label="刷新快讯" @click="fetchNewsNow()" v-html="ICO.reload"></button>
-                </a-tooltip>
-                <a-tooltip title="关闭">
+                </aui-tooltip>
+                <aui-tooltip title="关闭">
                   <button type="button" class="bw-btn" aria-label="关闭快讯窗口" @click="askNewsOpen = false" v-html="ICO.close"></button>
-                </a-tooltip>
+                </aui-tooltip>
               </div>
             </div>
             <div class="anf-tools">
               <div style="display:flex;align-items:center;gap:6px">
-                <div class="news-lang-pills">
-                  <button v-for="lg in [{id:'all',l:'全'},{id:'zh',l:'中'},{id:'en',l:'英'},{id:'ru',l:'俄'},{id:'ja',l:'日'}]" :key="lg.id"
-                          type="button" :class="['news-pill-btn', newsFilters.lang === lg.id ? 'on' : '']"
-                          @click="newsFilters.lang = lg.id; runNewsSearch(true)">{{ lg.l }}</button>
-                </div>
+                <aui-highlight class="aui-hl-pill-surface" mode="parent" container-class-name="news-lang-pills"
+                               :model-value="newsFilters.lang" :controlled-items="true" :click="false">
+                  <aui-highlight-item v-for="lg in [{id:'all',l:'全'},{id:'zh',l:'中'},{id:'en',l:'英'},{id:'ru',l:'俄'},{id:'ja',l:'日'}]" :key="lg.id" :value="lg.id" as-child>
+                    <button type="button" :class="['news-pill-btn', newsFilters.lang === lg.id ? 'on' : '']"
+                            @click="newsFilters.lang = lg.id; runNewsSearch(true)">{{ lg.l }}</button>
+                  </aui-highlight-item>
+                </aui-highlight>
                 <button type="button" :class="['ft-btn', newsSearchMode === 'semantic' ? 'on' : '']"
                         :aria-pressed="newsSearchMode === 'semantic'"
                         title="切换语义检索"
@@ -538,13 +635,14 @@ const App = {
                 <a-button size="small" type="primary" :disabled="!askNewsPickedCount" @click="citeSelectedNewsToAsk(true)">分析</a-button>
               </div>
             </div>
-          </div>
+          </aui-sheet>
 
           <div class="chat-stage">
             <transition name="ascii-fade">
               <pre v-if="!messages.length" class="chat-ascii" aria-hidden="true">{{ chatAscii }}</pre>
             </transition>
-            <div class="chatlog" ref="chatlog" @scroll.passive="onChatlogScroll">
+            <aui-scroll-fade as-child :size="24" :blur="0" :shrink="0">
+              <div class="chatlog aui-scroll-fade" ref="chatlog" @scroll.passive="onChatlogScroll">
             <div v-for="(m, i) in messages" :key="m.id || ('i' + i)" :class="['msg', m.role]" :style="msgDelay(i, messages.length)">
               <div class="bubble">
                 <div v-if="m.files && m.files.length" class="msg-files">
@@ -587,28 +685,30 @@ const App = {
                     <span>{{ m.ask.intent === 'recommend' ? '推荐' : '请补充关键条件' }}</span>
                     <span v-if="m.ask.questions.length > 1" class="ask-step">{{ (m.ask.step || 0) + 1 }} / {{ m.ask.questions.length }}</span>
                   </div>
-                  <div v-for="q in askCurrentQs(m)" :key="q.id" class="ask-q">
-                    <div class="ask-q-prompt">{{ q.prompt }}</div>
-                    <div class="ask-opts">
-                      <button type="button" v-for="o in q.options" :key="o.id"
-                              :class="['ask-opt', askPicked(m, q, o.id) ? 'on' : '']"
-                              :disabled="m.ask.submitted"
-                              @click="toggleAskOpt(m, q, o)">
-                        <span>{{ o.label }}</span>
-                        <span v-if="o.recommended" class="ask-rec">建议</span>
-                      </button>
-                      <button type="button" v-if="q.allow_other !== false"
-                              :class="['ask-opt', askOtherOn(m, q) ? 'on' : '']"
-                              :disabled="m.ask.submitted"
-                              @click="pickAskOther(m, q)">其他</button>
+                  <aui-step-swap :step-key="m.ask.step || 0" :direction="m.ask._dir || 1">
+                    <div v-for="q in askCurrentQs(m)" :key="q.id" class="ask-q">
+                      <div class="ask-q-prompt">{{ q.prompt }}</div>
+                      <div class="ask-opts">
+                        <button type="button" v-for="o in q.options" :key="o.id"
+                                :class="['ask-opt', askPicked(m, q, o.id) ? 'on' : '']"
+                                :disabled="m.ask.submitted"
+                                @click="toggleAskOpt(m, q, o)">
+                          <span>{{ o.label }}</span>
+                          <span v-if="o.recommended" class="ask-rec">建议</span>
+                        </button>
+                        <button type="button" v-if="q.allow_other !== false"
+                                :class="['ask-opt', askOtherOn(m, q) ? 'on' : '']"
+                                :disabled="m.ask.submitted"
+                                @click="pickAskOther(m, q)">其他</button>
+                      </div>
+                      <a-input v-if="askOtherOn(m, q)"
+                               v-model:value="m.ask.otherText[q.id]"
+                               size="large"
+                               placeholder="请输入具体情况"
+                               :disabled="m.ask.submitted"
+                               @pressEnter="nextAsk(m)" />
                     </div>
-                    <a-input v-if="askOtherOn(m, q)"
-                             v-model:value="m.ask.otherText[q.id]"
-                             size="large"
-                             placeholder="请输入具体情况"
-                             :disabled="m.ask.submitted"
-                             @pressEnter="nextAsk(m)" />
-                  </div>
+                  </aui-step-swap>
                   <div v-if="!m.ask.submitted" class="ask-nav">
                     <a-button v-if="m.ask.questions.length > 1" :disabled="!(m.ask.step > 0)" @click="prevAsk(m)">上一题</a-button>
                     <a-button type="primary" :disabled="!askStepDone(m) || asking" @click="nextAsk(m)">{{ askLastStep(m) ? '提交' : '下一题' }}</a-button>
@@ -618,26 +718,59 @@ const App = {
                 <div v-if="displaySources(m).length" class="srcs">
                   <div class="srcs-head" role="button" tabindex="0" :aria-expanded="!!m.showSrc"
                        @click="toggleSrc(m)" @keydown.enter.prevent="toggleSrc(m)">
-                    依据 {{ displaySources(m).length }} 条
+                    <span :class="['srcs-chev', m.showSrc ? 'open' : '']" v-html="ICO.chevron"></span>
+                    <span>依据 {{ displaySources(m).length }} 条</span>
                     <span class="hint">{{ m.showSrc ? '收起' : '展开' }}</span>
                   </div>
-                  <div v-if="m.showSrc">
-                    <div v-for="s in displaySources(m)" :key="s.n" class="src" role="button" tabindex="0"
-                         @click="openDoc(s.doc_id, s.chunk_id)" @keydown.enter.prevent="openDoc(s.doc_id, s.chunk_id)">
-                      <span class="src-n">〔{{ s.n }}〕</span>
-                      <span class="src-head">
-                        <b>{{ s.title }}</b>
-                        <span v-if="s.doc_no" class="docno"> {{ s.doc_no }}</span>
-                        <span v-if="s.article" class="loc"> {{ s.article }}</span>
-                        <span v-if="s.page" class="loc"> · 第 {{ s.page }} 页</span>
-                      </span>
-                      <div class="src-text">{{ s.text }}</div>
+                  <aui-disclosure :open="!!m.showSrc">
+                    <div style="padding-top:6px">
+                      <div v-for="s in displaySources(m)" :key="s.n" class="src" role="button" tabindex="0"
+                           @click="openDoc(s.doc_id, s.chunk_id)" @keydown.enter.prevent="openDoc(s.doc_id, s.chunk_id)">
+                        <span class="src-n">〔{{ s.n }}〕</span>
+                        <span class="src-head">
+                          <b>{{ s.title }}</b>
+                          <span v-if="s.doc_no" class="docno"> {{ s.doc_no }}</span>
+                          <span v-if="s.article" class="loc"> {{ s.article }}</span>
+                          <span v-if="s.page" class="loc"> · 第 {{ s.page }} 页</span>
+                        </span>
+                        <div class="src-text">{{ s.text }}</div>
+                      </div>
                     </div>
+                  </aui-disclosure>
+                </div>
+                <div v-if="m.webSources && m.webSources.length" class="srcs web-srcs">
+                  <div class="srcs-head" role="button" tabindex="0" :aria-expanded="!!m.showWebSrc"
+                       @click="toggleWebSrc(m)" @keydown.enter.prevent="toggleWebSrc(m)">
+                    <span :class="['srcs-chev', m.showWebSrc ? 'open' : '']" v-html="ICO.chevron"></span>
+                    <span>联网来源 {{ m.webSources.length }} 条</span>
+                    <span v-if="citedWebCount(m)" class="web-src-cited-pill">引用 {{ citedWebCount(m) }}</span>
+                    <span class="hint">{{ m.showWebSrc ? '收起' : '展开' }}</span>
                   </div>
+                  <aui-disclosure :open="!!m.showWebSrc">
+                    <div style="padding-top:6px">
+                      <div v-for="(ws, wi) in sortedWebSources(m)" :key="ws.url || ('ws-' + wi)"
+                           :class="['src', 'web-src', ws.cited ? 'is-cited' : '']"
+                           role="button" tabindex="0"
+                           @click="openWebSource(ws.url)" @keydown.enter.prevent="openWebSource(ws.url)">
+                        <div class="web-src-top">
+                          <span class="src-n">{{ wi + 1 }}</span>
+                          <span class="src-head web-src-title"><b>{{ ws.title || ws.url }}</b></span>
+                          <span v-if="ws.cited" class="web-src-badge">已引用</span>
+                        </div>
+                        <div class="web-src-meta">
+                          <span>{{ ws.site || webSourceHost(ws.url) }}</span>
+                          <span v-if="ws.date">· {{ ws.date }}</span>
+                          <span v-if="ws.score != null">· 相关度 {{ ws.score }}</span>
+                        </div>
+                        <div v-if="ws.snippet" class="src-text">{{ ws.snippet }}</div>
+                      </div>
+                    </div>
+                  </aui-disclosure>
                 </div>
               </div>
             </div>
           </div>
+          </aui-scroll-fade>
           </div>
 
           <div class="composer">
@@ -672,12 +805,21 @@ const App = {
                 placeholder="输入问题，Enter 发送，可直接粘贴文件"
                 @keydown="onAskKeydown" />
               <div class="composer-bar">
-                <a-tooltip title="添加附件">
+                <aui-tooltip title="添加附件">
                   <button type="button" class="attach-btn" aria-label="添加附件" :disabled="asking" @click="pickAttach">
                     <span class="icon-svg" v-html="ICO.plus"></span>
                   </button>
-                </a-tooltip>
-                <a-tooltip :title="askBrowserBtnTooltip">
+                </aui-tooltip>
+                <aui-tooltip :title="webSearchBtnTooltip">
+                  <button type="button"
+                          aria-label="联网搜索"
+                          :aria-pressed="!!cfg.web_search"
+                          :class="['attach-btn', 'ws-toggle-btn', cfg.web_search ? 'on' : '', cfg.web_search && !webSearchActiveReady ? 'warn' : '']"
+                          @click="toggleWebSearch">
+                    <span class="icon-svg" v-html="ICO.search"></span>
+                  </button>
+                </aui-tooltip>
+                <aui-tooltip :title="askBrowserBtnTooltip">
                   <button type="button"
                           aria-label="协同浏览器"
                           :class="[
@@ -689,12 +831,12 @@ const App = {
                           @click="toggleAskBrowserByUser">
                     <span class="icon-svg" v-html="ICO.globe"></span>
                   </button>
-                </a-tooltip>
-                <a-tooltip v-if="cfg.news_enabled" title="快讯引用">
+                </aui-tooltip>
+                <aui-tooltip v-if="cfg.news_enabled" title="快讯引用">
                   <button type="button" aria-label="快讯引用" :class="['attach-btn', askNewsOpen ? 'on' : '']" @click="toggleAskNews">
                     <span class="icon-svg" v-html="ICO.rss"></span>
                   </button>
-                </a-tooltip>
+                </aui-tooltip>
                 <input ref="attachInput" class="attach-input" type="file" multiple
                        accept=".xlsx,.csv,.pdf,.doc,.docx,.md,.markdown,.json,.txt,.jpg,.jpeg,.png,.tif,.tiff,.svg,.webp,.heif,.heic" @change="onAttachPicked" />
                 <span class="spacer"></span>
@@ -702,10 +844,13 @@ const App = {
                   <button type="button" class="model-pill" :class="{ busy: asking }" aria-haspopup="true" :aria-expanded="menuOpen" @click.stop="toggleModelMenu">
                     <span v-if="channelLabel" class="model-pill-chan">{{ channelLabel }}</span>
                     <span v-if="channelLabel" class="model-pill-sep"></span>
-                    <span class="model-pill-text" :data-label="modelLabel">{{ modelLabel }}</span>
+                    <span class="model-pill-text" :data-label="modelLabel">
+                      <aui-shimmering-text v-if="asking" :text="modelLabel" color="#9ca3af" shimmering-color="var(--foreground)" :duration="1.4" />
+                      <template v-else>{{ modelLabel }}</template>
+                    </span>
                     <span class="model-caret" v-html="ICO.caret"></span>
                   </button>
-                  <div v-if="menuOpen" class="model-pop" @click.stop>
+                  <aui-menu-pop :open="menuOpen" origin="bottom right" panel-class="model-pop" :stop-click="true">
                     <button v-if="effortOptions.length" type="button"
                             :class="['mp-row', menuPanel === 'effort' ? 'on' : '']"
                             @click="openPanel('effort')">
@@ -730,23 +875,23 @@ const App = {
                         <span class="mp-chev" v-html="ICO.chevron"></span>
                       </span>
                     </button>
-                    <div v-if="menuPanel === 'effort'" class="model-sub">
+                    <aui-menu-pop :open="menuPanel === 'effort'" origin="right top" :slide-x="6" panel-class="model-sub">
                       <button type="button" v-for="e in effortOptions" :key="e.id"
                               :class="['mp-item', cfg.effort === e.id ? 'picked' : '']"
                               @click="setEffort(e.id)">
                         <span>{{ e.label }}</span>
                         <span v-if="cfg.effort === e.id" class="mp-check" v-html="ICO.check"></span>
                       </button>
-                    </div>
-                    <div v-if="menuPanel === 'context' && contextOptions.length > 1" class="model-sub">
+                    </aui-menu-pop>
+                    <aui-menu-pop :open="menuPanel === 'context' && contextOptions.length > 1" origin="right top" :slide-x="6" panel-class="model-sub">
                       <button type="button" v-for="c in contextOptions" :key="c.id"
                               :class="['mp-item', cfg.context === c.id ? 'picked' : '']"
                               @click="setContext(c.id)">
                         <span>{{ c.label }}</span>
                         <span v-if="cfg.context === c.id" class="mp-check" v-html="ICO.check"></span>
                       </button>
-                    </div>
-                    <div v-if="menuPanel === 'model'" class="model-sub model-sub-wide">
+                    </aui-menu-pop>
+                    <aui-menu-pop :open="menuPanel === 'model'" origin="right bottom" :slide-x="6" panel-class="model-sub model-sub-wide">
                       <div class="mp-search">
                         <span class="mp-search-ico" v-html="ICO.search"></span>
                         <input v-model="modelQuery" placeholder="搜索模型" />
@@ -762,21 +907,23 @@ const App = {
                           </button>
                         </template>
                       </div>
-                    </div>
-                  </div>
+                    </aui-menu-pop>
+                  </aui-menu-pop>
                 </div>
-                <a-tooltip title="清空对话">
+                <aui-tooltip title="清空对话">
                   <a-button type="text" class="icon-btn" aria-label="清空对话" :disabled="asking" @click="clearChat">
                     <template #icon><span class="icon-svg" v-html="ICO.trash"></span></template>
                   </a-button>
-                </a-tooltip>
-                <a-tooltip :title="asking ? '停止' : '发送'">
+                </aui-tooltip>
+                <aui-tooltip :title="asking ? '停止' : '发送'">
                   <a-button type="primary" class="icon-btn send-btn" :aria-label="asking ? '停止生成' : '发送消息'" @click="asking ? stopAsk() : send()">
                     <template #icon>
-                      <span class="icon-svg" v-html="asking ? ICO.stop : ICO.send"></span>
+                      <span class="icon-svg">
+                        <aui-icon-swap :icon-key="asking ? 'stop' : 'send'" :html="asking ? ICO.stop : ICO.send" :spin="false" />
+                      </span>
                     </template>
                   </a-button>
-                </a-tooltip>
+                </aui-tooltip>
               </div>
             </div>
           </div>
@@ -901,20 +1048,32 @@ const App = {
                       title="刷新数据" aria-label="刷新数据" @click="refreshDashboardAll()" v-html="ICO.reload"></button>
               <button type="button" class="ft-icon-btn" title="布局管理" aria-label="布局管理"
                       @click="dashCustomizeOpen = true" v-html="ICO.layers"></button>
-              <button type="button" class="ft-icon-btn"
-                      :title="cfg.ui_theme === 'dark' ? '浅色外观' : '深色外观'" aria-label="切换外观"
-                      @click="toggleTheme" v-html="cfg.ui_theme === 'dark' ? ICO.sun : ICO.moon"></button>
+              <aui-theme-toggler :theme="cfg.ui_theme" :resolved-theme="cfg.ui_theme"
+                                 :set-theme="(t) => { cfg.ui_theme = t }"
+                                 :direction="cfg.ui_theme === 'dark' ? 'rtl' : 'ltr'"
+                                 v-slot="{ toggleTheme: runWipe }">
+                <button type="button" class="ft-icon-btn"
+                        :title="cfg.ui_theme === 'dark' ? '浅色外观' : '深色外观'" aria-label="切换外观"
+                        @click="runWipe(cfg.ui_theme === 'dark' ? 'light' : 'dark')">
+                  <aui-icon-swap :icon-key="cfg.ui_theme === 'dark' ? 'sun' : 'moon'" :html="cfg.ui_theme === 'dark' ? ICO.sun : ICO.moon" />
+                </button>
+              </aui-theme-toggler>
             </div>
           </div>
 
           <!-- Row 2: 行情 / 快讯 实时滚动带 -->
           <div class="ft-ticker">
-            <div class="news-lang-pills" style="padding:1px 2px">
-              <button type="button" :class="['news-pill-btn', dashTickerMode === 'mkt' ? 'on' : '']"
-                      style="padding:1px 7px;font-size:10px" @click="dashTickerMode = 'mkt'">行情</button>
-              <button type="button" :class="['news-pill-btn', dashTickerMode === 'wire' ? 'on' : '']"
-                      style="padding:1px 7px;font-size:10px" @click="dashTickerMode = 'wire'">快讯</button>
-            </div>
+            <aui-highlight class="aui-hl-pill-surface" mode="parent" container-class-name="news-lang-pills"
+                           style="padding:1px 2px" :model-value="dashTickerMode" :controlled-items="true" :click="false">
+              <aui-highlight-item value="mkt" as-child>
+                <button type="button" :class="['news-pill-btn', dashTickerMode === 'mkt' ? 'on' : '']"
+                        style="padding:1px 7px;font-size:10px" @click="dashTickerMode = 'mkt'">行情</button>
+              </aui-highlight-item>
+              <aui-highlight-item value="wire" as-child>
+                <button type="button" :class="['news-pill-btn', dashTickerMode === 'wire' ? 'on' : '']"
+                        style="padding:1px 7px;font-size:10px" @click="dashTickerMode = 'wire'">快讯</button>
+              </aui-highlight-item>
+            </aui-highlight>
             <div class="dash-ticker-track">
               <template v-if="dashTickerMode === 'mkt'">
                 <span v-for="tk in (marketOverview.ribbon || [])" :key="'mtk-' + tk.secid"
@@ -1110,6 +1269,9 @@ const App = {
                     <div v-if="marketSectors.length" style="display:flex;align-items:center;gap:8px;font-size:10.5px;flex:none;padding:0 2px">
                       <span class="ft-mono" style="color:var(--up);font-weight:700">涨 {{ marketSectors.filter(s => (s.pct || 0) > 0).length }}</span>
                       <span class="ft-mono" style="color:var(--down);font-weight:700">跌 {{ marketSectors.filter(s => (s.pct || 0) < 0).length }}</span>
+                      <span v-if="marketSectorsMeta.source" class="hint ft-mono" style="font-size:10px">
+                        {{ marketSectorsMeta.source }}<template v-if="marketSectorsMeta.is_live && marketSectorsMeta.quote_time"> · 实时 {{ marketSectorsMeta.quote_time }}</template>
+                      </span>
                       <span class="hint ft-mono" style="margin-left:auto">
                         均幅 {{ ((marketSectors.reduce((a, b) => a + (Number(b.pct) || 0), 0) / marketSectors.length)).toFixed(2) }}%
                       </span>
@@ -1203,12 +1365,16 @@ const App = {
                   <!-- Panel B: 实体热度与交互式共现网络 -->
                   <div v-else-if="w.type === 'entity_pulse'" class="ft-panel-body ep-body">
                     <div class="ep-toolbar">
-                      <div class="ep-pills" role="group" aria-label="统计时间窗">
-                        <button v-for="opt in [{ h: 24, l: '24h' }, { h: 168, l: '7天' }, { h: 720, l: '30天' }]"
-                                :key="'eph-' + opt.h" type="button"
-                                :class="['ep-pill', entityPulseHours === opt.h ? 'on' : '']"
-                                @click="setEntityPulseHours(opt.h)">{{ opt.l }}</button>
-                      </div>
+                      <aui-highlight class="aui-hl-card-surface" mode="parent" container-class-name="ep-pills"
+                                     role="group" aria-label="统计时间窗"
+                                     :model-value="String(entityPulseHours)" :controlled-items="true" :click="false">
+                        <aui-highlight-item v-for="opt in [{ h: 24, l: '24h' }, { h: 168, l: '7天' }, { h: 720, l: '30天' }]"
+                                            :key="'eph-' + opt.h" :value="String(opt.h)" as-child>
+                          <button type="button"
+                                  :class="['ep-pill', entityPulseHours === opt.h ? 'on' : '']"
+                                  @click="setEntityPulseHours(opt.h)">{{ opt.l }}</button>
+                        </aui-highlight-item>
+                      </aui-highlight>
                       <div class="ep-legend" title="节点与资产颜色代表利多/中性/利空，底图着色代表地缘冲突烈度">
                         <span class="ep-leg-item"><span class="ep-dot" style="background:#059669"></span>利多</span>
                         <span class="ep-leg-item"><span class="ep-dot" style="background:#2563eb"></span>中性</span>
@@ -1276,7 +1442,7 @@ const App = {
                                   <div class="ep-heat-track">
                                     <div class="ep-heat-fill"
                                          :style="{
-                                           width: Math.max(8, Math.round((Number(ent.mentions) || 0) / entityMaxMentions * 100)) + '%',
+                                           transform: 'translateX(' + (Math.max(8, Math.round((Number(ent.mentions) || 0) / entityMaxMentions * 100)) - 100) + '%)',
                                            background: ent.net_sentiment > 0.08 ? '#10b981' : (ent.net_sentiment < -0.08 ? '#ef4444' : '#3b82f6'),
                                          }"></div>
                                   </div>
@@ -1520,7 +1686,9 @@ const App = {
                   {{ (card.pct || 0) >= 0 ? '▲' : '▼' }} {{ fmtPct(card.pct) }}
                 </span>
               </div>
-              <div class="mk-kpi-price ft-mono">{{ fmtPrice(card.price) }}</div>
+              <div class="mk-kpi-price ft-mono">
+                <aui-metric-number :value="card.price" :decimals="Math.abs(Number(card.price) || 0) >= 100 ? 2 : (Math.abs(Number(card.price) || 0) >= 1 ? 2 : 4)" :fallback="fmtPrice(card.price)" />
+              </div>
               <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
                 <span class="ft-mono hint" style="font-size:10px">{{ (card.chg || 0) >= 0 ? '+' : '' }}{{ fmtPrice(card.chg) }}</span>
                 <spark-line :values="card.spark" :up="(card.pct || 0) >= 0" />
@@ -1652,6 +1820,9 @@ const App = {
                     <div v-if="marketSectors.length" style="display:flex;align-items:center;gap:8px;font-size:10.5px;flex:none;padding:0 2px">
                       <span class="ft-mono" style="color:var(--up);font-weight:700">涨 {{ marketSectors.filter(s => (s.pct || 0) > 0).length }}</span>
                       <span class="ft-mono" style="color:var(--down);font-weight:700">跌 {{ marketSectors.filter(s => (s.pct || 0) < 0).length }}</span>
+                      <span v-if="marketSectorsMeta.source" class="hint ft-mono" style="font-size:10px">
+                        {{ marketSectorsMeta.source }}<template v-if="marketSectorsMeta.is_live && marketSectorsMeta.quote_time"> · 实时 {{ marketSectorsMeta.quote_time }}</template>
+                      </span>
                       <span class="hint ft-mono" style="margin-left:auto">
                         均幅 {{ ((marketSectors.reduce((a, b) => a + (Number(b.pct) || 0), 0) / marketSectors.length)).toFixed(2) }}%
                       </span>
@@ -1920,14 +2091,15 @@ const App = {
         </div>
       </template>
 
-      <!-- 量化回测与成熟因子实验室 -->
-      <template v-if="tab === 'backtest'">
+      <!-- 量化回测与成熟因子实验室（keep-alive 保活，切换其他页面不影响后台数据同步与当前状态） -->
+      <keep-alive>
         <backtest-lab
+          v-if="tab === 'backtest'"
           :dark="cfg.ui_theme === 'dark'"
           :watchlist="(marketOverview && marketOverview.watchlist) || []"
           @ask-ai="onAskAiFromWidget"
         />
-      </template>
+      </keep-alive>
 
       <!-- 新闻流主页面 -->
       <template v-if="tab === 'news'">
@@ -2230,12 +2402,12 @@ const App = {
                             @click="deleteDocRecord(row.doc)" v-html="ICO.trash"></button>
                   </template>
                 </span>
-                <button v-if="row.kind === 'project'" type="button"
-                        :class="['tree-kb', kbOff[row.project] ? 'off' : '']"
-                        :title="kbOff[row.project] ? '问答已关闭这个文库，文件仍可查看' : '问答会使用这个文库'"
-                        @click.stop="toggleProjectKb(row)">
-                  <span class="tree-kb-knob"></span>
-                </button>
+                <aui-switch v-if="row.kind === 'project'" size="xs"
+                            :checked="!kbOff[row.project]"
+                            :aria-label="kbOff[row.project] ? '问答已关闭这个文库，文件仍可查看' : '问答会使用这个文库'"
+                            :title="kbOff[row.project] ? '问答已关闭这个文库，文件仍可查看' : '问答会使用这个文库'"
+                            @click.stop
+                            @change="() => toggleProjectKb(row)" />
               </div>
             </div>
           </aside>
@@ -2258,11 +2430,11 @@ const App = {
               <span class="spacer"></span>
               <a-input v-model:value="catQuery" allow-clear placeholder="筛选标题、文号、属性或摘要…"
                        class="cat-search-input" />
-              <a-tooltip v-if="catProject" title="按主题与性质自动归入子文件夹">
+              <aui-tooltip v-if="catProject" title="按主题与性质自动归入子文件夹">
                 <a-button :loading="organizing" @click="organizeCurrentProject">
                   智能归档
                 </a-button>
-              </a-tooltip>
+              </aui-tooltip>
               <input ref="folderUploadInput" type="file" webkitdirectory directory multiple
                      style="display:none" @change="onFolderInputPicked" />
               <a-button class="cat-action-btn" @click="triggerFolderUpload">导入文件夹</a-button>
@@ -2270,19 +2442,24 @@ const App = {
             </div>
 
             <!-- 文件性质透视胶囊：混合视图使用多态属性列，选中单一性质时展开专属分列 -->
-            <div class="type-capsules">
-              <button type="button" :class="['type-cap', !catDocType ? 'on' : '']"
-                      @click="setCatDocType('')">
-                <span>混合视图</span>
-                <span class="type-cap-cnt">{{ scopeTotalCount }}</span>
-              </button>
-              <button type="button" v-for="dt in scopeDocTypeCapsules" :key="dt.id"
-                      :class="['type-cap', catDocType === dt.id ? 'on' : '']"
-                      @click="setCatDocType(dt.id)">
-                <span>{{ dt.label }}</span>
-                <span class="type-cap-cnt">{{ dt.count }}</span>
-              </button>
-            </div>
+            <aui-highlight class="aui-hl-cap-surface" mode="parent" container-class-name="type-capsules"
+                           :model-value="catDocType || '__all__'" :controlled-items="true" :click="false">
+              <aui-highlight-item value="__all__" as-child>
+                <button type="button" :class="['type-cap', !catDocType ? 'on' : '']"
+                        @click="setCatDocType('')">
+                  <span>混合视图</span>
+                  <span class="type-cap-cnt"><aui-counting-number :number="scopeTotalCount" :initially-stable="true" /></span>
+                </button>
+              </aui-highlight-item>
+              <aui-highlight-item v-for="dt in scopeDocTypeCapsules" :key="dt.id" :value="dt.id" as-child>
+                <button type="button"
+                        :class="['type-cap', catDocType === dt.id ? 'on' : '']"
+                        @click="setCatDocType(dt.id)">
+                  <span>{{ dt.label }}</span>
+                  <span class="type-cap-cnt">{{ dt.count }}</span>
+                </button>
+              </aui-highlight-item>
+            </aui-highlight>
 
             <div class="table-card" ref="tableCard">
               <a-table :data-source="catalogRows" :columns="dynamicColumns" row-key="id" size="middle"
@@ -2345,21 +2522,9 @@ const App = {
                   </template>
                   <template v-else-if="column.key === 'op'">
                     <div class="doc-op" @click.stop>
-                      <a-dropdown :trigger="['click']">
-                        <a class="op-link" @click.prevent>操作</a>
-                        <template #overlay>
-                          <a-menu @click="(e) => onDocOp(e, record)">
-                            <a-menu-item key="edit_meta">编辑属性 / 归类</a-menu-item>
-                            <a-menu-item key="update">重新上传文件</a-menu-item>
-                            <a-menu-divider v-if="record.doc_type === 'regulation'" />
-                            <a-menu-item v-if="record.doc_type === 'regulation' && record.status !== '现行'" key="现行">标为现行</a-menu-item>
-                            <a-menu-item v-if="record.doc_type === 'regulation' && record.status !== '试行'" key="试行">标为试行</a-menu-item>
-                            <a-menu-item v-if="record.doc_type === 'regulation' && record.status !== '已废止'" key="已废止">标为废止</a-menu-item>
-                            <a-menu-divider />
-                            <a-menu-item key="delete" style="color:#dc2626">删除</a-menu-item>
-                          </a-menu>
-                        </template>
-                      </a-dropdown>
+                      <aui-dropdown :items="docOpItems(record)" @select="(e) => onDocOp(e, record)">
+                        <button type="button" class="op-link" style="border:0;background:transparent;padding:0">操作</button>
+                      </aui-dropdown>
                     </div>
                   </template>
                 </template>
@@ -2410,7 +2575,7 @@ const App = {
                       <p>{{ ocActiveMeta.desc }}</p>
                     </div>
                     <div class="oc-head-right">
-                      <span v-if="cfgSaveHint" class="oc-save-pill">{{ cfgSaveHint }}</span>
+                      <span v-if="cfgSaveHint" class="oc-save-pill"><aui-morphing-text :text="cfgSaveHint" /></span>
                     </div>
                   </div>
                   <div v-else class="oc-page-head">
@@ -2531,7 +2696,7 @@ const App = {
                             <div class="oc-row-desc">允许 AI 在问答界面同屏展开共享浏览器窗口，模拟操作网页与查询实时信息</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-switch v-model:checked="cfg.browser" />
+                            <aui-switch v-model:checked="cfg.browser" />
                           </div>
                         </div>
 
@@ -2541,7 +2706,7 @@ const App = {
                             <div class="oc-row-desc">允许 AI 调用本机终端查看目录状态或运行数据处理脚本</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-switch v-model:checked="cfg.shell" />
+                            <aui-switch v-model:checked="cfg.shell" />
                           </div>
                         </div>
 
@@ -2551,7 +2716,80 @@ const App = {
                             <div class="oc-row-desc">允许 AI 根据已登记的外部连接器自动发起接口请求</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-switch v-model:checked="cfg.api_call" />
+                            <aui-switch v-model:checked="cfg.api_call" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="oc-group">
+                      <h4 class="oc-group-title">联网搜索（DeepSeek 官方）</h4>
+                      <div class="oc-card">
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">
+                              <span>启用联网搜索</span>
+                              <span :class="['oc-stat-badge', webSearchActiveReady && cfg.web_search ? 'ok' : '']">{{ webSearchModeBadge }}</span>
+                            </div>
+                            <div class="oc-row-desc">支持 DeepSeek 官方原生服务端搜索（deepseek_web_search / 深度思考搜索）与官方 Search/Fetch API；也可在对话输入框左下角一键开关</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <aui-switch v-model:checked="cfg.web_search" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">搜索接入模式</div>
+                            <div class="oc-row-desc">智能自动模式在 DeepSeek 官方渠道走原生深度搜索，在其他渠道（如 OpenCode Go）自动走 DeepSeek Search/Fetch API</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <a-select v-model:value="cfg.web_search_mode" style="width: 100%">
+                              <a-select-option value="auto">智能自动（推荐）</a-select-option>
+                              <a-select-option value="native">仅 DeepSeek 原生服务端搜索</a-select-option>
+                              <a-select-option value="api">统一调用 DeepSeek Search/Fetch API</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">自动读取消息链接 (deepseek_read_url)</div>
+                            <div class="oc-row-desc">使用 DeepSeek 原生搜索时，自动抓取用户提问中附带的网页链接正文并注入上下文</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <aui-switch v-model:checked="cfg.web_search_read_url" />
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">单次网页搜索条数</div>
+                            <div class="oc-row-desc">调用 DeepSeek Search API 时每次返回的网页结果数量</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="cfg.web_search_count" style="width: 170px">
+                              <a-select-option :value="5">5 条</a-select-option>
+                              <a-select-option :value="8">8 条（推荐）</a-select-option>
+                              <a-select-option :value="12">12 条</a-select-option>
+                              <a-select-option :value="20">20 条</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">独立 DeepSeek 搜索密钥（可选）</div>
+                            <div class="oc-row-desc">留空将自动复用「提供商 → DeepSeek」已配置的 API Key，也可单独指定用于 Search/Fetch API 的密钥</div>
+                          </div>
+                          <div class="oc-row-ctrl oc-ctrl-wide">
+                            <div class="field-with-action" style="width:100%">
+                              <a-input-password v-model:value="cfg.web_search_api_key"
+                                :placeholder="cfg.web_search_api_key_set ? '已保存独立密钥，留空不修改' : (cfg.web_search_deepseek_ready ? '留空自动复用 DeepSeek 渠道密钥' : '输入 DeepSeek API Key')"
+                                @blur="saveWebSearchKey" @pressEnter="saveWebSearchKey" />
+                              <a-button v-if="cfg.web_search_api_key_set" danger @click="clearWebSearchKey">清除</a-button>
+                              <a-button :loading="webSearchTesting" @click="testWebSearch">测试</a-button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2582,7 +2820,7 @@ const App = {
                             <div class="oc-row-desc">使用本地高速规则提取文号、日期与摘要，跳过远程模型调用以加速大批量入库</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-switch v-model:checked="cfg.batch_fast_meta" />
+                            <aui-switch v-model:checked="cfg.batch_fast_meta" />
                           </div>
                         </div>
                       </div>
@@ -2600,9 +2838,24 @@ const App = {
                             <div class="oc-row-desc">在浅色界面与深色终端界面之间切换</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-select v-model:value="cfg.ui_theme" style="width: 170px">
+                            <a-select :value="cfg.ui_theme" style="width: 170px" @change="onThemeSelect">
                               <a-select-option value="light">浅色</a-select-option>
                               <a-select-option value="dark">深色</a-select-option>
+                            </a-select>
+                          </div>
+                        </div>
+                        <div class="oc-row">
+                          <div class="oc-row-info">
+                            <div class="oc-row-title">动效节奏 (Animate UI Tempo)</div>
+                            <div class="oc-row-desc">统一调节全站弹簧物理、弹窗、折叠与切页动画的整体快慢</div>
+                          </div>
+                          <div class="oc-row-ctrl">
+                            <a-select v-model:value="uiTempo" style="width: 170px">
+                              <a-select-option :value="0.7">极速 (0.7×)</a-select-option>
+                              <a-select-option :value="0.85">偏快 (0.85×)</a-select-option>
+                              <a-select-option :value="1">标准 (1.0×)</a-select-option>
+                              <a-select-option :value="1.15">舒缓 (1.15×)</a-select-option>
+                              <a-select-option :value="1.3">沉稳 (1.3×)</a-select-option>
                             </a-select>
                           </div>
                         </div>
@@ -2874,7 +3127,7 @@ const App = {
                             <div class="oc-row-desc">开启后系统会在后台自动为知识库切片构建并同步语义向量，实现关键词与语义混合检索</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-switch v-model:checked="cfg.embed_use" />
+                            <aui-switch v-model:checked="cfg.embed_use" />
                           </div>
                         </div>
                       </div>
@@ -3101,11 +3354,11 @@ const App = {
                                 <a-form-item label="连接策略">
                                   <div style="display:flex;gap:16px;padding-top:5px">
                                     <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
-                                      <a-switch size="small" v-model:checked="currentApiConnector.preferred" />
+                                      <aui-switch size="small" v-model:checked="currentApiConnector.preferred" />
                                       <span>优先使用</span>
                                     </label>
                                     <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
-                                      <a-switch size="small" v-model:checked="currentApiConnector.allow_write" />
+                                      <aui-switch size="small" v-model:checked="currentApiConnector.allow_write" />
                                       <span>允许写入</span>
                                     </label>
                                   </div>
@@ -3162,7 +3415,7 @@ const App = {
                             <div class="oc-row-desc">开启后侧边栏显示看板、行情与新闻流，关闭时后台零网络与算力消耗</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-switch v-model:checked="cfg.news_enabled" />
+                            <aui-switch v-model:checked="cfg.news_enabled" />
                           </div>
                         </div>
 
@@ -3172,7 +3425,7 @@ const App = {
                             <div class="oc-row-desc">抓取外文快讯后在后台自动完成中文摘要翻译、实体抽取与情绪评估，中文源直接提取零模型消耗</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-switch v-model:checked="cfg.news_auto_translate" />
+                            <aui-switch v-model:checked="cfg.news_auto_translate" />
                           </div>
                         </div>
 
@@ -3208,7 +3461,7 @@ const App = {
                             <div class="oc-row-desc">抓取后在后台自动生成跨语种向量并折叠同事件重复报道，无需消耗远程 API</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-switch v-model:checked="cfg.news_local_embed" />
+                            <aui-switch v-model:checked="cfg.news_local_embed" />
                           </div>
                         </div>
 
@@ -3218,7 +3471,7 @@ const App = {
                             <div class="oc-row-desc">向量与全文融合召回后使用本地跨语种重排模型提升相关性</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-switch v-model:checked="cfg.news_local_rerank" />
+                            <aui-switch v-model:checked="cfg.news_local_rerank" />
                           </div>
                         </div>
 
@@ -3335,7 +3588,7 @@ const App = {
                               </div>
                             </div>
                             <div style="display:flex;align-items:center;gap:8px;flex:none">
-                              <a-switch size="small" :checked="!!fd.enabled" @change="(v) => toggleFeedEnabled(fd, v)" />
+                              <aui-switch size="small" :checked="!!fd.enabled" @change="(v) => toggleFeedEnabled(fd, v)" />
                               <a-button size="small" @click="fetchNewsNow(fd.id)">抓取</a-button>
                               <a-button size="small" danger @click="deleteNewsFeed(fd)">删除</a-button>
                             </div>
@@ -3469,7 +3722,7 @@ const App = {
                             <div class="oc-row-desc">每次启动时自动回收超过 12 小时的未提交上传暂存、临时截图与运行日志</div>
                           </div>
                           <div class="oc-row-ctrl">
-                            <a-switch v-model:checked="cfg.auto_clean_temp" />
+                            <aui-switch v-model:checked="cfg.auto_clean_temp" />
                           </div>
                         </div>
                       </div>
@@ -3604,7 +3857,7 @@ const App = {
     </div>
   </div>
 
-  <a-drawer class="doc-drawer" v-model:open="drawerOpen" :width="drawerWidth" placement="right"
+  <aui-drawer class="doc-drawer" v-model:open="drawerOpen" :width="drawerWidth" placement="right"
             :title="doc.title || '文件全文'"
             :body-style="{ padding: '16px 16px 12px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }">
     <template #extra>
@@ -3627,10 +3880,15 @@ const App = {
     </div>
 
     <div class="docview-bar">
-      <span class="seg" role="tablist">
-        <span role="tab" tabindex="0" :aria-selected="docView === 'pdf'" :class="['seg-item', docView === 'pdf' ? 'on' : '']" @click="setDocView('pdf')" @keydown.enter.prevent="setDocView('pdf')">原页</span>
-        <span role="tab" tabindex="0" :aria-selected="docView === 'text'" :class="['seg-item', docView === 'text' ? 'on' : '']" @click="setDocView('text')" @keydown.enter.prevent="setDocView('text')">切片 {{ (doc.chunks || []).length }}</span>
-      </span>
+      <aui-highlight class="aui-hl-doc-surface" mode="parent" container-class-name="seg" role="tablist"
+                     :model-value="docView" :controlled-items="true" :click="false">
+        <aui-highlight-item value="pdf" as-child>
+          <span role="tab" tabindex="0" :aria-selected="docView === 'pdf'" :class="['seg-item', docView === 'pdf' ? 'on' : '']" @click="setDocView('pdf')" @keydown.enter.prevent="setDocView('pdf')">原页</span>
+        </aui-highlight-item>
+        <aui-highlight-item value="text" as-child>
+          <span role="tab" tabindex="0" :aria-selected="docView === 'text'" :class="['seg-item', docView === 'text' ? 'on' : '']" @click="setDocView('text')" @keydown.enter.prevent="setDocView('text')">切片 {{ (doc.chunks || []).length }}</span>
+        </aui-highlight-item>
+      </aui-highlight>
       <template v-if="docView === 'pdf' && canPdf">
         <span class="pager-num">第 {{ originPage || 1 }} / {{ doc.n_pages || 1 }} 页</span>
         <a class="pager" v-if="hitPage && originPage !== hitPage" @click="jumpToHit">回到命中处</a>
@@ -3640,24 +3898,15 @@ const App = {
       <span class="hint" v-if="!canPdf">该格式无原页画布，已为您呈现结构化正文与表格切片</span>
       <span v-if="docView === 'pdf' && canPdf" class="pdf-zoombar" title="Ctrl + 滚轮也可缩放">
         <button type="button" class="pdf-zoom-btn" :disabled="pdfScale <= 0.5" @click="zoomOut">−</button>
-        <a-dropdown :trigger="['click']">
+        <aui-dropdown :items="PDF_ZOOM_ITEMS" @select="onZoomPreset">
           <button type="button" class="pdf-zoom-now">{{ zoomLabel }}</button>
-          <template #overlay>
-            <a-menu @click="onZoomPreset">
-              <a-menu-item key="0.6">60%</a-menu-item>
-              <a-menu-item key="0.75">75%</a-menu-item>
-              <a-menu-item key="1">适应宽度</a-menu-item>
-              <a-menu-item key="1.25">125%</a-menu-item>
-              <a-menu-item key="1.5">150%</a-menu-item>
-              <a-menu-item key="2">200%</a-menu-item>
-            </a-menu>
-          </template>
-        </a-dropdown>
+        </aui-dropdown>
         <button type="button" class="pdf-zoom-btn" :disabled="pdfScale >= 3" @click="zoomIn">+</button>
       </span>
     </div>
 
     <div v-if="docView === 'pdf'"
+         data-reka-swipe-ignore
          class="origin drawer-origin pdf-viewport"
          :class="{ 'is-panning': pdfPanning }"
          ref="pageScroll"
@@ -3686,27 +3935,30 @@ const App = {
     </div>
 
     <a-spin v-if="docView === 'text'" class="doc-spin" :spinning="docLoading">
-      <div class="docbody" :class="{ switching: chunkOn }">
-        <div v-for="(c, i) in doc.chunks" :key="c.seq"
-             :class="['chunk', { active: c.seq === activeSeq }]"
-             :style="blockDelay(i)" :data-seq="c.seq">
-          <div class="chunk-head">
-            <div>
-              <span class="art">{{ c.article || ('片段 #' + c.seq) }}</span>
-              <span v-if="c.chapter && c.chapter !== c.article" class="hint" style="margin-left:8px">{{ c.chapter }}</span>
-              <span v-if="c.chunk_type === 'table'" class="chunk-type-badge table">结构化表切片</span>
-              <span v-else-if="c.chunk_type === 'image'" class="chunk-type-badge image">视觉索引</span>
+      <aui-scroll-progress-provider class="aui-scroll-progress-wrap">
+        <aui-scroll-progress class="aui-scroll-progress-bar" />
+        <aui-scroll-progress-container class="docbody" :class="{ switching: chunkOn }">
+          <div v-for="(c, i) in doc.chunks" :key="c.seq"
+               :class="['chunk', { active: c.seq === activeSeq }]"
+               :style="blockDelay(i)" :data-seq="c.seq">
+            <div class="chunk-head">
+              <div>
+                <span class="art">{{ c.article || ('片段 #' + c.seq) }}</span>
+                <span v-if="c.chapter && c.chapter !== c.article" class="hint" style="margin-left:8px">{{ c.chapter }}</span>
+                <span v-if="c.chunk_type === 'table'" class="chunk-type-badge table">结构化表切片</span>
+                <span v-else-if="c.chunk_type === 'image'" class="chunk-type-badge image">视觉索引</span>
+              </div>
+              <span class="pg" v-if="c.page_start">第 {{ c.page_start }} 页</span>
             </div>
-            <span class="pg" v-if="c.page_start">第 {{ c.page_start }} 页</span>
+            <div v-if="c.chunk_type === 'table'" class="chunk-md-table" v-html="renderChunkTable(c.text)"></div>
+            <div v-else class="chunk-text">{{ c.text }}</div>
           </div>
-          <div v-if="c.chunk_type === 'table'" class="chunk-md-table" v-html="renderChunkTable(c.text)"></div>
-          <div v-else class="chunk-text">{{ c.text }}</div>
-        </div>
-      </div>
+        </aui-scroll-progress-container>
+      </aui-scroll-progress-provider>
     </a-spin>
-  </a-drawer>
+  </aui-drawer>
 
-  <a-modal v-model:open="ingest.open" :width="640" wrap-class-name="ingest-modal"
+  <aui-dialog v-model:open="ingest.open" :width="640" wrap-class-name="ingest-modal"
            :title="ingest.doc_id ? '更新文件' : '导入文件'"
            :confirm-loading="ingest.saving"
            @cancel="onIngestDismiss">
@@ -3875,10 +4127,10 @@ const App = {
         <a-input v-model:value="ingest.summary" placeholder="核心内容摘要，支持全文检索" />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </aui-dialog>
 
   <!-- 新建 / 重命名项目、文件夹弹窗 -->
-  <a-modal v-model:open="folderModal.open"
+  <aui-dialog v-model:open="folderModal.open"
            :title="folderModal.mode === 'rename' ? '重命名 / 移动文件夹' : '新建项目或子文件夹'"
            :ok-text="folderModal.mode === 'rename' ? '保存' : '创建'"
            @ok="confirmCreateFolder">
@@ -3895,10 +4147,10 @@ const App = {
         下级文件夹和文件会同步更新路径与归属。
       </p>
     </a-form>
-  </a-modal>
+  </aui-dialog>
 
   <!-- 文件属性与多态元数据编辑弹窗 -->
-  <a-modal v-model:open="metaModal.open" :width="640" title="编辑文件属性与项目归属" ok-text="保存"
+  <aui-dialog v-model:open="metaModal.open" :width="640" title="编辑文件属性与项目归属" ok-text="保存"
            :confirm-loading="metaModal.saving" @ok="confirmSaveMeta">
     <a-form layout="vertical">
       <div class="form-grid-2">
@@ -3987,9 +4239,9 @@ const App = {
         <a-input v-model:value="metaModal.summary" />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </aui-dialog>
 
-  <a-modal v-model:open="addProvider.open" title="添加渠道" ok-text="添加"
+  <aui-dialog v-model:open="addProvider.open" title="添加渠道" ok-text="添加"
            wrapClassName="provider-modal"
            :ok-button-props="{ disabled: addProvider.kind === 'custom' && !(addProvider.name || '').trim() }"
            @ok="confirmAddProvider">
@@ -4019,9 +4271,9 @@ const App = {
         <a-input-password v-model:value="addProvider.api_key" size="large" placeholder="输入 API Key" />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </aui-dialog>
 
-  <a-modal v-model:open="addEmbedProvider.open" title="添加 Embedding 渠道" ok-text="添加"
+  <aui-dialog v-model:open="addEmbedProvider.open" title="添加 Embedding 渠道" ok-text="添加"
            wrapClassName="provider-modal"
            :ok-button-props="{ disabled: addEmbedProvider.kind === 'custom' && !(addEmbedProvider.name || '').trim() }"
            @ok="confirmAddEmbedProvider">
@@ -4052,9 +4304,9 @@ const App = {
         <a-input-password v-model:value="addEmbedProvider.api_key" size="large" placeholder="输入 API Key" />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </aui-dialog>
 
-  <a-modal v-model:open="addModel.open" title="添加模型" ok-text="添加"
+  <aui-dialog v-model:open="addModel.open" title="添加模型" ok-text="添加"
            :ok-button-props="{ disabled: !(addModel.id || '').trim() }"
            @ok="confirmAddModel">
     <a-form layout="vertical">
@@ -4065,9 +4317,9 @@ const App = {
         <a-input v-model:value="addModel.label" size="large" placeholder="可留空" />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </aui-dialog>
 
-  <a-modal v-model:open="addApiConnector.open" title="添加外部 API 连接" ok-text="添加"
+  <aui-dialog v-model:open="addApiConnector.open" title="添加外部 API 连接" ok-text="添加"
            wrapClassName="provider-modal"
            :ok-button-props="{ disabled: !(addApiConnector.name || '').trim() || !(addApiConnector.base_url || '').trim() }"
            @ok="confirmAddApiConnector">
@@ -4109,9 +4361,9 @@ const App = {
           placeholder="常用路径、参数说明与返回示例，帮助 AI 准确调用。" />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </aui-dialog>
 
-  <a-drawer v-model:open="dashCustomizeOpen" title="看板布局管理" :width="420" placement="right">
+  <aui-drawer v-model:open="dashCustomizeOpen" title="看板布局管理" :width="420" placement="right">
     <div style="display:flex;flex-direction:column;gap:12px">
       <div v-if="activeWorkspaceObj" style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--muted);display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -4167,9 +4419,9 @@ const App = {
         <a-button size="small" type="primary" @click="dashCustomizeOpen = false">完成</a-button>
       </div>
     </div>
-  </a-drawer>
+  </aui-drawer>
 
-  <a-drawer v-model:open="mktCustomizeOpen" title="行情布局管理" :width="420" placement="right">
+  <aui-drawer v-model:open="mktCustomizeOpen" title="行情布局管理" :width="420" placement="right">
     <div style="display:flex;flex-direction:column;gap:12px">
       <div v-if="activeMarketWorkspaceObj" style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--muted);display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -4225,7 +4477,7 @@ const App = {
         <a-button size="small" type="primary" @click="mktCustomizeOpen = false">完成</a-button>
       </div>
     </div>
-  </a-drawer>
+  </aui-drawer>
 
   <widget-gallery-modal
     v-model:open="widgetGalleryOpen"
@@ -4254,7 +4506,7 @@ const App = {
   />
 
   <!-- 实体情报画像抽屉 -->
-  <a-drawer v-model:open="entityDrawerOpen" :title="entityProfile ? entityProfile.canonical_name : '实体详情'" :width="500" placement="right">
+  <aui-drawer v-model:open="entityDrawerOpen" :title="entityProfile ? entityProfile.canonical_name : '实体详情'" :width="500" placement="right">
     <a-spin :spinning="entityLoading">
       <div v-if="entityProfile" style="display:flex;flex-direction:column;gap:14px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -4306,25 +4558,46 @@ const App = {
         </div>
       </div>
     </a-spin>
-  </a-drawer>
+  </aui-drawer>
 
   <!-- AI 情报简报弹窗 -->
-  <a-modal v-model:open="briefModalOpen" title="24 小时情报简报" :width="640" :footer="null">
+  <aui-dialog v-model:open="briefModalOpen" title="24 小时情报简报" :width="640" :footer="null">
     <a-spin :spinning="newsBriefLoading">
       <div v-if="newsBriefText" class="answer-text" style="font-size:13.5px;line-height:1.65"
            v-html="renderAnswer(newsBriefText, { sources: [] })"></div>
       <o2-empty v-else description="暂无简报内容" />
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+        <aui-copy-button v-if="newsBriefText" :content="newsBriefText" title="复制简报" />
         <a-button @click="loadNewsBrief(true)">重新生成</a-button>
         <a-button type="primary" :disabled="!newsBriefText" @click="briefModalOpen = false; question = '请结合以下今日情报简报与本地文档库做深度研判：\\n\\n' + newsBriefText; tab = 'ask'">带入对话</a-button>
       </div>
     </a-spin>
-  </a-modal>
+  </aui-dialog>
 
 </div>
 </a-config-provider>
+<aui-toaster />
+</aui-tooltip-provider>
+</reduced-motion-config>
+</animate-ui-provider>
 `,
   setup() {
+    const TEMPO_KEY = 'o2-ui-tempo'
+    const uiTempo = ref((() => {
+      try {
+        const raw = localStorage.getItem(TEMPO_KEY)
+        return raw ? clampTempo(Number(raw)) : 1
+      } catch {
+        return 1
+      }
+    })())
+    watch(uiTempo, (val) => {
+      const t = clampTempo(val)
+      if (t !== val) { uiTempo.value = t; return }
+      syncMotionCssVars(t)
+      try { localStorage.setItem(TEMPO_KEY, String(t)) } catch {}
+    }, { immediate: true })
+
     const tab = ref('ask')
     const paneOn = ref(false)
     const settingsOn = ref(false)
@@ -4334,18 +4607,30 @@ const App = {
     let chunkToken = 0
     function pulsePane() {
       const token = ++paneToken
-      paneOn.value = true
-      setTimeout(() => { if (token === paneToken) paneOn.value = false }, 1100)
+      paneOn.value = false
+      nextTick(() => {
+        if (token !== paneToken) return
+        paneOn.value = true
+        setTimeout(() => { if (token === paneToken) paneOn.value = false }, Math.round(360 * uiTempo.value))
+      })
     }
     function pulseSettings() {
       const token = ++settingsToken
-      settingsOn.value = true
-      setTimeout(() => { if (token === settingsToken) settingsOn.value = false }, 1100)
+      settingsOn.value = false
+      nextTick(() => {
+        if (token !== settingsToken) return
+        settingsOn.value = true
+        setTimeout(() => { if (token === settingsToken) settingsOn.value = false }, Math.round(360 * uiTempo.value))
+      })
     }
     function pulseChunks() {
       const token = ++chunkToken
-      chunkOn.value = true
-      setTimeout(() => { if (token === chunkToken) chunkOn.value = false }, 1100)
+      chunkOn.value = false
+      nextTick(() => {
+        if (token !== chunkToken) return
+        chunkOn.value = true
+        setTimeout(() => { if (token === chunkToken) chunkOn.value = false }, Math.round(360 * uiTempo.value))
+      })
     }
     watch(tab, pulsePane)
     const q = ref('')
@@ -4517,9 +4802,12 @@ const App = {
         reasoning: m.reasoning || '',
         files: (m.files || []).map((f) => ({ name: f.name, source: f.source || '' })),
         sources: m.sources || [],
+        webSources: Array.isArray(m.webSources) ? m.webSources : [],
+        serverToolCalls: Array.isArray(m.serverToolCalls) ? m.serverToolCalls : [],
         visuals: Array.isArray(m.visuals) ? m.visuals : [],
         tools: (m.tools || []).map((t) => ({
           kind: t.kind || 'search',
+          callId: t.callId || '',
           query: t.query || '',
           state: t.state === 'running' ? 'done' : (t.state || 'done'),
           count: t.count || 0,
@@ -4527,6 +4815,7 @@ const App = {
           note: t.note || '',
         })),
         showSrc: !!m.showSrc,
+        showWebSrc: !!m.showWebSrc,
         stopped: !!(m.stopped || m.streaming),
         error: m.error || '',
         ask: m.ask && m.ask.questions && m.ask.questions.length ? {
@@ -4593,7 +4882,9 @@ const App = {
         (m.files || []).map((f) => f.name).join(','),
         (m.tools || []).map((t) => (t.kind || '') + ':' + (t.state || '') + ':' + (t.note || '') + ':' + (t.count || 0)).join(','),
         (m.sources || []).length,
+        (m.webSources || []).length,
         m.showSrc ? 1 : 0,
+        m.showWebSrc ? 1 : 0,
         m.stopped ? 1 : 0,
         m.error || '',
         m.ask ? (m.ask.submitted ? 'S' : (m.ask.step || 0) + ':' + JSON.stringify(m.ask.picks || {})) : '',
@@ -4732,7 +5023,7 @@ const App = {
           ...c,
           messages: (c.messages || []).map((m) => ({
             id: m.id || '', role: m.role, content: m.content || '', files: m.files || [],
-            sources: [], tools: m.tools || [], showSrc: false, stopped: !!m.stopped,
+            sources: [], webSources: m.webSources || [], tools: m.tools || [], showSrc: false, showWebSrc: false, stopped: !!m.stopped,
             error: m.error || '', ask: m.ask || null,
           })),
         }))
@@ -4913,9 +5204,13 @@ const App = {
     function toolDotClass(t) {
       if (!t || t.state === 'running') return 'running'
       if (t.kind === 'think') return 'ok'
-      if (t.kind === 'shell' || t.kind === 'browser' || t.kind === 'api') {
+      if (t.kind === 'shell' || t.kind === 'browser' || t.kind === 'api' || t.kind === 'web_fetch') {
         if (t.note === '失败' || t.note === '未执行' || (t.exit != null && t.exit !== 0)) return 'none'
         return 'ok'
+      }
+      if (t.kind === 'web_search') {
+        if (t.note === '失败' || (t.exit != null && t.exit !== 0)) return 'none'
+        return (Number(t.count) || 0) > 0 ? 'ok' : 'few'
       }
       const n = Number(t.count) || 0
       if (n <= 0) return 'none'
@@ -4927,6 +5222,14 @@ const App = {
       if (!t) return ''
       if (t.kind === 'think') return t.state === 'running' ? '思考中' : '已思考'
       if (t.kind === 'read') return '阅读「' + (t.query || '') + '」'
+      if (t.kind === 'web_search') {
+        const q = String(t.query || '').replace(/\s+/g, ' ')
+        return '联网搜索 · ' + (q.length > 72 ? q.slice(0, 72) + '…' : (q || '网页'))
+      }
+      if (t.kind === 'web_fetch') {
+        const q = String(t.query || '').replace(/\s+/g, ' ')
+        return '读取网页 · ' + (q.length > 72 ? q.slice(0, 72) + '…' : (q || '页面'))
+      }
       if (t.kind === 'api') {
         const q = String(t.query || '').replace(/\s+/g, ' ')
         return 'API · ' + (q.length > 72 ? q.slice(0, 72) + '…' : (q || '请求'))
@@ -4947,6 +5250,14 @@ const App = {
     }
     function toolMeta(t) {
       if (!t || t.kind === 'think') return ''
+      if (t.kind === 'web_search') {
+        if (t.state !== 'done') return '搜索中…'
+        return t.note || ((Number(t.count) || 0) + ' 条网页')
+      }
+      if (t.kind === 'web_fetch') {
+        if (t.state !== 'done') return '读取中…'
+        return t.note || '已读取'
+      }
       if (t.kind === 'api' || t.kind === 'news') {
         if (t.state !== 'done') return '检索中…'
         return t.note || ((Number(t.count) || 0) + ' 条')
@@ -5072,6 +5383,39 @@ const App = {
 
     function toggleSrc(m) {
       if (m) m.showSrc = !m.showSrc
+    }
+    function toggleWebSrc(m) {
+      if (m) m.showWebSrc = !m.showWebSrc
+    }
+    function citedWebCount(m) {
+      return ((m && m.webSources) || []).filter((x) => x && x.cited).length
+    }
+    function sortedWebSources(m) {
+      const list = ((m && m.webSources) || []).slice()
+      list.sort((a, b) => {
+        const ca = a && a.cited ? 1 : 0
+        const cb = b && b.cited ? 1 : 0
+        if (cb !== ca) return cb - ca
+        return (Number(b && b.score) || 0) - (Number(a && a.score) || 0)
+      })
+      return list
+    }
+    function webSourceHost(url) {
+      try {
+        return new URL(String(url || '')).hostname || ''
+      } catch (e) {
+        return ''
+      }
+    }
+    async function openWebSource(url) {
+      if (!url) return
+      if (hasNativeBrowser.value || (cfg.browser && browserState.ready)) {
+        try {
+          await openNewsInBrowser(url)
+          return
+        } catch (e) { /* fallback to window.open */ }
+      }
+      window.open(url, '_blank', 'noopener,noreferrer')
     }
 
     function attachCitedSources(m) {
@@ -5534,13 +5878,39 @@ const App = {
         return el
       }
       if (token.type === 'code') {
+        const wrap = document.createElement('div')
+        wrap.className = 'md-pre-wrap'
         const pre = document.createElement('pre')
         pre.className = 'md-pre'
         const code = document.createElement('code')
         if (token.lang) code.className = 'lang-' + String(token.lang).replace(/[^\w+-]/g, '')
         pre.appendChild(code)
         patchInline(code, [], codeAtoms(token.text || ''), animate)
-        return pre
+        const copyBtn = document.createElement('button')
+        copyBtn.type = 'button'
+        copyBtn.className = 'md-pre-copy'
+        copyBtn.title = '复制代码'
+        copyBtn.setAttribute('aria-label', '复制代码')
+        const copySvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M3.5 10.5H3a1.5 1.5 0 0 1-1.5-1.5V3A1.5 1.5 0 0 1 3 1.5h6A1.5 1.5 0 0 1 10.5 3v.5"/></svg>'
+        const checkSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 8.5l3.2 3.2L13 5"/></svg>'
+        copyBtn.innerHTML = copySvg
+        copyBtn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          const raw = code.textContent || ''
+          if (!raw) return
+          Promise.resolve().then(() => navigator.clipboard.writeText(raw)).then(() => {
+            copyBtn.classList.add('is-copied')
+            copyBtn.innerHTML = checkSvg
+            clearTimeout(copyBtn._t)
+            copyBtn._t = setTimeout(() => {
+              copyBtn.classList.remove('is-copied')
+              copyBtn.innerHTML = copySvg
+            }, 2000)
+          }).catch(() => {})
+        })
+        wrap.appendChild(pre)
+        wrap.appendChild(copyBtn)
+        return wrap
       }
       if (token.type === 'hr') return document.createElement('hr')
       if (token.type === 'blockKatex') {
@@ -6101,6 +6471,40 @@ const App = {
         return list.some((m) => (m.content || '').toLowerCase().includes(qStr))
       })
     })
+    const pinnedSessionChats = computed(() => allSessionChats.value.filter((c) => c.pinned))
+    const unpinnedSessionChats = computed(() => allSessionChats.value.filter((c) => !c.pinned))
+    const pinnedFilteredChats = computed(() => filteredSessionChats.value.filter((c) => c.pinned))
+    const unpinnedFilteredChats = computed(() => filteredSessionChats.value.filter((c) => !c.pinned))
+    function togglePinSessionById(id) {
+      const target = conversations.value.find((c) => c.id === id)
+      if (!target) return
+      target.pinned = !target.pinned
+      target.pinnedAt = target.pinned ? Date.now() : 0
+      persistConversations()
+    }
+    const PDF_ZOOM_ITEMS = [
+      { key: '0.6', label: '60%' },
+      { key: '0.75', label: '75%' },
+      { key: '1', label: '适应宽度' },
+      { key: '1.25', label: '125%' },
+      { key: '1.5', label: '150%' },
+      { key: '2', label: '200%' },
+    ]
+    function docOpItems(record) {
+      const items = [
+        { key: 'edit_meta', label: '编辑属性 / 归类' },
+        { key: 'update', label: '重新上传文件' },
+      ]
+      if (record && record.doc_type === 'regulation') {
+        items.push({ type: 'divider' })
+        if (record.status !== '现行') items.push({ key: '现行', label: '标为现行' })
+        if (record.status !== '试行') items.push({ key: '试行', label: '标为试行' })
+        if (record.status !== '已废止') items.push({ key: '已废止', label: '标为废止' })
+      }
+      items.push({ type: 'divider' })
+      items.push({ key: 'delete', label: '删除', danger: true })
+      return items
+    }
     function convTurnCount(c) {
       if (!c) return 0
       const list = c._live || c.messages || []
@@ -6325,6 +6729,7 @@ const App = {
     function prevAsk(m) {
       if (!m.ask || m.ask.submitted) return
       if ((m.ask.step || 0) <= 0) return
+      m.ask._dir = -1
       m.ask.step -= 1
     }
     function nextAsk(m) {
@@ -6333,6 +6738,7 @@ const App = {
         submitAsk(m)
         return
       }
+      m.ask._dir = 1
       m.ask.step = (m.ask.step || 0) + 1
       scrollChat()
     }
@@ -6506,8 +6912,11 @@ const App = {
         role: 'assistant',
         content: '',
         sources: [],
+        webSources: [],
+        serverToolCalls: [],
         tools: [],
         showSrc: false,
+        showWebSrc: false,
         streaming: true,
         stopped: false,
         error: '',
@@ -6536,6 +6945,9 @@ const App = {
             content: (m.packed || m.content || '').trim() || (m.ask ? '请补充关键条件后再作答。' : ''),
           }
           if (m.role === 'user' && m.images && m.images.length) o.images = m.images
+          if (m.role === 'assistant' && Array.isArray(m.serverToolCalls) && m.serverToolCalls.length) {
+            o.server_tool_calls = m.serverToolCalls
+          }
           return o
         })
       priorSources = collectSources(messages.value)
@@ -6555,6 +6967,7 @@ const App = {
             provider_id: cfg.provider_id,
             model: cfg.model,
             effort: cfg.effort,
+            web_search: !!cfg.web_search,
           }),
           signal: ctrl.signal,
         })
@@ -6661,19 +7074,24 @@ const App = {
         const a = ev.args || {}
         const kind = (ev.name === 'read_doc' || ev.name === 'read_regulation')
           ? 'read'
-          : ev.name === 'pwsh'
-            ? 'shell'
-            : ev.name === 'browser'
-              ? 'browser'
-              : ev.name === 'call_api'
-                ? 'api'
-                : ['search_news', 'entity_brief', 'news_digest'].includes(ev.name)
-                  ? 'news'
-                  : 'search'
+          : ev.name === 'web_search'
+            ? 'web_search'
+            : ev.name === 'web_fetch'
+              ? 'web_fetch'
+              : ev.name === 'pwsh'
+                ? 'shell'
+                : ev.name === 'browser'
+                  ? 'browser'
+                  : ev.name === 'call_api'
+                    ? 'api'
+                    : ['search_news', 'entity_brief', 'news_digest'].includes(ev.name)
+                      ? 'news'
+                      : 'search'
         cur.tools.push({
           kind,
+          callId: ev.call_id || '',
           action: a.action || '',
-          query: (kind === 'shell' || kind === 'browser' || kind === 'api')
+          query: (kind === 'shell' || kind === 'browser' || kind === 'api' || kind === 'web_search' || kind === 'web_fetch')
             ? (a.command || a.query || '')
             : (a.title || a.query || (kind === 'read' ? '文件' : '')),
           state: 'running',
@@ -6682,19 +7100,54 @@ const App = {
         noteStream(cur)
       } else if (ev.type === 'tool_result') {
         const list = cur.tools
-        for (let i = list.length - 1; i >= 0; i--) {
-          if (list[i].state === 'running') {
-            list[i].state = 'done'
-            list[i].count = ev.count
-            if (ev.exit != null) list[i].exit = ev.exit
-            if (ev.note) list[i].note = ev.note
-            if (list[i].kind === 'api' && ['save', 'delete', 'discover'].includes(list[i].action)) {
-              loadConfig()
+        let targetIdx = -1
+        if (ev.call_id) {
+          for (let i = list.length - 1; i >= 0; i--) {
+            if (list[i].state === 'running' && list[i].callId === ev.call_id) {
+              targetIdx = i
+              break
             }
-            break
+          }
+        }
+        if (targetIdx < 0) {
+          for (let i = list.length - 1; i >= 0; i--) {
+            if (list[i].state === 'running') {
+              targetIdx = i
+              break
+            }
+          }
+        }
+        if (targetIdx >= 0) {
+          const item = list[targetIdx]
+          item.state = 'done'
+          item.count = ev.count
+          if (ev.exit != null) item.exit = ev.exit
+          if (ev.note) item.note = ev.note
+          if (item.kind === 'api' && ['save', 'delete', 'discover'].includes(item.action)) {
+            loadConfig()
           }
         }
         noteStream(cur)
+      } else if (ev.type === 'web_sources') {
+        if (!Array.isArray(cur.webSources)) cur.webSources = []
+        ;(ev.items || []).forEach((s) => {
+          if (!s || !s.url) return
+          const hit = cur.webSources.find((x) => x.url === s.url)
+          if (!hit) {
+            cur.webSources.push({ ...s })
+          } else {
+            if (s.cited) hit.cited = true
+            if (s.title && (!hit.title || hit.title === hit.url)) hit.title = s.title
+            if (s.snippet && !hit.snippet) hit.snippet = s.snippet
+            if (s.date && !hit.date) hit.date = s.date
+            if (s.score != null && hit.score == null) hit.score = s.score
+          }
+        })
+        noteStream(cur)
+      } else if (ev.type === 'server_tool_calls') {
+        if (Array.isArray(ev.items) && ev.items.length) {
+          cur.serverToolCalls = ev.items
+        }
       } else if (ev.type === 'visual') {
         if (!Array.isArray(cur.visuals)) cur.visuals = []
         if (ev.visual) {
@@ -7715,6 +8168,14 @@ const App = {
       api_connectors: [],
       api_key_set: false, paddle_token: '', paddle_token_set: false,
       shell: true, browser: true, api_call: true,
+      web_search: true,
+      web_search_mode: 'auto',
+      web_search_read_url: true,
+      web_search_count: 8,
+      web_search_base_url: '',
+      web_search_api_key: '',
+      web_search_api_key_set: false,
+      web_search_deepseek_ready: false,
       pdf_ocr_mode: 'smart',
       batch_concurrency: 3,
       batch_fast_meta: false,
@@ -7908,7 +8369,7 @@ const App = {
       general: {
         title: '偏好设置',
         desc: '自定义偏好、界面布局密度、工具权限和批量导入加速行为',
-        keywords: '偏好 常规 界面 布局 密度 默认 启动 消息 队列 引导 浏览器 powershell 终端 批量 导入 并发 速度 规则',
+        keywords: '偏好 常规 界面 布局 密度 默认 启动 消息 队列 引导 浏览器 powershell 终端 批量 导入 并发 速度 规则 联网 搜索 deepseek search fetch web_search',
       },
       appearance: {
         title: '外观与参数',
@@ -8168,7 +8629,7 @@ const App = {
       if (el && key === settingsApiId.value) apiSlide.schedule(key)
     }
     function placeNavPill() {
-      if (['ask', 'browser', 'search', 'catalog'].includes(tab.value)) navSlide.schedule(tab.value)
+      if (navs.value.some((n) => n.key === tab.value)) navSlide.schedule(tab.value)
       else navSlide.hide()
     }
     const navPillStyle = navSlide.style
@@ -8341,6 +8802,7 @@ const App = {
       Object.assign(cfg, c)
       cfg.api_key = ''
       cfg.paddle_token = ''
+      cfg.web_search_api_key = ''
       cfg.providers = providers
       cfg.embed_providers = embedProviders
       cfg.api_connectors = apiConnectors
@@ -8349,6 +8811,13 @@ const App = {
       cfg.shell = c.shell !== false
       cfg.browser = c.browser !== false
       cfg.api_call = c.api_call !== false
+      cfg.web_search = c.web_search !== false
+      cfg.web_search_mode = c.web_search_mode || 'auto'
+      cfg.web_search_read_url = c.web_search_read_url !== false
+      cfg.web_search_count = Math.max(1, Math.min(20, Number(c.web_search_count) || 8))
+      cfg.web_search_base_url = c.web_search_base_url || ''
+      cfg.web_search_api_key_set = !!c.web_search_api_key_set
+      cfg.web_search_deepseek_ready = !!c.web_search_deepseek_ready
       cfg.pdf_ocr_mode = c.pdf_ocr_mode || 'smart'
       cfg.batch_concurrency = Math.max(1, Math.min(6, Number(c.batch_concurrency) || 3))
       cfg.batch_fast_meta = !!c.batch_fast_meta
@@ -8407,6 +8876,11 @@ const App = {
         shell: !!cfg.shell,
         browser: !!cfg.browser,
         api_call: !!cfg.api_call,
+        web_search: !!cfg.web_search,
+        web_search_mode: cfg.web_search_mode || 'auto',
+        web_search_read_url: !!cfg.web_search_read_url,
+        web_search_count: Number(cfg.web_search_count) || 8,
+        web_search_base_url: cfg.web_search_base_url || '',
         pdf_ocr_mode: cfg.pdf_ocr_mode || 'smart',
         batch_concurrency: Number(cfg.batch_concurrency) || 3,
         batch_fast_meta: !!cfg.batch_fast_meta,
@@ -8436,8 +8910,10 @@ const App = {
         api_connectors: apiConnectorsPayload(extra),
         ...(extra && extra.paddle_token ? { paddle_token: extra.paddle_token } : {}),
         ...(extra && extra.clear_paddle ? { clear_paddle: true } : {}),
+        ...(extra && extra.web_search_api_key ? { web_search_api_key: extra.web_search_api_key } : {}),
+        ...(extra && extra.clear_web_search_key ? { clear_web_search_key: true } : {}),
       }
-      await api.post('/api/config', body)
+      const saveRes = await api.post('/api/config', body)
       if (extra && extra.api_key && extra.keyId) {
         const p = cfg.providers.find((x) => x.id === extra.keyId)
         if (p) {
@@ -8503,6 +8979,17 @@ const App = {
         const c = await api.get('/api/config')
         cfg.paddle_token_set = !!c.paddle_token_set
       }
+      if (extra && extra.web_search_api_key) {
+        cfg.web_search_api_key = ''
+        cfg.web_search_api_key_set = true
+      }
+      if (extra && extra.clear_web_search_key) {
+        cfg.web_search_api_key = ''
+        cfg.web_search_api_key_set = false
+      }
+      if (saveRes && typeof saveRes.web_search_deepseek_ready === 'boolean') {
+        cfg.web_search_deepseek_ready = saveRes.web_search_deepseek_ready
+      }
       cfg.api_key_set = (cfg.providers || []).some((p) => p.api_key_set)
       loadStats()
       flashSaved()
@@ -8516,6 +9003,7 @@ const App = {
     watch(() => [
       cfg.model, cfg.src_root, cfg.effort, cfg.provider_id,
       cfg.temperature, cfg.top_k, cfg.shell, cfg.browser, cfg.api_call,
+      cfg.web_search, cfg.web_search_mode, cfg.web_search_read_url, cfg.web_search_count, cfg.web_search_base_url,
       cfg.pdf_ocr_mode, cfg.batch_concurrency, cfg.batch_fast_meta,
       cfg.browser_download_mode, cfg.auto_clean_temp,
       cfg.ui_density, cfg.ui_theme, cfg.default_tab, cfg.followup_mode,
@@ -9996,6 +10484,92 @@ const App = {
       const p = (cfg.providers || []).find((x) => x.id === cfg.provider_id)
       return (p && p.name) || ''
     })
+    const webSearchTesting = ref(false)
+    const activeChatProvider = computed(() => {
+      const list = cfg.providers || []
+      return list.find((x) => x.id === cfg.provider_id) || list[0] || null
+    })
+    const isCurrentChannelDeepSeek = computed(() => {
+      const p = activeChatProvider.value
+      if (!p) return false
+      const url = String(p.base_url || '').toLowerCase()
+      const preset = String(p.preset || '').toLowerCase()
+      if (url.includes('deepseek.com')) return true
+      return preset === 'deepseek' && !url
+    })
+    const deepseekSearchAvailable = computed(() => {
+      if (cfg.web_search_api_key_set || cfg.web_search_deepseek_ready) return true
+      return (cfg.providers || []).some((p) => (
+        p && p.api_key_set && (
+          String(p.base_url || '').toLowerCase().includes('deepseek.com')
+          || String(p.preset || '').toLowerCase() === 'deepseek'
+        )
+      ))
+    })
+    const webSearchEffectiveMode = computed(() => {
+      const pref = cfg.web_search_mode || 'auto'
+      const p = activeChatProvider.value
+      const canNative = !!(isCurrentChannelDeepSeek.value && p && p.api_key_set && (p.protocol || 'openai') !== 'gemini')
+      const canApi = deepseekSearchAvailable.value
+      if (pref === 'native') return canNative ? 'native' : 'unavailable'
+      if (pref === 'api') return canApi ? 'api' : 'unavailable'
+      if (canNative) return 'native'
+      if (canApi) return 'api'
+      return 'unavailable'
+    })
+    const webSearchActiveReady = computed(() => webSearchEffectiveMode.value !== 'unavailable')
+    const webSearchModeBadge = computed(() => {
+      if (!cfg.web_search) return '已关闭'
+      if (webSearchEffectiveMode.value === 'native') return 'DeepSeek 原生搜索'
+      if (webSearchEffectiveMode.value === 'api') return 'DeepSeek Search API'
+      return '需配置 DeepSeek Key'
+    })
+    const webSearchBtnTooltip = computed(() => {
+      if (!cfg.web_search) return '联网搜索：已关闭（点击开启）'
+      if (webSearchEffectiveMode.value === 'native') return '联网搜索：已开启（DeepSeek 原生深度搜索）'
+      if (webSearchEffectiveMode.value === 'api') return '联网搜索：已开启（DeepSeek 官方 Search API）'
+      if ((cfg.web_search_mode || 'auto') === 'native') {
+        return '联网搜索：当前渠道不支持原生搜索，请在设置切回「智能自动」'
+      }
+      return '联网搜索：已开启，请先在设置中配置 DeepSeek API Key'
+    })
+    function toggleWebSearch() {
+      cfg.web_search = !cfg.web_search
+      if (cfg.web_search && !webSearchActiveReady.value) {
+        message.warning(
+          (cfg.web_search_mode || 'auto') === 'native'
+            ? '当前渠道非 DeepSeek 官方接口，可在「设置 → 联网搜索」改为智能自动模式'
+            : '请先在「设置 → 提供商 → DeepSeek」配置 API Key 以启用联网搜索'
+        )
+      }
+    }
+    async function saveWebSearchKey() {
+      const k = (cfg.web_search_api_key || '').trim()
+      if (!k) return
+      await persistConfig({ web_search_api_key: k })
+    }
+    async function clearWebSearchKey() {
+      await persistConfig({ clear_web_search_key: true })
+    }
+    async function testWebSearch() {
+      if (webSearchTesting.value) return
+      if ((cfg.web_search_api_key || '').trim()) {
+        await saveWebSearchKey()
+      }
+      webSearchTesting.value = true
+      try {
+        const res = await api.post('/api/web_search/test', { query: 'DeepSeek' })
+        if (res && res.ok) {
+          message.success(`DeepSeek Search API 连通成功（返回 ${res.count || 0} 条结果）`)
+        } else {
+          message.error((res && res.error) || '搜索接口测试失败')
+        }
+      } catch (e) {
+        message.error('搜索接口测试失败：' + String(e))
+      } finally {
+        webSearchTesting.value = false
+      }
+    }
     const modelPill = computed(() => {
       const bits = []
       if (channelLabel.value) bits.push(channelLabel.value)
@@ -10832,8 +11406,20 @@ const App = {
       })
     })
 
+    function applyThemeWithWipe(nextTheme) {
+      const target = nextTheme === 'dark' ? 'dark' : 'light'
+      if (cfg.ui_theme === target) return
+      const dir = target === 'dark' ? 'ltr' : 'rtl'
+      triggerThemeWipe(() => {
+        cfg.ui_theme = target
+        document.documentElement.dataset.theme = target
+      }, uiTempo.value, dir)
+    }
     function toggleTheme() {
-      cfg.ui_theme = cfg.ui_theme === 'dark' ? 'light' : 'dark'
+      applyThemeWithWipe(cfg.ui_theme === 'dark' ? 'light' : 'dark')
+    }
+    function onThemeSelect(val) {
+      applyThemeWithWipe(val)
     }
     watch(() => cfg.ui_theme, (val) => {
       document.documentElement.dataset.theme = val === 'dark' ? 'dark' : 'light'
@@ -12558,6 +13144,7 @@ const App = {
     const marketOverview = reactive({ ribbon: [], panels: [], watchlist: [], stats: {} })
     const marketLoading = ref(false)
     const marketSectors = ref([])
+    const marketSectorsMeta = reactive({ source: '', is_live: false, trade_date: '', quote_time: '', taxonomy: '' })
     const marketMovers = reactive({ gainers: [], losers: [], active: [] })
     const macroData = reactive({ treasury: { date: '', rates: [] }, fx: { date: '', rates: {} }, cbr: { date: '', items: {} }, fred: [] })
     const geoData = reactive({ events: [], chokepoints: [] })
@@ -12713,7 +13300,14 @@ const App = {
     async function loadMarketSectors(force) {
       try {
         const res = await api.get('/api/market/sectors?limit=36' + (force ? '&force=1' : ''))
-        if (res && res.ok) marketSectors.value = res.items || []
+        if (res && res.ok) {
+          marketSectors.value = res.items || []
+          marketSectorsMeta.source = res.source || ''
+          marketSectorsMeta.is_live = Boolean(res.is_live)
+          marketSectorsMeta.trade_date = res.trade_date || ''
+          marketSectorsMeta.quote_time = res.quote_time || ''
+          marketSectorsMeta.taxonomy = res.taxonomy || ''
+        }
       } catch (e) { /* ignore */ }
     }
     async function loadMarketMovers(force) {
@@ -13037,8 +13631,10 @@ const App = {
     loadConfig()
     loadModels()
     syncBackendChats()
+    hydrateActiveSync(true)
 
     return {
+      quantSyncStore,
       tab, q, loading, results, searched, filters, facets, stats,
       theme, zhCN, ICO, EFFORTS, protocols, navs, recent, askExamples, pageTitle, pickExample, askExample,
       paneOn, settingsOn, chunkOn,
@@ -13054,9 +13650,13 @@ const App = {
       shortcutGroups, recordingShortcutId, hasCustomShortcuts, getShortcutCombo, isShortcutModified, shortcutTokens,
       onShortcutContext, resetShortcut, resetAllShortcuts, onAskKeydown, onSearchKeydown,
       chatId, histMode, histPicked, histGroups, histPickCount, histPaneTitle, histPinLabel, runningIds,
-      histSearchQuery, allSessionChats, filteredSessionChats, convTurnCount, convRelTime, closeSessionTab,
+      histSearchQuery, allSessionChats, filteredSessionChats,
+      pinnedSessionChats, unpinnedSessionChats, pinnedFilteredChats, unpinnedFilteredChats,
+      togglePinSessionById, PDF_ZOOM_ITEMS, docOpItems, convTurnCount, convRelTime, closeSessionTab,
       openHistManage, openHistBrowse, closeHistManage, openHistChat, onHistRow, togglePick, pinPicked, deletePicked,
-      renderAnswer, onAnswerClick, displaySources, toggleSrc, bindAnswer, scheduleAnswer, blockDelay, msgDelay,
+      renderAnswer, onAnswerClick, displaySources, toggleSrc, toggleWebSrc, citedWebCount, sortedWebSources, webSourceHost, openWebSource, bindAnswer, scheduleAnswer, blockDelay, msgDelay,
+      webSearchTesting, webSearchEffectiveMode, webSearchActiveReady, webSearchModeBadge, webSearchBtnTooltip,
+      toggleWebSearch, saveWebSearchKey, clearWebSearchKey, testWebSearch,
       toolDotClass, toolLabel, toolMeta, sbfWindowH, sbfOffset, sbfItemClass,
       attachments, attachInput, attachOver, pickAttach, onAttachPicked,
       onAttachEnter, onAttachLeave, onAttachDrop, onAttachPaste, removeAttach,
@@ -13108,7 +13708,7 @@ const App = {
       triggerFolderUpload, onFolderInputPicked,
       openIngest, onIngestFile, onIngestOk, resetIngest, onIngestCancel, onIngestDismiss,
       batchHasGap, retryBatchFromBreak, retryBatchItem, shortBatchStatus, onDocOp,
-      toggleTheme, terminalClock, marketHours,
+      toggleTheme, onThemeSelect, uiTempo, terminalClock, marketHours,
       dashboardLayout, dashCustomizeOpen, dashCompact, dashPulseOpen, dashTickerMode, dashMaximizedId, dashPulseWidth, dashWatchlistWidth,
       editingWsKey, editingWsName, startWsRename, commitWsRename, cancelWsRename, deleteDashboardWorkspaceById, deleteMarketWorkspaceById,
       removeDashboardWidget, removeMarketWidget,
@@ -13125,7 +13725,7 @@ const App = {
       widgetCfgOpen, widgetCfgScope, widgetCfgTarget, openWidgetConfig, onPatchWidgetFromDrawer, onSaveWidgetAsCustom, pinWatchlistSymbol,
       onSaveCustomFromStudio, onDeleteCustomWidget, onUpdateCustomThumb,
       onSaveVisualToLibrary, onPinVisualToDashboard, onCreateTopicBoard, onAskAiFromWidget,
-      marketOverview, marketLoading, marketSectors, marketMovers, macroData, geoData, macroFxGrid, macroSpreadSummary,
+      marketOverview, marketLoading, marketSectors, marketSectorsMeta, marketMovers, macroData, geoData, macroFxGrid, macroSpreadSummary,
       chartOpts, dashWlSelected, dashWlInterval, dashKlineData,
       getDashWlSelected, getDashWlInterval, getDashKlineData, loadDashKlineFor, selectDashWatchItemFor, setDashWlInterval,
       getMktWidgetInterval, getMktKlineData, setMktWidgetSymbol, clearMktWidgetSymbol, setMktWidgetInterval,
@@ -13183,6 +13783,10 @@ function matrixColor(intensity) {
 }
 
 function matrixFrame(now) {
+  if (typeof document !== 'undefined' && document.hidden) {
+    matrixRaf = 0
+    return
+  }
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const p = reduce ? 0 : (now % MATRIX.duration) / MATRIX.duration
   const p2 = p * Math.PI * 2
@@ -13230,6 +13834,13 @@ function matrixUnbind(canvas) {
     cancelAnimationFrame(matrixRaf)
     matrixRaf = 0
   }
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && matrixNodes.size && !matrixRaf) {
+      matrixRaf = requestAnimationFrame(matrixFrame)
+    }
+  })
 }
 
 const MatrixLoader = {
@@ -13508,9 +14119,25 @@ const SectorTreemap = {
         tooltip: {
           formatter(info) {
             const d = info.data || {}
+            const raw = d.raw || {}
             const p = Number(d.pct || 0)
-            const inf = ((Number(d.inflow) || 0) / 1e8).toFixed(2)
-            return `<b>${d.name || ''}</b><br/>涨跌: ${p >= 0 ? '+' : ''}${p.toFixed(2)}%<br/>主力净流: ${inf}亿`
+            const lines = [`<b>${d.name || ''}</b>`, `涨跌: <b>${p >= 0 ? '+' : ''}${p.toFixed(2)}%</b>`]
+            if (raw.mkt_cap > 1e10) lines.push(`总市值: ${(Number(raw.mkt_cap) / 1e12).toFixed(2)}万亿`)
+            if (raw.amount > 0) lines.push(`成交额: ${(Number(raw.amount) / 1e8).toFixed(1)}亿`)
+            if (raw.net_inflow != null && Number.isFinite(Number(raw.net_inflow))) {
+              const inf = Number(raw.net_inflow) / 1e8
+              lines.push(`主力净流: ${inf >= 0 ? '+' : ''}${inf.toFixed(2)}亿`)
+            }
+            if ((raw.up_count || 0) + (raw.down_count || 0) > 0) {
+              lines.push(`涨跌家数: ${raw.up_count || 0}涨 / ${raw.down_count || 0}跌`)
+            } else if (raw.stock_count > 0) {
+              lines.push(`成分股: ${raw.stock_count}只`)
+            }
+            if (raw.lead_stock) {
+              const lp = Number(raw.lead_pct || 0)
+              lines.push(`领涨: ${raw.lead_stock} (${lp >= 0 ? '+' : ''}${lp.toFixed(2)}%)`)
+            }
+            return lines.join('<br/>')
           },
         },
         series: [{
@@ -14395,14 +15022,21 @@ const FreeGrid = {
       window.removeEventListener('keydown', onKeyEsc)
     })
 
+    const lastHud = ref('')
+    watch(active, (val) => {
+      if (val) {
+        lastHud.value = `${val.mode === 'drag' ? '移动' : '缩放'} · ${val.title} · X:${val.x} Y:${val.y} · ${val.w}/${props.cols}列 × ${val.h}行`
+      }
+    }, { deep: true })
+
     return {
-      canvasRef, active, canvasStyle, ghostStyle, itemStyle,
+      canvasRef, active, lastHud, canvasStyle, ghostStyle, itemStyle,
       startDrag, startResize, toggleMaximize,
     }
   },
   template: `
     <div ref="canvasRef" :class="['fg-canvas', { unlocked: !locked }]" :style="canvasStyle">
-      <div v-if="maximizedId" class="fg-max-backdrop" @click="$emit('update:maximizedId', '')"></div>
+      <aui-backdrop :open="!!maximizedId" backdrop-class="fg-max-backdrop" @click="$emit('update:maximizedId', '')" />
       <div v-if="ghostStyle" class="fg-ghost" :style="ghostStyle"></div>
       <div v-for="it in items" :key="it.id"
            :class="['fg-item', { 'is-active': active && active.id === it.id, 'is-max': maximizedId === it.id }]"
@@ -14420,16 +15054,27 @@ const FreeGrid = {
           <div class="fg-rh fg-rh-sw" @pointerdown="startResize(it, 'sw', $event)" title="拖拽自由调整宽与高"></div>
         </template>
       </div>
-      <div v-if="active" class="fg-hud ft-mono">
-        {{ active.mode === 'drag' ? '移动' : '缩放' }} · {{ active.title }} · X:{{ active.x }} Y:{{ active.y }} · {{ active.w }}/{{ cols }}列 × {{ active.h }}行
-      </div>
+      <aui-popover :open="!!active" origin="bottom right" pop-class="fg-hud ft-mono">
+        {{ lastHud }}
+      </aui-popover>
     </div>
   `,
 }
 
 const app = createApp(App)
 app.use(Antd)
-app.component('matrix-loader', MatrixLoader)
+app.component('animate-ui-provider', AnimateUIProvider)
+app.component('reduced-motion-config', ReducedMotionConfig)
+app.component('aui-menu-pop', AuiMenuPop)
+app.component('aui-popover', AuiPopover)
+app.component('aui-sheet', AuiSheet)
+app.component('aui-disclosure', AuiDisclosure)
+app.component('aui-backdrop', AuiBackdrop)
+app.component('aui-icon-swap', AuiIconSwap)
+app.component('aui-step-swap', AuiStepSwap)
+app.component('aui-metric-number', AuiMetricNumber)
+app.component('matrix-loader', AuiMotionLoader)
+registerAuiComponents(app)
 app.component('o2-empty', O2Empty)
 app.component('spark-line', SparkLine)
 app.component('kline-chart', KlineChart)

@@ -1,5 +1,5 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue/dist/vue.esm-bundler.js'
-import { message } from 'ant-design-vue'
+import { auiMessage as message } from './aui_components.js'
 import * as echarts from 'echarts/core'
 import {
   TreemapChart, LineChart, BarChart, PieChart, ScatterChart,
@@ -689,6 +689,7 @@ export const SymbolPicker = {
     const searching = ref(false)
     const activeIdx = ref(0)
     const popStyle = ref({})
+    const popOrigin = ref('top left')
     let timer = 0
     let reqSeq = 0
 
@@ -722,13 +723,18 @@ export const SymbolPicker = {
       const popW = Math.min(368, Math.max(288, rect.width))
       const popH = 310
       let left = rect.left
+      let originX = 'left'
       if (left + popW > window.innerWidth - 8) {
         left = Math.max(8, rect.right - popW)
+        originX = 'right'
       }
       let top = rect.bottom + 4
+      let originY = 'top'
       if (top + popH > window.innerHeight - 8 && rect.top > popH + 12) {
         top = Math.max(8, rect.top - popH - 4)
+        originY = 'bottom'
       }
+      popOrigin.value = `${originY} ${originX}`
       popStyle.value = {
         position: 'fixed',
         left: `${Math.round(left)}px`,
@@ -844,7 +850,7 @@ export const SymbolPicker = {
     })
 
     return {
-      rootRef, inputRef, popRef, open, query, hits, searching, activeIdx, popStyle,
+      rootRef, inputRef, popRef, open, query, hits, searching, activeIdx, popStyle, popOrigin,
       watchlistSet, displayLabel, presetFallback,
       STAR_SVG, STAR_FILL_SVG, SEARCH_SVG,
       openPopover, closePopover, onInput, onKeydown, onPick, onToggleStar,
@@ -870,7 +876,8 @@ export const SymbolPicker = {
       </div>
 
       <teleport to="body">
-        <div v-if="open" ref="popRef" class="sp-popover" :style="popStyle" @pointerdown.stop>
+        <aui-menu-pop :open="open" :origin="popOrigin" panel-class="sp-popover" :panel-style="popStyle" :stop-pointerdown="true">
+          <div ref="popRef">
           <div v-if="query.trim()" class="sp-pop-body">
             <div class="sp-pop-sec">
               <span>全市场搜索（↑↓选择 · Enter确认）</span>
@@ -883,12 +890,12 @@ export const SymbolPicker = {
               <span class="ft-mono sp-code">{{ it.symbol || it.secid }}</span>
               <span class="sp-name">{{ it.name }}</span>
               <span class="sp-mkt">{{ it.market || '' }}</span>
-              <button v-if="showWatchlistStar" type="button" class="sp-wl-pill" :class="{ on: watchlistSet.has(it.secid) }"
-                      :title="watchlistSet.has(it.secid) ? '移出自选（不关闭列表）' : '加入自选（不关闭列表）'"
-                      @click.stop="onToggleStar(it)">
+              <aui-star-button v-if="showWatchlistStar" btn-class="sp-wl-pill" :active="watchlistSet.has(it.secid)"
+                               :title="watchlistSet.has(it.secid) ? '移出自选（不关闭列表）' : '加入自选（不关闭列表）'"
+                               @click="onToggleStar(it)">
                 <span class="sp-wl-ico" v-html="watchlistSet.has(it.secid) ? STAR_FILL_SVG : STAR_SVG"></span>
                 <span>{{ watchlistSet.has(it.secid) ? '已选' : '自选' }}</span>
-              </button>
+              </aui-star-button>
             </div>
           </div>
 
@@ -907,11 +914,11 @@ export const SymbolPicker = {
                   {{ w.pct >= 0 ? '+' : '' }}{{ Number(w.pct).toFixed(2) }}%
                 </span>
                 <span v-else class="sp-mkt">自选</span>
-                <button v-if="showWatchlistStar" type="button" class="sp-wl-pill on" title="移出自选"
-                        @click.stop="onToggleStar(w)">
+                <aui-star-button v-if="showWatchlistStar" btn-class="sp-wl-pill" :active="true" title="移出自选"
+                                 @click="onToggleStar(w)">
                   <span class="sp-wl-ico" v-html="STAR_FILL_SVG"></span>
                   <span>已选</span>
-                </button>
+                </aui-star-button>
               </div>
             </template>
 
@@ -925,15 +932,16 @@ export const SymbolPicker = {
               <span class="ft-mono sp-code">{{ p.symbol }}</span>
               <span class="sp-name">{{ p.name }}</span>
               <span class="sp-mkt">{{ p.market }}</span>
-              <button v-if="showWatchlistStar" type="button" class="sp-wl-pill" :class="{ on: watchlistSet.has(p.secid) }"
-                      :title="watchlistSet.has(p.secid) ? '移出自选' : '加入自选'"
-                      @click.stop="onToggleStar(p)">
+              <aui-star-button v-if="showWatchlistStar" btn-class="sp-wl-pill" :active="watchlistSet.has(p.secid)"
+                               :title="watchlistSet.has(p.secid) ? '移出自选' : '加入自选'"
+                               @click="onToggleStar(p)">
                 <span class="sp-wl-ico" v-html="watchlistSet.has(p.secid) ? STAR_FILL_SVG : STAR_SVG"></span>
                 <span>{{ watchlistSet.has(p.secid) ? '已选' : '自选' }}</span>
-              </button>
+              </aui-star-button>
             </div>
           </div>
-        </div>
+          </div>
+        </aui-menu-pop>
       </teleport>
     </div>
   `,
@@ -2889,17 +2897,18 @@ export const QuantWidget = {
           </div>
           <div class="pbc-track" title="虚线为 50% 历史中位数">
             <div class="pbc-mid"></div>
-            <div class="pbc-fill" :style="{ width: Math.max(3, row.percentile) + '%', background: barZoneColor(row.percentile) }"></div>
+            <div class="pbc-fill" :style="{ transform: 'translateX(' + (Math.max(3, row.percentile) - 100) + '%)', background: barZoneColor(row.percentile) }"></div>
           </div>
           <span class="ft-mono" :style="{ fontWeight: 700, textAlign: 'right', color: barZoneColor(row.percentile) }">{{ row.percentile }}%</span>
           <span v-if="boxW >= 390" class="ft-mono" style="text-align:right;font-size:10px" :style="{ color: (row.pct || 0) >= 0 ? 'var(--up)' : 'var(--down)' }">
             {{ row.pct ? fmtPctTxt(row.pct) : ('R' + Math.round(row.rsi14 || 50)) }}
           </span>
-          <button v-if="row.secid.includes('.') || row.secid.startsWith('CG.')" type="button"
-                  class="sp-star-btn" :class="{ on: watchlistSet.has(row.secid) }"
-                  :title="watchlistSet.has(row.secid) ? '移出自选' : '加入自选'"
-                  @click.stop="$emit('toggle-watchlist', { secid: row.secid, symbol: row.secid, name: row.name })"
-                  v-html="watchlistSet.has(row.secid) ? STAR_FILL_SVG : STAR_SVG"></button>
+          <aui-star-button v-if="row.secid.includes('.') || row.secid.startsWith('CG.')"
+                           btn-class="sp-star-btn" :active="watchlistSet.has(row.secid)"
+                           :title="watchlistSet.has(row.secid) ? '移出自选' : '加入自选'"
+                           @click="$emit('toggle-watchlist', { secid: row.secid, symbol: row.secid, name: row.name })">
+            <span v-html="watchlistSet.has(row.secid) ? STAR_FILL_SVG : STAR_SVG"></span>
+          </aui-star-button>
           <span v-else></span>
         </div>
       </div>
@@ -2946,7 +2955,7 @@ export const QuantWidget = {
               <span class="hint" style="width:58px;flex:none;font-size:10.5px">{{ m.lbl }}</span>
               <div class="pbc-track" style="flex:1;position:relative">
                 <div class="pbc-mid"></div>
-                <div class="pbc-fill" :style="{ width: Math.min(100, Math.max(6, (m.val + 100) / 2)) + '%', background: m.col }"></div>
+                <div class="pbc-fill" :style="{ transform: 'translateX(' + (Math.min(100, Math.max(6, (m.val + 100) / 2)) - 100) + '%)', background: m.col }"></div>
               </div>
               <span class="ft-mono" style="width:42px;text-align:right;font-size:10.5px;font-weight:700" :style="{ color: m.col }">
                 {{ m.val >= 0 ? '+' : '' }}{{ m.val }}
@@ -3245,7 +3254,7 @@ export const WidgetConfigDrawer = {
     }
   },
   template: `
-    <a-drawer :open="open" :width="400" placement="right"
+    <aui-drawer :open="open" :width="400" placement="right"
               :title="w ? ('模块自定义 · ' + (w.title || w.type)) : '模块自定义'"
               @close="$emit('update:open', false)">
       <div v-if="w" class="wcd-body">
@@ -3731,7 +3740,7 @@ export const WidgetConfigDrawer = {
           <a-button size="small" type="primary" @click="$emit('update:open', false)">完成</a-button>
         </div>
       </div>
-    </a-drawer>
+    </aui-drawer>
   `,
 }
 
@@ -4169,7 +4178,7 @@ export const WidgetGalleryModal = {
     }
   },
   template: `
-    <a-modal :open="open" :width="'min(960px, 94vw)'" :footer="null"
+    <aui-dialog :open="open" :width="'min(960px, 94vw)'" :footer="null"
              :title="targetScope === 'markets' ? '模块库 · 行情工作台' : '模块库 · 终端看板'"
              @cancel="$emit('update:open', false)">
       <div style="display:flex;flex-direction:column;gap:12px">
@@ -4376,6 +4385,6 @@ export const WidgetGalleryModal = {
           </div>
         </div>
       </div>
-    </a-modal>
+    </aui-dialog>
   `,
 }

@@ -42,6 +42,41 @@
       --pad: 32px;
       --font: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Inter,
               "Source Han Sans SC", -apple-system, "Segoe UI", sans-serif;
+      /* Animate UI Motion Tokens (tempo=1 defaults from css-timing.mjs; live-synced by syncMotionCssVars) */
+      --aui-tempo: 1;
+      --aui-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --aui-ease-soft: cubic-bezier(0.215, 0.61, 0.355, 1);
+      --aui-ease-away: cubic-bezier(0.33, 0.17, 0.67, 0.5);
+      --aui-spring-press: 400ms linear(0, 0.0261, 0.0935, 0.188, 0.2977, 0.4132, 0.5271, 0.6343, 0.7313, 0.8159, 0.8872, 0.9452, 0.9906, 1.0244, 1.048, 1.063, 1.0709, 1.0732, 1.0713, 1.0663, 1.0594, 1.0514, 1.0429, 1.0346, 1.0267, 1.0196, 1.0134, 1.0082, 1.004, 1.0007, 0.9982, 0.9965, 1, 0.9948, 0.9946, 0.9948, 1, 1, 1, 1);
+      --aui-spring-selection: 500ms linear(0, 0.0141, 0.0509, 0.1035, 0.1663, 0.2349, 0.306, 0.3769, 0.4459, 0.5115, 0.573, 0.6297, 0.6814, 0.728, 0.7696, 0.8064, 0.8387, 0.8668, 0.8911, 0.9119, 0.9296, 0.9445, 0.957, 0.9673, 0.9758, 0.9827, 0.9882, 0.9926, 0.9961, 0.9987, 1.0007, 1.0021, 1.0031, 1.0038, 1.0041, 1, 1, 1, 1.004, 1.0038, 1.0035, 1.0032, 1.0029, 1.0026, 1.0023, 1.002, 1.0017, 1.0015, 1, 1);
+      --aui-spring-highlight: 300ms linear(0, 0.0233, 0.0813, 0.1598, 0.2483, 0.3396, 0.4288, 0.5126, 0.5894, 0.658, 0.7183, 0.7704, 0.8149, 0.8524, 0.8837, 0.9094, 0.9303, 0.9472, 0.9607, 0.9713, 0.9796, 0.986, 0.9908, 0.9944, 0.997, 0.9988, 1.0001, 1.001, 1.0015, 1);
+      --aui-spring-pop: 450ms linear(0, 0.0189, 0.0684, 0.1388, 0.2222, 0.3122, 0.404, 0.4937, 0.5786, 0.657, 0.7276, 0.7899, 0.8438, 0.8895, 0.9275, 0.9583, 0.9828, 1.0015, 1.0154, 1.0252, 1.0316, 1.0352, 1.0366, 1.0363, 1.0348, 1.0324, 1.0294, 1.0262, 1.0228, 1.0195, 1.0163, 1.0134, 1.0107, 1.0083, 1.0063, 1.0045, 1.003, 1.0018, 1.0009, 1.0001, 0.9996, 0.9992, 0.9989, 1, 1);
+      --aui-spring-thumb: 500ms linear(0, 0.0143, 0.0525, 0.1082, 0.1759, 0.2509, 0.3297, 0.4092, 0.487, 0.5614, 0.6311, 0.6953, 0.7534, 0.8052, 0.8507, 0.89, 0.9235, 0.9516, 0.9747, 0.9933, 1.0079, 1.0189, 1.027, 1.0325, 1.0359, 1.0375, 1.0377, 1.0369, 1.0352, 1.0329, 1.0303, 1.0274, 1.0244, 1.0214, 1.0185, 1.0157, 1.0131, 1.0108, 1.0087, 1.0068, 1.0051, 1.0037, 1.0025, 1.0015, 1.0007, 1.0001, 0.9996, 0.9992, 0.9989, 1);
+      --aui-spring-dialog: 750ms linear(0, 0.0071, 0.0261, 0.0541, 0.0886, 0.1279, 0.1702, 0.2143, 0.2592, 0.3041, 0.3485, 0.3918, 0.4336, 0.4738, 0.5121, 0.5485, 0.5829, 0.6153, 0.6456, 0.674, 0.7004, 0.725, 0.7479, 0.769, 0.7886, 0.8066, 0.8233, 0.8386, 0.8527, 0.8656, 0.8775, 0.8884, 0.8983, 0.9074, 0.9158, 0.9234, 0.9303, 0.9367, 0.9424, 0.9477, 0.9525, 0.9569, 0.9609, 0.9645, 0.9678, 0.9708, 0.9735, 0.976, 0.9782, 0.9803, 0.9821, 0.9838, 0.9853, 0.9867, 0.9879, 0.9891, 0.9901, 0.9911, 0.9919, 0.9927, 0.9934, 0.994, 0.9946, 0.9951, 0.9955, 0.996, 0.9964, 0.9967, 0.997, 0.9973, 0.9976, 0.9978, 1, 1, 1);
+      --aui-spring-slide: 750ms linear(0, 0.0137, 0.0488, 0.0981, 0.156, 0.2184, 0.2824, 0.3459, 0.4073, 0.4658, 0.5206, 0.5714, 0.6182, 0.6608, 0.6995, 0.7345, 0.7658, 0.7939, 0.8189, 0.8411, 0.8608, 0.8782, 0.8936, 0.9071, 0.919, 0.9295, 0.9386, 0.9466, 0.9536, 0.9597, 0.965, 0.9697, 0.9737, 0.9772, 0.9803, 0.9829, 0.9852, 0.9872, 0.989, 0.9905, 0.9918, 0.9929, 0.9939, 0.9947, 0.9954, 0.9961, 0.9966, 0.9971, 0.9975, 0.9978, 0.9981, 0.9984, 0.9986, 0.9988, 0.999, 0.9991, 0.9992, 0.9993, 0.9994, 0.9995, 0.9996, 0.9996, 0.9997, 0.9997, 0.9998, 0.9998, 0.9998, 0.9999, 0.9999, 0.9999, 1, 1, 1, 1, 1);
+      --aui-menu: 220ms cubic-bezier(0.215, 0.61, 0.355, 1);
+      --aui-overlay: 400ms cubic-bezier(0.215, 0.61, 0.355, 1);
+      --aui-disclosure: 350ms cubic-bezier(0.215, 0.61, 0.355, 1);
+      --aui-sheet: 400ms cubic-bezier(0.215, 0.61, 0.355, 1);
+      --aui-dismiss: 200ms cubic-bezier(0.33, 0.17, 0.67, 0.5);
+      --aui-panel-in: 300ms cubic-bezier(0.25, 0.1, 0.35, 1);
+      --aui-panel-out: 150ms cubic-bezier(0, 0, 0.58, 1);
+      --aui-swap: 150ms cubic-bezier(0.23, 1, 0.32, 1);
+      --aui-spin: 300ms cubic-bezier(0.23, 1, 0.32, 1);
+      --aui-color: 200ms cubic-bezier(0.25, 0.1, 0.25, 1);
+      --aui-fade: 200ms cubic-bezier(0.23, 1, 0.32, 1);
+      --aui-reveal: 300ms cubic-bezier(0.23, 1, 0.32, 1);
+      --aui-scale-press: 0.97;
+      --aui-scale-choice: 0.985;
+      --aui-blur-icon: 2px;
+      --aui-blur-surface: 4px;
+      --aui-blur-switch: 3px;
+      --aui-slide-y: 10px;
+      /* Unified Scrollbar Tokens (Light) */
+      --sb-thumb: rgba(15, 23, 42, 0.13);
+      --sb-thumb-box-hover: rgba(15, 23, 42, 0.24);
+      --sb-thumb-hover: rgba(15, 23, 42, 0.42);
+      --sb-thumb-active: rgba(29, 78, 216, 0.68);
     }
     html[data-theme="dark"] {
       color-scheme: dark;
@@ -70,6 +105,11 @@
       --up: #10b981;
       --down: #ef4444;
       --warn: #f59e0b;
+      /* Unified Scrollbar Tokens (Dark) */
+      --sb-thumb: rgba(148, 163, 184, 0.14);
+      --sb-thumb-box-hover: rgba(148, 163, 184, 0.28);
+      --sb-thumb-hover: rgba(148, 163, 184, 0.48);
+      --sb-thumb-active: rgba(59, 130, 246, 0.78);
     }
     html, body, #app { height: 100%; overflow: hidden; }
     #app > * { height: 100%; }
@@ -77,6 +117,48 @@
     body {
       font-family: var(--font);
       margin: 0;
+    }
+
+    /* 全局统一极简细胶囊滚动条（Linear / Cursor 风格：4px 视觉 + 8px 热区，悬停/拖动加深，双主题自适应） */
+    *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    *::-webkit-scrollbar-button {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+    *::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    *::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+    *::-webkit-scrollbar-thumb {
+      background-color: var(--sb-thumb);
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+      min-height: 28px;
+      min-width: 28px;
+    }
+    *:hover::-webkit-scrollbar-thumb {
+      background-color: var(--sb-thumb-box-hover);
+    }
+    *::-webkit-scrollbar-thumb:hover {
+      background-color: var(--sb-thumb-hover);
+      border-width: 1.5px;
+    }
+    *::-webkit-scrollbar-thumb:active {
+      background-color: var(--sb-thumb-active);
+      border-width: 1.5px;
+    }
+    @supports not selector(::-webkit-scrollbar) {
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--sb-thumb-box-hover) transparent;
+      }
     }
 
     .shell { display: flex; height: 100%; min-width: 0; }
@@ -94,7 +176,11 @@
     .slide-pill {
       position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none;
       border-radius: var(--radius); background: #1e3a8a;
-      transition: transform .34s cubic-bezier(.22, .8, .28, 1), width .34s cubic-bezier(.22, .8, .28, 1), height .34s cubic-bezier(.22, .8, .28, 1), opacity .2s;
+      transition:
+        transform var(--aui-spring-selection),
+        width var(--aui-spring-selection),
+        height var(--aui-spring-selection),
+        opacity var(--aui-fade);
     }
     .nav-item {
       display: flex; align-items: center; gap: 10px; width: 100%;
@@ -268,12 +354,18 @@
     .content.switching .type-capsules,
     .content.switching .table-card,
     .content.switching .settings-card,
+    .content.switching .dash-shell,
+    .content.switching .mk-shell,
+    .content.switching .news-shell,
+    .content.switching .bt-shell,
+    .content.switching .oc-main-container,
     .docbody.switching .chunk,
+    .oc-main.switching .oc-group,
     .settings-body.switching .settings-card {
-      animation: block-fade .46s cubic-bezier(.22, 1, .36, 1) both;
+      animation: block-fade var(--aui-panel-in) both;
     }
     @keyframes block-fade {
-      from { opacity: 0; transform: translateY(16px); filter: blur(8px); }
+      from { opacity: 0; transform: translateY(var(--aui-slide-y)); filter: blur(var(--aui-blur-switch)); }
       to { opacity: 1; transform: none; filter: none; }
     }
     .pane-catalog .filters.mb { flex: none; }
@@ -440,7 +532,6 @@
     .chatlog {
       position: relative;
       flex: 1; min-height: 0; overflow-y: auto; padding: var(--pad); padding-bottom: 168px;
-      transition: padding .34s cubic-bezier(.22, 1, .36, 1);
       mask-image: linear-gradient(
         to bottom,
         transparent 0px,
@@ -490,29 +581,21 @@
       width: min(640px, 100%); margin: 24px auto 0; background: var(--card);
       border: 1px solid var(--border); border-radius: var(--radius-card); padding: 32px;
       display: flex; flex-direction: column; gap: 16px;
-      transition:
-        margin .34s cubic-bezier(.22, 1, .36, 1),
-        padding .34s cubic-bezier(.22, 1, .36, 1),
-        gap .34s cubic-bezier(.22, 1, .36, 1),
-        transform .34s cubic-bezier(.22, 1, .36, 1);
     }
     .chat-empty h2 {
       margin: 0; font-size: 20px; font-weight: 600;
-      transition: font-size .34s cubic-bezier(.22, 1, .36, 1);
     }
     .chat-empty p {
       margin: 0; color: var(--muted-foreground); font-size: 14px; line-height: 1.7;
-      transition: font-size .34s cubic-bezier(.22, 1, .36, 1), line-height .34s cubic-bezier(.22, 1, .36, 1);
     }
     .ask-chips {
       display: flex; flex-direction: column; gap: 8px;
-      transition: gap .34s cubic-bezier(.22, 1, .36, 1);
     }
     .ask-chip {
       width: 100%; text-align: left; border: 1px solid var(--border);
       background: var(--background); color: var(--foreground);
       border-radius: var(--radius); padding: 10px 12px; font-size: 14px; cursor: pointer;
-      transition: padding .34s cubic-bezier(.22, 1, .36, 1), font-size .34s cubic-bezier(.22, 1, .36, 1), background .15s ease;
+      transition: background-color var(--aui-color), border-color var(--aui-color), transform var(--aui-spring-press);
     }
     .ask-chip:hover { background: var(--accent); }
     .msg { display: flex; margin-bottom: 14px; max-width: 860px; margin-left: auto; margin-right: auto; }
@@ -538,22 +621,21 @@
         transparent 0%, #000 10%, #000 90%, transparent 100%);
       -webkit-mask-image: linear-gradient(to bottom,
         transparent 0%, #000 10%, #000 90%, transparent 100%);
-      transition: height .45s cubic-bezier(.22, 1, .36, 1);
+      transition: height var(--aui-disclosure);
     }
     .sbf-track {
-      will-change: transform;
-      transition: transform .5s cubic-bezier(.22, 1, .36, 1);
+      transition: transform var(--aui-spring-selection);
     }
     .sbf-item {
       display: flex; align-items: center; gap: 8px;
       height: 24px; font-size: 12px; color: var(--muted-foreground);
-      filter: blur(3.2px); opacity: .34;
+      filter: blur(2.5px); opacity: .34;
       transform: scale(.97);
       transform-origin: left center;
       transition:
-        filter .45s cubic-bezier(.45, 0, .55, 1),
-        opacity .45s cubic-bezier(.45, 0, .55, 1),
-        transform .45s cubic-bezier(.45, 0, .55, 1);
+        filter var(--aui-reveal),
+        opacity var(--aui-reveal),
+        transform var(--aui-reveal);
     }
     .sbf-item.near {
       filter: blur(1.2px); opacity: .62; transform: scale(.99);
@@ -804,25 +886,7 @@
     .model-sub-scroll {
       flex: 1 1 auto; min-height: 0; overflow: auto;
     }
-    .model-sub-scroll::-webkit-scrollbar { width: 8px; }
-    .model-sub-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-    .model-sub-scroll::-webkit-scrollbar-corner { background: transparent; }
-    .model-sub-scroll::-webkit-scrollbar-track {
-      margin: 8px 0; background: transparent;
-    }
-    .model-sub-scroll::-webkit-scrollbar-thumb {
-      background-color: #d1d5db;
-      border-radius: 8px;
-      border: 2px solid transparent;
-      background-clip: content-box;
-    }
-    .model-sub-scroll::-webkit-scrollbar-thumb:hover { background-color: #9ca3af; }
-    @supports not selector(::-webkit-scrollbar) {
-      .model-sub-scroll {
-        scrollbar-width: thin;
-        scrollbar-color: #d1d5db transparent;
-      }
-    }
+    .model-sub-scroll::-webkit-scrollbar-track { margin: 6px 0; }
     @container composer (max-width: 720px) {
       .model-pop { width: min(320px, 100cqw); }
       .model-sub, .model-sub-wide {
@@ -929,10 +993,10 @@
       display: inline-block; white-space: pre;
     }
     .answer-text .ch-in {
-      animation: ch-rise .42s cubic-bezier(.16, 1, .3, 1) both;
+      animation: ch-rise var(--aui-fade) both;
     }
     @keyframes ch-rise {
-      from { opacity: 0; transform: translateY(.62em); filter: blur(7px); }
+      from { opacity: 0; transform: translateY(.24em); filter: blur(var(--aui-blur-icon)); }
       to { opacity: 1; transform: translateY(0); filter: blur(0); }
     }
     .cite { color: var(--primary); cursor: pointer; font-weight: 600; }
@@ -945,6 +1009,26 @@
     .src-text { font-size: 13px; color: var(--muted-foreground); line-height: 1.7; margin-top: 6px;
                 display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
                 overflow: hidden; }
+    .web-src-cited-pill {
+      display: inline-flex; align-items: center;
+      padding: 1px 6px; border-radius: 999px; font-size: 11px; font-weight: 500;
+      background: rgba(29, 78, 216, 0.1); color: var(--primary);
+    }
+    .web-src.is-cited { border-color: rgba(59, 130, 246, 0.4); }
+    .web-src-top { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+    .web-src-top .src-n { margin-right: 2px; flex: none; }
+    .web-src-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .web-src-badge {
+      flex: none; font-size: 11px; padding: 1px 6px; border-radius: 4px;
+      background: #eff6ff; color: var(--primary); font-weight: 500;
+    }
+    .web-src-meta {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+      font-size: 11.5px; color: var(--muted-foreground); margin-top: 3px;
+    }
+    html[data-theme="dark"] .src:hover { border-color: #334155; background: rgba(30, 41, 59, 0.55); }
+    html[data-theme="dark"] .web-src-cited-pill,
+    html[data-theme="dark"] .web-src-badge { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
 
     .table-card {
       background: var(--card); border: 1px solid var(--border);
@@ -986,12 +1070,6 @@
     .table-card .ant-table-body,
     .table-card .ant-table-content {
       scrollbar-gutter: stable;
-    }
-    .table-card .ant-table-body::-webkit-scrollbar,
-    .table-card .ant-table-content::-webkit-scrollbar { height: 10px; width: 10px; }
-    .table-card .ant-table-body::-webkit-scrollbar-thumb,
-    .table-card .ant-table-content::-webkit-scrollbar-thumb {
-      background: #cbd5e1; border-radius: 6px;
     }
     .doc-title {
       display: inline-block; max-width: 100%;
@@ -1297,7 +1375,8 @@
     .oc-kbd-reset-btn {
       font-size: 12px; color: var(--muted-foreground); background: transparent;
       border: 1px solid transparent; border-radius: 5px; padding: 2px 7px;
-      cursor: pointer; transition: all .15s;
+      cursor: pointer;
+      transition: color var(--aui-color), border-color var(--aui-color), background-color var(--aui-color), transform var(--aui-spring-press);
     }
     .oc-kbd-reset-btn:hover { color: var(--primary); border-color: var(--border); background: var(--muted); }
     .queued-bar {
@@ -1339,7 +1418,7 @@
       padding: 6px 12px; border-radius: 7px;
       border: 1px solid #e4e4e7; background: #fafafa;
       font-size: 13px; color: #3f3f46; cursor: pointer;
-      transition: all .15s;
+      transition: border-color var(--aui-color), background-color var(--aui-color), color var(--aui-color), transform var(--aui-spring-press);
     }
     .oc-chip:hover { border-color: #cbd5e1; background: #fff; color: #18181b; }
     .oc-chip.on {
@@ -1802,6 +1881,30 @@
       background: #dbeafe;
       color: #1e40af;
     }
+    .ws-toggle-btn.on {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: var(--primary);
+    }
+    .ws-toggle-btn.on:hover:not(:disabled) {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .ws-toggle-btn.on.warn {
+      background: #fffbeb;
+      border-color: #fcd34d;
+      color: #d97706;
+    }
+    html[data-theme="dark"] .ws-toggle-btn.on {
+      background: rgba(59, 130, 246, 0.18);
+      border-color: rgba(96, 165, 250, 0.5);
+      color: #93c5fd;
+    }
+    html[data-theme="dark"] .ws-toggle-btn.on.warn {
+      background: rgba(245, 158, 11, 0.16);
+      border-color: rgba(245, 158, 11, 0.45);
+      color: #fbbf24;
+    }
     .bw-toggle-btn.ai-busy {
       background: #eff6ff;
       border-color: #3b82f6;
@@ -1834,9 +1937,8 @@
       background: transparent;
       z-index: 12;
       transition:
-        grid-template-rows .34s cubic-bezier(.22, 1, .36, 1),
-        padding .34s cubic-bezier(.22, 1, .36, 1),
-        opacity .26s cubic-bezier(.22, 1, .36, 1);
+        grid-template-rows var(--aui-disclosure),
+        opacity var(--aui-fade);
     }
     .ask-bw-dock.open {
       grid-template-rows: 1fr;
@@ -1869,10 +1971,9 @@
       transform: translateY(-8px) scale(.96);
       opacity: 0;
       transition:
-        width .22s cubic-bezier(.22, 1, .36, 1),
-        transform .34s cubic-bezier(.22, 1, .36, 1),
-        opacity .26s cubic-bezier(.22, 1, .36, 1),
-        border-color .2s ease;
+        transform var(--aui-disclosure),
+        opacity var(--aui-fade),
+        border-color var(--aui-color);
     }
     .ask-bw-dock.open .ask-bw-window {
       transform: translateY(0) scale(1);
@@ -2292,14 +2393,18 @@
     .tree-kb {
       flex: none; width: 26px; height: 15px; border: 0; border-radius: 99px;
       background: #2563eb; padding: 0; cursor: pointer; position: relative;
+      transition: background-color var(--aui-color);
     }
     .tree-kb.off { background: #cbd5e1; }
     .tree-kb-knob {
-      position: absolute; top: 2px; left: 13px;
+      position: absolute; top: 2px; left: 2px;
       width: 11px; height: 11px; border-radius: 50%; background: #fff;
-      transition: left .15s ease;
+      transform: translateX(11px);
+      transition: transform var(--aui-spring-thumb);
     }
-    .tree-kb.off .tree-kb-knob { left: 2px; }
+    .tree-kb.off .tree-kb-knob { transform: translateX(0); }
+    .tree-kb:active .tree-kb-knob { transform: translateX(9.5px) scaleX(1.16); }
+    .tree-kb.off:active .tree-kb-knob { transform: translateX(1.5px) scaleX(1.16); }
     .tree-node-acts {
       display: none; align-items: center; gap: 1px; flex: none;
     }
@@ -2348,7 +2453,8 @@
     .type-cap {
       border: 1px solid transparent; background: transparent; color: #475569;
       border-radius: 6px; padding: 5px 11px; font-size: 12.5px; cursor: pointer;
-      display: inline-flex; align-items: center; gap: 6px; transition: all .15s;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: background-color var(--aui-color), color var(--aui-color), border-color var(--aui-color), box-shadow var(--aui-color), transform var(--aui-spring-press);
     }
     .type-cap:hover { background: #f1f5f9; color: #0f172a; }
     .type-cap.on {
@@ -2813,7 +2919,7 @@
       background: transparent; color: var(--muted-foreground);
       font-size: 10px; font-weight: 700; letter-spacing: .03em; cursor: pointer;
       display: inline-flex; align-items: center; justify-content: center;
-      transition: all .12s;
+      transition: color var(--aui-color), border-color var(--aui-color), background-color var(--aui-color), transform var(--aui-spring-press);
     }
     .ft-chip:hover { color: var(--foreground); border-color: var(--primary); }
     .ft-chip.on {
@@ -2988,7 +3094,8 @@
       width: 24px; height: 24px; flex: none; padding: 0;
       border: 1px solid var(--border); border-radius: 3px;
       background: transparent; color: var(--muted-foreground);
-      cursor: pointer; display: inline-grid; place-items: center; transition: all .12s;
+      cursor: pointer; display: inline-grid; place-items: center;
+      transition: color var(--aui-color), border-color var(--aui-color), background-color var(--aui-color), transform var(--aui-spring-press);
     }
     .ft-icon-btn:hover { color: var(--foreground); border-color: var(--primary); background: var(--muted); }
     .ft-icon-btn.on { background: var(--primary); border-color: var(--primary); color: #fff; }
@@ -3154,6 +3261,11 @@
       transition: none !important;
       border-color: var(--primary);
       box-shadow: 0 24px 64px rgba(0, 0, 0, 0.48);
+      animation: fg-max-in var(--aui-spring-pop) both;
+    }
+    @keyframes fg-max-in {
+      from { opacity: 0; transform: scale(0.94); filter: blur(var(--aui-blur-surface)); }
+      to { opacity: 1; transform: none; filter: none; }
     }
     .fg-max-backdrop {
       position: fixed; inset: 0; background: rgba(2, 6, 23, 0.56);
@@ -3232,10 +3344,17 @@
     }
     .sp-bar-v::after {
       content: ""; position: absolute; top: 0; bottom: 0; left: 2px; width: 1px;
-      background: var(--border); transition: background .14s, width .14s, left .14s;
+      background: var(--border);
+      transform-origin: center center;
+      transition: background-color var(--aui-color), transform var(--aui-spring-highlight);
     }
-    .sp-bar-v:hover::after, .sp-bar-v.dragging::after {
-      left: 1px; width: 3px; background: var(--primary);
+    .sp-bar-v.dragging::after {
+      transform: scaleX(3); background: var(--primary);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .sp-bar-v:hover::after {
+        transform: scaleX(3); background: var(--primary);
+      }
     }
     .sp-bar-h {
       height: 6px; flex: none; cursor: row-resize; position: relative;
@@ -3243,10 +3362,17 @@
     }
     .sp-bar-h::after {
       content: ""; position: absolute; left: 0; right: 0; top: 2px; height: 1px;
-      background: var(--border); transition: background .14s, height .14s, top .14s;
+      background: var(--border);
+      transform-origin: center center;
+      transition: background-color var(--aui-color), transform var(--aui-spring-highlight);
     }
-    .sp-bar-h:hover::after, .sp-bar-h.dragging::after {
-      top: 1px; height: 3px; background: var(--primary);
+    .sp-bar-h.dragging::after {
+      transform: scaleY(3); background: var(--primary);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .sp-bar-h:hover::after {
+        transform: scaleY(3); background: var(--primary);
+      }
     }
     body.is-splitting-v, body.is-splitting-v * { cursor: col-resize !important; user-select: none !important; }
     body.is-splitting-h, body.is-splitting-h * { cursor: row-resize !important; user-select: none !important; }
@@ -3264,11 +3390,13 @@
       border: 1px solid var(--primary); background: var(--primary); color: #fff;
       display: inline-grid; place-items: center; cursor: pointer;
       box-shadow: 0 6px 18px rgba(59, 130, 246, 0.36);
-      transition: transform .14s ease, box-shadow .14s ease, opacity .14s ease;
+      transition: transform var(--aui-spring-press), box-shadow var(--aui-color), filter var(--aui-color), opacity var(--aui-fade);
     }
-    .fg-add-fab:hover {
-      transform: scale(1.06);
-      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.5);
+    @media (hover: hover) and (pointer: fine) {
+      .fg-add-fab:hover {
+        filter: brightness(1.08);
+        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.5);
+      }
     }
     .fg-add-fab svg { width: 17px; height: 17px; }
 
@@ -3316,7 +3444,10 @@
     .pbc-row:hover { background: var(--muted); }
     .pbc-track { height: 7px; border-radius: 99px; background: var(--muted); overflow: hidden; position: relative; }
     .pbc-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(148,163,184,0.55); z-index: 2; }
-    .pbc-fill { height: 100%; border-radius: 99px; transition: width .25s ease; }
+    .pbc-fill {
+      width: 100%; height: 100%; border-radius: 99px;
+      transition: transform var(--aui-spring-selection), background-color var(--aui-color);
+    }
 
     /* 分析师精选小模块样式 */
     .mc-quads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; flex: none; }
@@ -3433,7 +3564,8 @@
       height: 20px; padding: 0 6px; border: 1px solid var(--border); border-radius: 3px;
       background: transparent; color: var(--muted-foreground); cursor: pointer;
       display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600;
-      white-space: nowrap; transition: all .12s;
+      white-space: nowrap;
+      transition: color var(--aui-color), border-color var(--aui-color), background-color var(--aui-color), transform var(--aui-spring-press);
     }
     .sp-wl-pill:hover { border-color: #f59e0b; color: #f59e0b; background: rgba(245, 158, 11, 0.10); }
     .sp-wl-pill.on { border-color: rgba(245, 158, 11, 0.55); color: #f59e0b; background: rgba(245, 158, 11, 0.14); }
@@ -3481,9 +3613,21 @@
     .wg-card {
       border: 1px solid var(--border); border-radius: 8px; background: var(--card);
       overflow: hidden; display: flex; flex-direction: column;
-      transition: border-color .14s ease, transform .14s ease;
+      transition: border-color var(--aui-color), box-shadow var(--aui-color), transform var(--aui-spring-highlight);
     }
-    .wg-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+    @media (hover: hover) and (pointer: fine) {
+      .wg-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+      }
+      .wg-card:hover .wg-thumb img {
+        transform: scale(1.05);
+      }
+    }
+    .wg-thumb img {
+      transition: transform var(--aui-spring-highlight);
+    }
     .wg-thumb {
       height: 116px; background: #0b1120; position: relative; overflow: hidden;
       border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
@@ -3653,7 +3797,7 @@
       backdrop-filter: blur(6px);
       color: #64748b; font-size: 9.5px; font-weight: 600;
       padding: 2px 6px; border-radius: 4px; cursor: pointer;
-      transition: all .14s;
+      transition: color var(--aui-color), border-color var(--aui-color), background-color var(--aui-color), transform var(--aui-spring-press);
     }
     .ga-layer-chip.on { color: #0f172a; border-color: rgba(15, 23, 42, 0.28); background: rgba(255, 255, 255, 0.96); }
     .ga-root.is-dark .ga-layer-chip {
@@ -3734,7 +3878,8 @@
       flex: none; display: inline-flex; align-items: center; gap: 3px;
       padding: 2px 6px; border-radius: 4px; cursor: pointer;
       font-size: 10px; font-weight: 600; line-height: 1.3;
-      border: 1px solid transparent; transition: all .15s ease;
+      border: 1px solid transparent;
+      transition: transform var(--aui-spring-highlight), box-shadow var(--aui-color), filter var(--aui-color), opacity var(--aui-fade), border-color var(--aui-color), background-color var(--aui-color);
     }
     .ga-asset-chip.bullish {
       background: rgba(5, 150, 105, 0.1); border-color: rgba(5, 150, 105, 0.28); color: #047857;
@@ -3756,7 +3901,6 @@
     }
     .ga-asset-chip:hover,
     .ga-asset-chip.is-hl {
-      transform: translateY(-1px);
       box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
       filter: saturate(1.18);
     }
@@ -3816,12 +3960,13 @@
       overflow: hidden; background: rgba(59, 130, 246, 0.14); pointer-events: none;
     }
     .ep-loading-bar::after {
-      content: ''; position: absolute; top: 0; bottom: 0; width: 42%;
-      background: var(--primary); animation: ep-slide 0.9s ease-in-out infinite;
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 42%;
+      background: var(--primary);
+      animation: ep-slide 0.9s ease-in-out infinite;
     }
     @keyframes ep-slide {
-      0% { left: -42%; }
-      100% { left: 100%; }
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(340%); }
     }
     .ep-graph-tools {
       position: absolute; right: 6px; top: 6px; z-index: 3;
@@ -3874,7 +4019,10 @@
     .ep-type-tag.asset { color: #059669; background: rgba(5, 150, 105, 0.1); border-color: rgba(5, 150, 105, 0.22); }
     .ep-mentions-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
     .ep-heat-track { width: 100%; height: 2.5px; border-radius: 2px; background: var(--border); overflow: hidden; }
-    .ep-heat-fill { height: 100%; border-radius: 2px; transition: width .25s ease; }
+    .ep-heat-fill {
+      width: 100%; height: 100%; border-radius: 2px;
+      transition: transform var(--aui-spring-selection), background-color var(--aui-color);
+    }
     .ep-sent-pill {
       display: inline-block; min-width: 44px; text-align: right; padding: 1px 4px;
       border-radius: 3px; font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums;
@@ -3883,13 +4031,19 @@
     .ep-sent-pill.down { color: var(--down); background: rgba(239, 68, 68, 0.11); }
     .ep-sent-pill.flat { color: var(--muted-foreground); background: var(--muted); }
 
-    /* ============== Apple HIG / Fluent 一致性、触感反馈、键盘可访问性与动效包容性 ============== */
+    /* ============== Animate UI 统一动效、弹簧按压、焦点环、主题擦除与无障碍包容性 ============== */
+    /* A17: 焦点环零延迟即显、覆盖全站所有可交互元素 */
     button:focus-visible,
     [role="button"]:focus-visible,
+    [role="tab"]:focus-visible,
+    a:focus-visible,
     .ws-tab:focus-visible,
     .nav-item:focus-visible,
     .att-nav-btn:focus-visible,
+    .att-tab:focus-visible,
     .oc-nav-item:focus-visible,
+    .oc-layout-card:focus-visible,
+    .oc-chip:focus-visible,
     .ft-btn:focus-visible,
     .ft-chip:focus-visible,
     .ft-icon-btn:focus-visible,
@@ -3897,19 +4051,282 @@
     .news-pill-btn:focus-visible,
     .type-cap:focus-visible,
     .tree-node:focus-visible,
-    .fg-add-fab:focus-visible {
+    .fg-add-fab:focus-visible,
+    .chip:focus-visible,
+    .ask-chip:focus-visible,
+    .ask-opt:focus-visible,
+    .mp-row:focus-visible,
+    .mp-item:focus-visible,
+    .model-pill:focus-visible,
+    .bt-mt:focus-visible,
+    .bt-vtab:focus-visible,
+    .bt-tbtn:focus-visible,
+    .bt-seg-btn:focus-visible,
+    .bt-chip:focus-visible,
+    .bt-preset-card:focus-visible,
+    .bt-acc-h:focus-visible,
+    .hit:focus-visible,
+    .src:focus-visible,
+    .news-card:focus-visible {
       outline: 2px solid var(--ring);
       outline-offset: 2px;
     }
-    .ft-btn:active,
-    .ft-chip:active,
-    .ft-icon-btn:active,
-    .ft-ico-btn:active,
-    .news-pill-btn:active,
-    .ws-tab:active,
-    .fg-add-fab:active {
-      transform: scale(0.97);
+
+    /* B4: 全站按钮/标签/控件统一弹簧按压反馈 (scale.press = 0.97) */
+    .nav-item,
+    .att-nav-btn,
+    .att-tab,
+    .att-new-btn,
+    .oc-nav-item,
+    .oc-back-btn,
+    .hist-item,
+    .hist-tool,
+    .hist-manage,
+    .hist-close,
+    .sider-newchat-btn,
+    .chip,
+    .attach-btn,
+    .model-pill,
+    .mp-row,
+    .mp-item,
+    .ask-arrow,
+    .seg-item,
+    .pdf-zoom-btn,
+    .pdf-zoom-now,
+    .bw-tab,
+    .bw-btn,
+    .bw-new,
+    .ask-bw-tabpill,
+    .ask-bw-human-btn,
+    .tree-tool-btn,
+    .tree-act-btn,
+    .theme-toggle-btn,
+    .news-pill-btn,
+    .dash-ws-btn,
+    .ws-tab,
+    .ft-btn,
+    .ft-ico-btn,
+    .ft-badge-mini,
+    .ep-pill,
+    .ep-mini-btn,
+    .ga-seg-btn,
+    .ga-zbtn,
+    .bt-mt,
+    .bt-vtab,
+    .bt-tbtn,
+    .bt-seg-btn,
+    .bt-chip,
+    .bt-acc-h,
+    .bt-stat-pill,
+    .ant-btn {
+      transition:
+        background-color var(--aui-color),
+        border-color var(--aui-color),
+        color var(--aui-color),
+        box-shadow var(--aui-color),
+        transform var(--aui-spring-press);
     }
+    .nav-item:active:not(:disabled),
+    .att-nav-btn:active:not(:disabled),
+    .att-tab:active:not(:disabled),
+    .att-new-btn:active:not(:disabled),
+    .oc-nav-item:active:not(:disabled),
+    .oc-back-btn:active:not(:disabled),
+    .oc-chip:active:not(:disabled),
+    .oc-kbd-reset-btn:active:not(:disabled),
+    .hist-tool:active:not(:disabled),
+    .hist-manage:active:not(:disabled),
+    .hist-close:active:not(:disabled),
+    .sider-newchat-btn:active:not(:disabled),
+    .chip:active:not(:disabled),
+    .attach-btn:active:not(:disabled),
+    .model-pill:active:not(:disabled),
+    .mp-row:active:not(:disabled),
+    .mp-item:active:not(:disabled),
+    .ask-arrow:active:not(:disabled),
+    .seg-item:active:not(:disabled),
+    .pdf-zoom-btn:active:not(:disabled),
+    .pdf-zoom-now:active:not(:disabled),
+    .bw-tab:active:not(:disabled),
+    .bw-btn:active:not(:disabled),
+    .bw-new:active:not(:disabled),
+    .ask-bw-tabpill:active:not(:disabled),
+    .ask-bw-human-btn:active:not(:disabled),
+    .tree-tool-btn:active:not(:disabled),
+    .tree-act-btn:active:not(:disabled),
+    .type-cap:active:not(:disabled),
+    .theme-toggle-btn:active:not(:disabled),
+    .news-pill-btn:active:not(:disabled),
+    .dash-ws-btn:active:not(:disabled),
+    .ws-tab:active:not(:disabled),
+    .ft-btn:active:not(:disabled),
+    .ft-chip:active:not(:disabled),
+    .ft-icon-btn:active:not(:disabled),
+    .ft-ico-btn:active:not(:disabled),
+    .ft-badge-mini:active:not(:disabled),
+    .fg-add-fab:active:not(:disabled),
+    .sp-wl-pill:active:not(:disabled),
+    .ep-pill:active:not(:disabled),
+    .ep-mini-btn:active:not(:disabled),
+    .ga-seg-btn:active:not(:disabled),
+    .ga-layer-chip:active:not(:disabled),
+    .ga-zbtn:active:not(:disabled),
+    .bt-mt:active:not(:disabled),
+    .bt-vtab:active:not(:disabled),
+    .bt-tbtn:active:not(:disabled),
+    .bt-seg-btn:active:not(:disabled),
+    .bt-chip:active:not(:disabled),
+    .bt-stat-pill:active:not(:disabled),
+    .ant-btn:active:not(:disabled):not(.ant-btn-loading) {
+      transform: scale(var(--aui-scale-press));
+    }
+
+    /* B4: 可点击卡片/选项行统一轻按压反馈 (scale.choice = 0.985) */
+    .hit,
+    .src,
+    .ask-opt,
+    .oc-layout-card,
+    .news-card,
+    .anf-item,
+    .dash-conn-card,
+    .mk-kpi,
+    .cd-tile,
+    .div-alert-card,
+    .bt-preset-card,
+    .bt-pool-item,
+    .inbox-item {
+      transition:
+        background-color var(--aui-color),
+        border-color var(--aui-color),
+        box-shadow var(--aui-color),
+        transform var(--aui-spring-press);
+    }
+    .hit:active,
+    .src:active,
+    .ask-chip:active,
+    .ask-opt:active:not(:disabled),
+    .oc-layout-card:active,
+    .news-card:active,
+    .anf-item:active,
+    .dash-conn-card:active,
+    .mk-kpi:active,
+    .cd-tile:active,
+    .div-alert-card:active,
+    .wg-card:active,
+    .bt-preset-card:active,
+    .bt-pool-item:active,
+    .hist-item:active,
+    .inbox-item:active {
+      transform: scale(var(--aui-scale-choice));
+    }
+
+    /* A3: 仅在精细悬停指针设备启用卡片微抬升 */
+    @media (hover: hover) and (pointer: fine) {
+      .bt-preset-card:hover,
+      .dash-conn-card:hover,
+      .mk-kpi:hover {
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      }
+      .ga-asset-chip:hover,
+      .ga-asset-chip.is-hl {
+        transform: translateY(-1px);
+      }
+    }
+
+    /* Animate UI 辅助组件样式：图标旋转切换、折叠箭头平滑旋转、数字滚动 */
+    .aui-icon-swap {
+      position: relative;
+      display: inline-grid;
+      place-items: center;
+      width: 1em;
+      height: 1em;
+    }
+    .aui-icon-swap-item {
+      grid-area: 1 / 1;
+      display: inline-grid;
+      place-items: center;
+      line-height: 0;
+    }
+    .aui-icon-swap-item svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .aui-metric-num {
+      display: inline-flex;
+      align-items: baseline;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.25;
+    }
+    .bt-acc-chev,
+    .srcs-chev {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      transition: transform var(--aui-disclosure);
+    }
+    .bt-acc-chev.open,
+    .srcs-chev.open {
+      transform: rotate(90deg);
+    }
+    .srcs-head {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Animate UI 整页主题擦除 View Transition (catalog.md § Theme wipe) */
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none;
+      mix-blend-mode: normal;
+    }
+    :root:active-view-transition-type(animate-ui-theme) body,
+    :root:active-view-transition-type(animate-ui-theme) body * {
+      view-transition-name: none !important;
+    }
+
+    /* Ant Design Vue 全局浮层/弹窗/抽屉/开关动效节奏对齐 Animate UI Tokens */
+    .ant-modal-wrap .ant-zoom-enter,
+    .ant-modal-wrap .ant-zoom-appear {
+      animation-duration: calc(400ms * var(--aui-tempo)) !important;
+      animation-timing-function: var(--aui-ease-soft) !important;
+    }
+    .ant-modal-wrap .ant-zoom-leave {
+      animation-duration: calc(200ms * var(--aui-tempo)) !important;
+      animation-timing-function: var(--aui-ease-away) !important;
+    }
+    .ant-modal-mask,
+    .ant-drawer-mask {
+      backdrop-filter: blur(2px);
+      transition: background-color var(--aui-overlay), opacity var(--aui-overlay) !important;
+    }
+    .ant-drawer-content-wrapper {
+      transition: transform var(--aui-sheet) !important;
+    }
+    .ant-select-dropdown.ant-slide-up-enter,
+    .ant-select-dropdown.ant-slide-up-appear,
+    .ant-dropdown.ant-slide-up-enter,
+    .ant-dropdown.ant-slide-up-appear,
+    .ant-select-dropdown.ant-slide-up-leave,
+    .ant-dropdown.ant-slide-up-leave {
+      animation-duration: calc(220ms * var(--aui-tempo)) !important;
+      animation-timing-function: var(--aui-ease-soft) !important;
+    }
+    .ant-tooltip.ant-zoom-big-fast-enter,
+    .ant-tooltip.ant-zoom-big-fast-appear {
+      animation-duration: calc(200ms * var(--aui-tempo)) !important;
+      animation-timing-function: var(--aui-ease-out) !important;
+    }
+    .ant-switch .ant-switch-handle {
+      transition: inset-inline-start var(--aui-spring-thumb), width var(--aui-color) !important;
+    }
+    .ant-switch .ant-switch-handle::before {
+      transition: inset-inline-start var(--aui-spring-thumb), inset-inline-end var(--aui-spring-thumb) !important;
+    }
+
     .ft-sync-pill {
       display: inline-flex; align-items: center; gap: 5px;
       height: 22px; padding: 0 8px; border-radius: 99px;
@@ -3924,12 +4341,62 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.3; }
     }
+
+    /* A1 & A4: 减弱动态保留淡入淡出与轻模糊、归零位移/缩放/装饰循环、加载器降速不冻死 */
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
+      :root {
+        --aui-scale-press: 1;
+        --aui-scale-choice: 1;
+        --aui-slide-y: 0px;
+      }
+      html { scroll-behavior: auto !important; }
+      .slide-pill,
+      .tree-kb-knob,
+      .fg-item,
+      .fg-ghost,
+      .pbc-fill,
+      .ep-heat-fill,
+      .bt-acc-chev,
+      .srcs-chev {
+        transition-property: opacity, background-color, border-color, color !important;
+        transition-duration: 180ms !important;
+      }
+      .ask-bw-dock,
+      .ask-bw-window {
+        transition: opacity 180ms ease !important;
+      }
+      .ask-bw-window { transform: none !important; }
+      .fg-item.is-max {
+        animation: page-in 180ms ease both !important;
+      }
+      .wg-card:hover,
+      .wg-card:hover .wg-thumb img,
+      .ga-asset-chip:hover,
+      .ga-asset-chip.is-hl {
+        transform: none !important;
+      }
+      /* 装饰性无限循环停止 */
+      .ga-arc.is-conflict-flow,
+      .ga-pulse-ring,
+      .ga-tx-curve,
+      .model-pill-text::after,
+      .page-skel.is-shimmer::after,
+      .oc-kbd-recording {
+        animation: none !important;
+      }
+      /* 加载指示器改为慢速温和提示（绝不冻成静帧） */
+      .bw-spin,
+      .tree-spin.on,
+      .ft-ico-btn.is-spinning svg {
+        animation: pulse-op 1.8s ease-in-out infinite !important;
+      }
+      .ft-sync-dot,
+      .tool-dot.running {
+        animation-duration: 2.2s !important;
+      }
+      .ep-loading-bar::after {
+        width: 100%;
+        animation: pulse-op 1.6s ease-in-out infinite !important;
       }
     }
 
@@ -4100,6 +4567,7 @@
     }
     .bt-subbody { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
     .bt-scroll { overflow: auto !important; }
+    .bt-subbody.bt-scroll > * { flex-shrink: 0; }
 
     /* 参数扫描 */
     .bt-sweep-box { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -4121,6 +4589,7 @@
 
     /* 右栏配置 & 回测时间卡片 */
     .bt-cfg-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+    .bt-cfg-scroll > * { flex-shrink: 0; }
     .bt-preset-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
     .bt-preset-card {
       text-align: left; padding: 7px 8px; border-radius: 5px; border: 1px solid var(--border);
@@ -4168,7 +4637,10 @@
       display: flex; align-items: center; justify-content: space-between; font-size: 11.5px;
       padding: 5px 8px; border-radius: 4px; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.35); color: var(--up);
     }
-    .bt-cfg-foot { margin-top: auto; padding-top: 6px; }
+    .bt-cfg-foot {
+      flex: none; padding: 8px 10px; border-top: 1px solid var(--border);
+      background: var(--card); z-index: 2;
+    }
 
     /* 机构指标表 */
     .bt-metric-grp { border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--background); }
@@ -4213,40 +4685,723 @@
       background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.35); color: var(--warn);
     }
 
-    /* 模式 3: 数据仓 & 引擎 */
+    /* 模式 3: 数据同步 */
     .bt-data-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px; overflow: hidden; }
-    .bt-shared-banner {
-      flex: none; padding: 7px 12px; border-radius: 5px; font-size: 12px; line-height: 1.5;
-      background: rgba(16,185,129,.10); border: 1px solid rgba(16,185,129,.30); color: var(--foreground);
-    }
     .bt-data-top { flex: 1; min-height: 0; display: flex; gap: 10px; overflow: hidden; }
     .bt-pool-grid { display: flex; flex-direction: column; gap: 5px; }
     .bt-pool-item {
-      display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-radius: 5px;
+      display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 5px;
       border: 1px solid var(--border); background: var(--background); cursor: pointer;
     }
     .bt-pool-item.on { border-color: var(--primary); background: rgba(59,130,246,.08); }
     .bt-pool-txt { min-width: 0; flex: 1; }
-    .bt-pool-t { font-size: 12px; font-weight: 600; color: var(--foreground); }
-    .bt-pool-s { font-size: 10.5px; color: var(--muted-foreground); margin-top: 1px; }
+    .bt-pool-t { font-size: 12px; font-weight: 600; color: var(--foreground); line-height: 1.3; }
+    .bt-resume-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 6px 9px; border-radius: 5px; font-size: 11.5px;
+      background: rgba(245,158,11,.10); border: 1px solid rgba(245,158,11,.30); color: var(--foreground);
+    }
     .bt-sync-term {
       padding: 7px 9px; border-radius: 4px; background: var(--background); border: 1px solid var(--border); font-size: 11.5px; word-break: break-word;
     }
-    .bt-env-bar {
-      flex: none; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-      padding: 6px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 5px; font-size: 11px;
-    }
-    .bt-env-chip { padding: 2px 7px; border-radius: 3px; border: 1px solid var(--border); background: var(--muted); color: var(--muted-foreground); }
-    .bt-env-chip.ok { border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.1); color: var(--up); }
 
     @media (max-width: 1180px) {
       .bt-risk-grid { grid-template-columns: 1fr; }
       .bt-data-top { flex-direction: column; overflow-y: auto; }
     }
+
+    /* ============== Animate UI Native Components (Reka UI + Standalone Primitives) ============== */
+    /* 1. Shared Gliding Tooltip (@animate-ui/vue/primitives/tooltip) */
+    .aui-tooltip-content {
+      z-index: 2200;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 500;
+      color: #f8fafc;
+      background: #0f172a;
+      box-shadow: 0 8px 24px rgba(2, 6, 23, 0.28);
+      pointer-events: none;
+      max-width: 280px;
+      white-space: nowrap;
+    }
+    html[data-theme="dark"] .aui-tooltip-content {
+      background: #e2e8f0;
+      color: #0b0f17;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+    .aui-tooltip-arrow {
+      fill: #0f172a;
+    }
+    html[data-theme="dark"] .aui-tooltip-arrow {
+      fill: #e2e8f0;
+    }
+
+    /* 2. Animate UI Highlight gliding indicator surfaces */
+    .aui-hl-surface {
+      border-radius: var(--radius);
+      background: #dbeafe;
+      pointer-events: none;
+    }
+    html[data-theme="dark"] .aui-hl-surface {
+      background: rgba(59, 130, 246, 0.22);
+    }
+    .aui-hl-pill-surface {
+      border-radius: 5px;
+      background: var(--primary);
+      pointer-events: none;
+    }
+    .aui-hl-card-surface {
+      border-radius: 4px;
+      background: var(--card);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      pointer-events: none;
+    }
+    .aui-hl-seg-surface {
+      border-radius: 4px;
+      background: #0f172a;
+      pointer-events: none;
+    }
+    html[data-theme="dark"] .aui-hl-seg-surface {
+      background: #2563eb;
+    }
+    .aui-hl-cap-surface {
+      border-radius: 6px;
+      background: #1d4ed8;
+      box-shadow: 0 2px 6px rgba(29, 78, 216, .22);
+      pointer-events: none;
+    }
+    .aui-hl-doc-surface {
+      border-radius: 4px;
+      background: var(--secondary);
+      pointer-events: none;
+    }
+    .nav-switch [data-slot="highlight-item"],
+    .provider-list [data-slot="highlight-item"] {
+      width: 100%;
+    }
+    .news-lang-pills .news-pill-btn[data-slot="highlight-item"].on,
+    .bt-mode-strip .bt-mt[data-slot="highlight-item"].on,
+    .bt-view-tabs .bt-vtab[data-slot="highlight-item"].on,
+    .bt-seg .bt-seg-btn[data-slot="highlight-item"].on,
+    .ep-pills .ep-pill[data-slot="highlight-item"].on,
+    .ga-seg .ga-seg-btn[data-slot="highlight-item"].on,
+    .type-capsules .type-cap[data-slot="highlight-item"].on,
+    .seg .seg-item[data-slot="highlight-item"].on {
+      background: transparent !important;
+      box-shadow: none !important;
+      position: relative;
+      z-index: 1;
+    }
+    .news-lang-pills .news-pill-btn,
+    .bt-mode-strip .bt-mt,
+    .bt-view-tabs .bt-vtab,
+    .bt-seg .bt-seg-btn,
+    .ep-pills .ep-pill,
+    .ga-seg .ga-seg-btn,
+    .type-capsules .type-cap,
+    .seg .seg-item {
+      position: relative;
+      z-index: 1;
+    }
+    .bt-view-tabs .bt-vtab.on {
+      border-color: transparent !important;
+    }
+
+    /* 3. MotionGrid 3x3 Loader */
+    .aui-motion-loader {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5px;
+      flex: none;
+      pointer-events: none;
+    }
+    .aui-mg-cell {
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--primary) 20%, transparent);
+      transition: background-color 140ms ease, transform 140ms ease;
+    }
+    .aui-mg-cell.on {
+      background: var(--primary);
+      transform: scale(1.1);
+    }
+
+    /* 4. Particle Star Button & Copy Button */
+    .aui-star-particle {
+      color: #f59e0b;
+    }
+    .aui-copy-btn {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card);
+      color: var(--muted-foreground);
+      cursor: pointer;
+      transition: background-color var(--aui-color), color var(--aui-color), border-color var(--aui-color), opacity var(--aui-fade);
+    }
+    .aui-copy-btn:hover {
+      color: var(--foreground);
+      border-color: var(--primary);
+      background: var(--muted);
+    }
+    .aui-copy-ico {
+      display: inline-grid;
+      place-items: center;
+      width: 14px;
+      height: 14px;
+    }
+    .aui-copy-ico svg { width: 14px; height: 14px; display: block; }
+    .aui-copy-ico.copied { color: var(--ok); }
+    .md-pre-wrap {
+      position: relative;
+      margin: .4em 0;
+    }
+    .md-pre-wrap > .md-pre {
+      margin: 0;
+      padding-right: 40px;
+    }
+    .md-pre-copy {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      width: 26px;
+      height: 26px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card);
+      color: var(--muted-foreground);
+      display: inline-grid;
+      place-items: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity var(--aui-fade), color var(--aui-color), border-color var(--aui-color), background-color var(--aui-color), transform var(--aui-spring-press);
+    }
+    .md-pre-wrap:hover .md-pre-copy,
+    .md-pre-copy:focus-visible,
+    .md-pre-copy.is-copied {
+      opacity: 1;
+    }
+    .md-pre-copy.is-copied {
+      color: var(--ok);
+      border-color: rgba(16, 185, 129, 0.45);
+    }
+    .md-pre-copy svg { width: 13px; height: 13px; display: block; }
+
+    /* 5. ScrollProgress reading bar & ScrollFade */
+    .aui-scroll-progress-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .aui-scroll-progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2.5px;
+      z-index: 6;
+      background: linear-gradient(90deg, var(--primary), #60a5fa);
+      border-radius: 0 2px 2px 0;
+      pointer-events: none;
+    }
+    .chatlog.aui-scroll-fade {
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+
+    /* 6. PinnedList sidebar groups */
+    .aui-pinned-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 100%;
+    }
+    .aui-pinned-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted-foreground);
+      padding: 6px 12px 2px;
+      letter-spacing: .03em;
+    }
+    .aui-pinned-items {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .hist-pin-btn {
+      width: 20px;
+      height: 20px;
+      flex: none;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted-foreground);
+      display: inline-grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+      opacity: 0;
+      transition: opacity var(--aui-fade), color var(--aui-color), background-color var(--aui-color), transform var(--aui-spring-press);
+    }
+    .hist-pin-btn.on { opacity: 0.9; color: var(--primary); }
+    .hist-item:hover .hist-pin-btn,
+    .inbox-item:hover .hist-pin-btn,
+    .hist-pin-btn:focus-visible { opacity: 1; }
+    .hist-pin-btn:hover { background: var(--sidebar-accent); color: var(--primary); }
+    .hist-pin-btn svg { width: 12px; height: 12px; display: block; }
+
+    /* 7. Animate UI Reka Dialog (3D tilt entrance + backdrop blur) */
+    .aui-dialog-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 990;
+      background: rgba(2, 6, 23, 0.46);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .aui-dialog-content {
+      position: fixed;
+      inset: 0;
+      margin: auto;
+      z-index: 1000;
+      height: fit-content;
+      max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 48px);
+      display: flex;
+      flex-direction: column;
+      background: var(--card);
+      color: var(--foreground);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(2, 6, 23, 0.24);
+      overflow: hidden;
+      outline: none;
+    }
+    html[data-theme="dark"] .aui-dialog-content {
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.56);
+    }
+    .aui-dialog-header {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .aui-dialog-title {
+      margin: 0;
+      font-size: 15.5px;
+      font-weight: 600;
+      color: var(--foreground);
+      line-height: 1.4;
+    }
+    .aui-dialog-close {
+      width: 28px;
+      height: 28px;
+      flex: none;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted-foreground);
+      display: inline-grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+      transition: background-color var(--aui-color), color var(--aui-color), transform var(--aui-spring-press);
+    }
+    .aui-dialog-close:hover {
+      background: var(--muted);
+      color: var(--foreground);
+    }
+    .aui-dialog-close:active { transform: scale(var(--aui-scale-press)); }
+    .aui-dialog-close svg { width: 15px; height: 15px; display: block; }
+    .aui-dialog-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 18px 20px;
+    }
+    .aui-dialog-footer {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--muted);
+    }
+    .aui-btn-spinner {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1.8px solid rgba(255, 255, 255, 0.4);
+      border-top-color: #fff;
+      display: inline-block;
+      margin-right: 6px;
+      animation: bw-rot 0.75s linear infinite;
+    }
+
+    /* 8. Animate UI Reka Drawer (swipe-to-dismiss + scrubbed backdrop) */
+    .aui-drawer-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 990;
+      background: rgba(2, 6, 23, 0.44);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+    }
+    .aui-drawer-content {
+      position: fixed;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      background: var(--card);
+      color: var(--foreground);
+      box-shadow: -12px 0 40px rgba(2, 6, 23, 0.22);
+      outline: none;
+    }
+    .aui-drawer-right {
+      top: 0;
+      right: 0;
+      bottom: 0;
+      border-left: 1px solid var(--border);
+    }
+    .aui-drawer-left {
+      top: 0;
+      left: 0;
+      bottom: 0;
+      border-right: 1px solid var(--border);
+      box-shadow: 12px 0 40px rgba(2, 6, 23, 0.22);
+    }
+    .aui-drawer-handle {
+      position: absolute;
+      left: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 4px;
+      height: 36px;
+      border-radius: 99px;
+      background: color-mix(in srgb, var(--muted-foreground) 32%, transparent);
+      cursor: grab;
+      z-index: 4;
+      transition: background-color var(--aui-color);
+    }
+    .aui-drawer-handle:hover {
+      background: color-mix(in srgb, var(--primary) 65%, transparent);
+    }
+    .aui-drawer-header {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 18px 13px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .aui-drawer-head-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+    .aui-drawer-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--foreground);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .aui-drawer-extra {
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .aui-drawer-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .aui-drawer-content.doc-drawer .pdf-viewport {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      max-height: none;
+    }
+    .aui-drawer-content.doc-drawer .doc-spin,
+    .aui-drawer-content.doc-drawer .ant-spin-nested-loading,
+    .aui-drawer-content.doc-drawer .ant-spin-container {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .aui-drawer-content.doc-drawer .docbody {
+      max-height: none;
+      height: 100%;
+      min-height: 0;
+    }
+
+    /* 9. Animate UI Reka Switch (spring thumb + press stretch) */
+    .aui-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 40px;
+      height: 22px;
+      padding: 2px;
+      border: 0;
+      border-radius: 999px;
+      background: #cbd5e1;
+      cursor: pointer;
+      flex: none;
+      box-sizing: border-box;
+      transition: background-color var(--aui-color);
+    }
+    html[data-theme="dark"] .aui-switch {
+      background: #334155;
+    }
+    .aui-switch[data-state="checked"] {
+      background: var(--primary);
+    }
+    .aui-switch:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .aui-switch-thumb {
+      display: block;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+      pointer-events: none;
+    }
+    .aui-switch[data-state="checked"] .aui-switch-thumb {
+      margin-left: auto;
+    }
+    .aui-switch.is-sm {
+      width: 30px;
+      height: 17px;
+      padding: 2px;
+    }
+    .aui-switch.is-sm .aui-switch-thumb {
+      width: 13px;
+      height: 13px;
+    }
+    .aui-switch.is-xs {
+      width: 26px;
+      height: 15px;
+      padding: 2px;
+    }
+    .aui-switch.is-xs .aui-switch-thumb {
+      width: 11px;
+      height: 11px;
+    }
+
+    /* 10. Animate UI Reka Accordion */
+    .aui-acc-root {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .aui-acc-trigger {
+      width: 100%;
+      border: 0;
+      background: var(--muted);
+      color: var(--foreground);
+      padding: 6px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background-color var(--aui-color);
+    }
+    .aui-acc-trigger[data-state="open"] .bt-acc-chev {
+      transform: rotate(90deg);
+    }
+    .aui-acc-header {
+      margin: 0;
+    }
+
+    /* 11. Animate UI Reka DropdownMenu (gliding highlight + stagger rows) */
+    .aui-dropdown-content {
+      z-index: 1500;
+      min-width: 148px;
+      padding: 5px;
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--foreground);
+      border: 1px solid var(--border);
+      box-shadow: 0 12px 36px rgba(15, 23, 42, 0.16);
+      outline: none;
+    }
+    html[data-theme="dark"] .aui-dropdown-content {
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.48);
+    }
+    .aui-dd-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--foreground);
+      cursor: pointer;
+      user-select: none;
+      outline: none;
+    }
+    .aui-dd-item[data-highlighted] {
+      background: var(--muted);
+      color: var(--foreground);
+    }
+    .aui-dd-item.is-active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .aui-dd-item.is-danger {
+      color: var(--destructive);
+    }
+    .aui-dd-item.is-danger[data-highlighted] {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--destructive);
+    }
+    .aui-dd-sep {
+      height: 1px;
+      background: var(--border);
+      margin: 4px 6px;
+    }
+
+    /* 12. Animate UI Top-Center Status Capsule (Dynamic Island / Linear / Vercel pill) */
+    .aui-toast-viewport {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2500;
+      width: min(440px, calc(100vw - 32px));
+      height: 0;
+      overflow: visible;
+      outline: none;
+      pointer-events: none;
+    }
+    .aui-toast-root {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      margin: 0 auto;
+      width: max-content;
+      max-width: 100%;
+      pointer-events: auto;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.90);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 8px 24px rgba(2, 6, 23, 0.18), 0 1px 2px rgba(2, 6, 23, 0.10);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      overflow: hidden;
+      padding: 6px 13px 6px 10px;
+      user-select: none;
+    }
+    html[data-theme="dark"] .aui-toast-root {
+      background: rgba(30, 41, 59, 0.92);
+      border-color: rgba(148, 163, 184, 0.22);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+    .aui-toast-content {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+    .aui-capsule-ico {
+      width: 16px;
+      height: 16px;
+      flex: none;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+    }
+    .aui-capsule-ico svg { width: 11px; height: 11px; display: block; }
+    .aui-capsule-ico.is-success { background: rgba(16, 185, 129, 0.22); color: #34d399; }
+    .aui-capsule-ico.is-error { background: rgba(239, 68, 68, 0.22); color: #f87171; }
+    .aui-capsule-ico.is-warning { background: rgba(245, 158, 11, 0.22); color: #fbbf24; }
+    .aui-capsule-ico.is-info { background: rgba(59, 130, 246, 0.22); color: #60a5fa; }
+    .aui-capsule-ico.is-loading { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
+    .aui-capsule-ico.is-loading svg { animation: spin 0.8s linear infinite; }
+    .aui-toast-desc {
+      font-size: 12.5px;
+      font-weight: 500;
+      line-height: 1.35;
+      color: #f8fafc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .aui-toast-close {
+      width: 18px;
+      height: 18px;
+      flex: none;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: rgba(248, 250, 252, 0.6);
+      display: inline-grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+      margin-left: 2px;
+      margin-right: -4px;
+    }
+    .nav-sync-badge {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      line-height: 1.4;
+      color: var(--up);
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.28);
+    }
+    .nav-sync-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--up);
+      animation: pulse-op 1.4s ease-in-out infinite;
+    }
+    .aui-toast-close:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+    .aui-toast-close svg { width: 11px; height: 11px; display: block; }
   </style>
 </head>
 <body>
   <div id="app"></div>
-  <script src="/app.js?v=131"></script>
+  <script src="/app.js?v=138"></script>
 </body>
 </html>
